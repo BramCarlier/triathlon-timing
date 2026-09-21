@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$FORGE_SITE_PATH"
+# Build the selected release. Forge's outer script owns checkout, activation,
+# PHP-FPM reloads and process restarts; see FORGE.md for both deployment modes.
+cd "${1:-${FORGE_SITE_PATH:?Pass the release path or set FORGE_SITE_PATH}}"
 
-git pull origin main
-composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+timing_php="${FORGE_PHP:-php8.4}"
+timing_composer="${FORGE_COMPOSER:-$(command -v composer)}"
 
-php artisan migrate --force
-php artisan optimize:clear
+node -e 'if (process.versions.node.split(".")[0] !== "24") { console.error("Deployment requires Node.js 24 LTS."); process.exit(1); }'
+"$timing_php" -r 'if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 4) { fwrite(STDERR, "Deployment requires PHP 8.4.\n"); exit(1); }'
 
-corepack enable
-yarn install --frozen-lockfile --non-interactive
-yarn build
+# Corepack reads packageManager from package.json without changing server-wide
+# shims. Keep development dependencies available for the Vite build.
+corepack yarn install --immutable
+corepack yarn build
+"$timing_php" "$timing_composer" install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-php artisan optimize
-php artisan queue:restart || true
-php artisan reverb:restart || true
+# Clear only cached configuration before migrations: optimize:clear also clears
+# the database cache, whose table does not exist on the initial deployment.
+"$timing_php" artisan config:clear
+"$timing_php" artisan migrate --force
+"$timing_php" artisan optimize
