@@ -1,11 +1,12 @@
 import '../css/app.css';
 import { createApp, h } from 'vue';
+import type { DefineComponent } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 (window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
+
 if (import.meta.env.VITE_REVERB_APP_KEY) {
   (window as any).Echo = new Echo({
     broadcaster: 'reverb',
@@ -15,13 +16,19 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
     wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
-    auth: { headers: { 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '' } },
+    auth: {
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+      },
+    },
   });
 }
 
+const pages = import.meta.glob<DefineComponent>('./Pages/**/*.vue', { eager: true });
+
 createInertiaApp({
   title: (title) => title ? `${title} · Triathlon Timing` : 'Triathlon Timing',
-  resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
+  resolve: (name) => pages[`./Pages/${name}.vue`],
   setup({ el, App, props, plugin }) {
     createApp({ render: () => h(App, props) }).use(plugin).mount(el);
   },
