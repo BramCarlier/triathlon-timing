@@ -18,7 +18,9 @@ const feedback = ref<{type:'ok'|'error'|'offline';message:string}|null>(null);
 const participants = ref(props.participants.map(p => ({...p, completed_checkpoint_ids:[...p.completed_checkpoint_ids]})));
 const recent = ref<Timing[]>(props.recentTimings.map(t => ({...t, client_uuid: t.client_uuid ?? ''})));
 watch(() => props.participants, value => { participants.value = value.map(p => ({...p, completed_checkpoint_ids:[...p.completed_checkpoint_ids]})); });
-watch(() => props.recentTimings, value => { recent.value = value.map(t => ({...t, client_uuid:t.client_uuid ?? ''})); });
+watch([() => props.checkpoint?.id, () => props.recentTimings], ([, value]) => {
+  recent.value = value.map(t => ({...t, client_uuid:t.client_uuid ?? ''}));
+});
 const { elapsedMs, serverNowMs } = useRaceClock(() => props.race.started_at, () => props.serverNow, () => props.race.finished_at);
 const { pending, queue, flush, discard } = useOfflineTimingQueue(props.race.id);
 const deviceUuid = localStorage.getItem('triathlon-device-uuid') ?? uuid();

@@ -25,5 +25,6 @@ corepack yarn build
 # Clear only cached configuration before migrations: optimize:clear also clears
 # the database cache, whose table does not exist on the initial deployment.
 "$timing_php" artisan config:clear
+"$timing_php" artisan timing:check-reverb
 "$timing_php" artisan migrate --force
 "$timing_php" artisan optimize
