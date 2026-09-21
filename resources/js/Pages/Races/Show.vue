@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
-import type { Checkpoint, Race } from '../../types';
+import { ref } from 'vue';
+import ConfirmDialog from '../../Components/ConfirmDialog.vue';
+import type { Checkpoint, Race, PageProps } from '../../types';
 
 interface Organizer {
   id: number;
@@ -14,6 +16,11 @@ const props = defineProps<{
   organizers: Organizer[];
   serverNow: string;
 }>();
+
+const page = usePage<PageProps>();
+const deleting = ref(false);
+const deleteForm = useForm({});
+const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, {onSuccess:()=>{deleting.value=false;}});
 
 const raceForm = useForm({
   name: props.race.name,
@@ -63,36 +70,27 @@ const removeCheckpoint = (cp: Checkpoint) => {
 <template>
   <Head :title="race.name" />
   <AppLayout :title="race.name">
-    <div class="mb-5 grid gap-2 sm:grid-cols-4">
-      <Link :href="`/races/${race.id}/participants`" class="btn-secondary">
-        Participants ({{ race.entries_count ?? 0 }})
-      </Link>
-      <Link :href="`/races/${race.id}/station`" class="btn-primary">Timing station</Link>
-      <Link :href="`/races/${race.id}/control`" class="btn-secondary">Race control</Link>
-      <Link :href="`/races/${race.id}/results`" class="btn-secondary">Results</Link>
-    </div>
-
     <div class="grid gap-6 lg:grid-cols-2">
       <form class="panel-pad" @submit.prevent="saveRace">
         <h2 class="mb-4 text-lg font-bold">Race settings</h2>
         <div class="space-y-4">
           <div>
-            <label class="label">Name</label>
-            <input v-model="raceForm.name" class="field" required>
+            <label for="race-name" class="label">Name</label>
+            <input id="race-name" v-model="raceForm.name" class="field" required>
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
-              <label class="label">Date</label>
-              <input v-model="raceForm.event_date" type="date" class="field" required>
+              <label for="race-date" class="label">Date</label>
+              <input id="race-date" v-model="raceForm.event_date" type="date" class="field" required>
             </div>
             <div>
-              <label class="label">Timezone</label>
-              <input v-model="raceForm.timezone" class="field" required>
+              <label for="race-timezone" class="label">Timezone</label>
+              <input id="race-timezone" v-model="raceForm.timezone" class="field" required>
             </div>
           </div>
           <div>
-            <label class="label">Status</label>
-            <select v-model="raceForm.status" class="field">
+            <label for="race-status" class="label">Status</label>
+            <select id="race-status" v-model="raceForm.status" class="field">
               <template v-if="!race.started_at">
                 <option value="draft">Draft</option>
                 <option value="ready">Ready</option>
@@ -115,6 +113,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             </div>
           </div>
         </div>
+        <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-red-300">{{ Object.values(raceForm.errors)[0] }}</p>
         <button class="btn-primary mt-5" :disabled="raceForm.processing">Save settings</button>
       </form>
 
@@ -186,5 +185,12 @@ const removeCheckpoint = (cp: Checkpoint) => {
         </form>
       </div>
     </div>
+    <section v-if="page.props.auth.user?.role==='admin'" class="panel-pad mt-6 border-red-500/30">
+      <h2 class="font-bold">Delete race</h2>
+      <p class="mt-2 muted">Remove this race from active lists. Participants, timings and organizer assignments are preserved. You can restore it from Deleted races.</p>
+      <button class="btn-danger mt-4" @click="deleting=true">Delete race</button>
+    </section>
+    <ConfirmDialog v-if="deleting" title="Delete race?" :message="`Move ${race.name} to Deleted races? It will no longer be available at timing stations until restored.`"
+      confirm-label="Move to Deleted races" :busy="deleteForm.processing" @cancel="deleting=false" @confirm="deleteRace" />
   </AppLayout>
 </template>

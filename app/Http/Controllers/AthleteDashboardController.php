@@ -13,7 +13,7 @@ class AthleteDashboardController extends Controller
         $athlete = $request->user()->athlete;
         abort_unless($athlete, 403, 'This account is not linked to an athlete profile.');
         $memberships = $athlete->memberships()->with(['entry.race.checkpoints', 'entry.members.athlete', 'entry.timings' => fn ($q) => $q->where('status', TimingStatus::Recorded->value)->with('checkpoint')])->get();
-        $entries = $memberships->pluck('entry')->unique('id')->values()->map(function ($entry) {
+        $entries = $memberships->pluck('entry')->filter(fn ($entry) => $entry?->race !== null)->unique('id')->values()->map(function ($entry) {
             return ['id' => $entry->id, 'bib_number' => $entry->bib_number, 'type' => $entry->type->value, 'team_name' => $entry->team_name, 'race' => $entry->race, 'members' => $entry->members, 'timings' => $entry->timings->sortBy(fn ($t) => $t->checkpoint->sequence)->values()];
         });
         return Inertia::render('Athlete/Dashboard', ['athlete' => $athlete, 'entries' => $entries, 'serverNow' => now('UTC')->toISOString()]);

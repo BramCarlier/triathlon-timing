@@ -12,6 +12,7 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    protected $attributes = ['is_active' => true, 'force_password_change' => false];
     protected $fillable = ['name', 'email', 'password', 'role', 'athlete_id', 'is_active', 'force_password_change'];
     protected $hidden = ['password', 'remember_token'];
     protected function casts(): array { return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'role' => UserRole::class, 'is_active' => 'boolean', 'force_password_change' => 'boolean']; }

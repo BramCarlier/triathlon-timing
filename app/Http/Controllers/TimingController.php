@@ -68,7 +68,8 @@ class TimingController extends Controller
         try {
             $timing = $service->record($race, Entry::findOrFail($data['entry_id']), Checkpoint::findOrFail($data['checkpoint_id']), $request->user(), $data);
             $timing->load(['entry.members.athlete', 'checkpoint']);
-            return response()->json(['timing' => $timing, 'message' => "#{$timing->entry->bib_number} recorded at {$timing->checkpoint->name}."]);
+            $label = $timing->entry->displayName().($timing->entry->bib_number !== null ? " (#{$timing->entry->bib_number})" : '');
+            return response()->json(['timing' => $timing, 'message' => "{$label} recorded at {$timing->checkpoint->name}."]);
         } catch (TimingWarningException $e) {
             return response()->json(['warning' => true, 'message' => $e->getMessage(), ...$e->context], 409);
         } catch (TimingConflictException $e) {

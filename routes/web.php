@@ -73,7 +73,10 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::delete('/races/{race}', [RaceController::class, 'destroy'])->name('races.destroy');
+        Route::post('/races/{race}/restore', [RaceController::class, 'restore'])->withTrashed()->name('races.restore');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
     });

@@ -7,6 +7,7 @@ use App\Models\Athlete;
 use App\Models\Entry;
 use App\Models\Race;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -30,9 +31,9 @@ class ParticipantImportService
     public function preview(array $rows): array
     {
         $warnings = [];
-        $groups = collect($rows)->groupBy(fn ($row) => (string) ($row['bib'] ?? $row['bib_number'] ?? ''));
-        foreach ($groups as $bib => $group) {
-            if ($bib === '') { $warnings[] = 'At least one row has no bib number.'; continue; }
+        $groups = $this->groups($rows);
+        foreach ($groups as $group) {
+            $bib = $this->bib($group->first()) ?? ($group->first()['team_name'] ?? 'without bib');
             $type = strtolower((string) ($group->first()['type'] ?? 'solo'));
             if (in_array($type, ['relay', 'trio', 'team'], true)) {
                 $disciplines = $group->pluck('discipline')->filter()->map(fn ($v) => strtolower((string) $v))->unique();
@@ -43,7 +44,7 @@ class ParticipantImportService
 
         return [
             'row_count' => count($rows),
-            'entry_count' => $groups->filter(fn ($group, $bib) => $bib !== '')->count(),
+            'entry_count' => $groups->count(),
             'solo_count' => $groups->filter(fn ($group) => !in_array(strtolower((string) ($group->first()['type'] ?? 'solo')), ['relay', 'trio', 'team'], true))->count(),
             'relay_count' => $groups->filter(fn ($group) => in_array(strtolower((string) ($group->first()['type'] ?? 'solo')), ['relay', 'trio', 'team'], true))->count(),
             'sample' => array_slice($rows, 0, 20),
@@ -53,17 +54,22 @@ class ParticipantImportService
 
     public function import(Race $race, array $rows): array
     {
-        $groups = collect($rows)->groupBy(fn ($row) => (string) ($row['bib'] ?? $row['bib_number'] ?? ''));
+        $groups = $this->groups($rows);
         $createdEntries = 0;
         $createdAthletes = 0;
 
         DB::transaction(function () use ($race, $groups, &$createdEntries, &$createdAthletes) {
-            foreach ($groups as $bib => $group) {
-                if ($bib === '') continue;
-                if ($race->entries()->where('bib_number', $bib)->exists()) throw ValidationException::withMessages(['file' => "Bib {$bib} already exists in this race."]);
+            foreach ($groups as $group) {
+                $bib = $this->bib($group->first());
+                if ($bib !== null && strlen($bib) > 32) throw ValidationException::withMessages(['file' => 'Bib numbers must be 32 characters or fewer.']);
+                if ($bib !== null && $race->entries()->where('bib_number', $bib)->exists()) throw ValidationException::withMessages(['file' => "Bib {$bib} already exists in this race."]);
 
                 $first = $group->first();
                 $isRelay = in_array(strtolower((string) ($first['type'] ?? 'solo')), ['relay', 'trio', 'team'], true);
+                $label = $bib !== null ? "bib {$bib}" : ($first['team_name'] ?? $first['first_name'] ?? 'without bib');
+                if (!$isRelay && $group->count() !== 1) throw ValidationException::withMessages(['file' => "Duplicate solo entry {$label}. Each solo athlete needs a separate row and a unique bib when supplied."]);
+                if ($group->contains(fn ($row) => in_array(strtolower((string) ($row['type'] ?? 'solo')), ['relay', 'trio', 'team'], true) !== $isRelay)) throw ValidationException::withMessages(['file' => "Entry {$label} mixes solo and relay rows."]);
+                if ($isRelay && empty($first['team_name']) && empty($first['team'])) throw ValidationException::withMessages(['file' => 'Relay entries need a team_name.']);
                 $entry = Entry::create([
                     'race_id' => $race->id,
                     'bib_number' => $bib,
@@ -77,7 +83,7 @@ class ParticipantImportService
                     $members = $this->relayMembers($group->all());
                     foreach ([Discipline::Swim, Discipline::Bike, Discipline::Run] as $index => $discipline) {
                         $data = $members[$discipline->value] ?? null;
-                        if (!$data || empty($data['first_name']) || empty($data['last_name'])) throw ValidationException::withMessages(['file' => "Relay bib {$bib} is missing the {$discipline->value} athlete."]);
+                        if (!$data || empty($data['first_name']) || empty($data['last_name'])) throw ValidationException::withMessages(['file' => "Relay {$label} is missing the {$discipline->value} athlete."]);
                         [$athlete, $created] = $this->athlete($data); $createdAthletes += $created ? 1 : 0;
                         $entry->members()->create(['athlete_id' => $athlete->id, 'discipline' => $discipline, 'position' => $index + 1]);
                     }
@@ -87,7 +93,7 @@ class ParticipantImportService
                         $parts = preg_split('/\s+/', trim((string) $data['first_name']));
                         $data['last_name'] = array_pop($parts); $data['first_name'] = implode(' ', $parts);
                     }
-                    if (empty($data['first_name']) || empty($data['last_name'])) throw ValidationException::withMessages(['file' => "Solo bib {$bib} needs first_name and last_name."]);
+                    if (empty($data['first_name']) || empty($data['last_name'])) throw ValidationException::withMessages(['file' => "Solo {$label} needs first_name and last_name."]);
                     [$athlete, $created] = $this->athlete($data); $createdAthletes += $created ? 1 : 0;
                     foreach ([Discipline::Swim, Discipline::Bike, Discipline::Run] as $index => $discipline) $entry->members()->create(['athlete_id' => $athlete->id, 'discipline' => $discipline, 'position' => $index + 1]);
                 }
@@ -95,6 +101,24 @@ class ParticipantImportService
         });
 
         return ['entries' => $createdEntries, 'athletes' => $createdAthletes];
+    }
+
+    private function bib(array $row): ?string
+    {
+        $bib = trim((string) ($row['bib'] ?? $row['bib_number'] ?? ''));
+        return $bib === '' ? null : $bib;
+    }
+
+    private function groups(array $rows): Collection
+    {
+        // Missing bibs never collapse unrelated solo rows into a single entry.
+        return collect($rows)->groupBy(function ($row, $index) {
+            $bib = $this->bib($row);
+            if ($bib !== null) return 'bib:'.$bib;
+            $relay = in_array(strtolower((string) ($row['type'] ?? 'solo')), ['relay', 'trio', 'team'], true);
+            $team = trim((string) ($row['entry_key'] ?? $row['team_name'] ?? $row['team'] ?? ''));
+            return $relay && $team !== '' ? 'relay:'.$team : 'row:'.$index;
+        });
     }
 
     private function athlete(array $data): array
@@ -108,13 +132,16 @@ class ParticipantImportService
     {
         $first = $rows[0] ?? [];
         if (isset($first['swim_first_name']) || isset($first['bike_first_name']) || isset($first['run_first_name'])) {
+            if (count($rows) !== 1) throw ValidationException::withMessages(['file' => 'A wide-format relay must occupy exactly one row. Use distinct entry_key values for teams with the same name and no bib.']);
             $result = [];
             foreach (['swim', 'bike', 'run'] as $discipline) $result[$discipline] = ['first_name' => $first[$discipline.'_first_name'] ?? null, 'last_name' => $first[$discipline.'_last_name'] ?? null, 'email' => $first[$discipline.'_email'] ?? null, 'club' => $first[$discipline.'_club'] ?? null];
             return $result;
         }
         $result = [];
+        if (count($rows) !== 3) throw ValidationException::withMessages(['file' => 'A relay needs exactly three rows: swim, bike and run. Use distinct entry_key values for teams with the same name and no bib.']);
         foreach ($rows as $row) {
             $discipline = strtolower((string) ($row['discipline'] ?? ''));
+            if (isset($result[$discipline])) throw ValidationException::withMessages(['file' => "A relay has more than one {$discipline} athlete."]);
             if (in_array($discipline, ['swim', 'bike', 'run'], true)) $result[$discipline] = ['first_name' => $row['first_name'] ?? null, 'last_name' => $row['last_name'] ?? null, 'email' => $row['email'] ?? null, 'club' => $row['club'] ?? null];
         }
         return $result;
