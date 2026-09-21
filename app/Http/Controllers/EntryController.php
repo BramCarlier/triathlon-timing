@@ -34,11 +34,11 @@ class EntryController extends Controller
     {
         Gate::authorize('manage-race', $race);
         $data = $request->validate([
-            'bib_number' => ['required','string','max:32', Rule::unique('entries')->where('race_id', $race->id)],
+            'bib_number' => ['nullable','string','max:32', Rule::unique('entries')->where('race_id', $race->id)],
             'type' => ['required', Rule::enum(EntryType::class)],
             'team_name' => ['nullable','string','max:255','required_if:type,relay'],
             'category' => ['nullable','string','max:100'],
-            'members' => ['required','array'],
+            'members' => ['required','array','min:1'],
             'members.*.discipline' => ['required', Rule::enum(Discipline::class)],
             'members.*.first_name' => ['required','string','max:100'],
             'members.*.last_name' => ['required','string','max:100'],
@@ -47,7 +47,7 @@ class EntryController extends Controller
         ]);
 
         DB::transaction(function () use ($data, $race) {
-            $entry = $race->entries()->create(['bib_number' => $data['bib_number'], 'type' => $data['type'], 'team_name' => $data['team_name'] ?? null, 'category' => $data['category'] ?? null]);
+            $entry = $race->entries()->create(['bib_number' => $data['bib_number'] ?? null, 'type' => $data['type'], 'team_name' => $data['team_name'] ?? null, 'category' => $data['category'] ?? null]);
             $members = collect($data['members']);
             if ($data['type'] === EntryType::Solo->value) {
                 $person = $members->first();

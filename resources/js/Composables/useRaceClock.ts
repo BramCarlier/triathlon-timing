@@ -1,11 +1,12 @@
 import { computed, onBeforeUnmount, ref, toValue, watchEffect, type MaybeRefOrGetter } from 'vue';
+import { parseRaceTimestamp, raceElapsedMs } from '../raceTime';
 
-export function useRaceClock(startedAt: MaybeRefOrGetter<string | null | undefined>, serverNow: MaybeRefOrGetter<string>) {
-  let serverAnchor = Date.parse(toValue(serverNow));
+export function useRaceClock(startedAt: MaybeRefOrGetter<string | null | undefined>, serverNow: MaybeRefOrGetter<string>, finishedAt: MaybeRefOrGetter<string | null | undefined> = null) {
+  let serverAnchor = parseRaceTimestamp(toValue(serverNow));
   let performanceAnchor = performance.now();
   watchEffect(() => {
     const value = toValue(serverNow);
-    serverAnchor = Date.parse(value);
+    serverAnchor = parseRaceTimestamp(value);
     performanceAnchor = performance.now();
   });
 
@@ -16,9 +17,7 @@ export function useRaceClock(startedAt: MaybeRefOrGetter<string | null | undefin
   const serverNowMs = () => serverAnchor + (performance.now() - performanceAnchor);
   const elapsedMs = computed(() => {
     void tick.value;
-    const start = toValue(startedAt);
-    if (!start) return 0;
-    return Math.max(0, serverNowMs() - Date.parse(start));
+    return raceElapsedMs(toValue(startedAt), toValue(finishedAt), serverNowMs());
   });
 
   return { elapsedMs, serverNowMs };

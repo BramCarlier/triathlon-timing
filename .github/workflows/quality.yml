@@ -25,5 +25,6 @@ jobs:
       - run: python3 -m unittest discover -s tests/Deployment -v
       - run: cp .env.example .env && php artisan key:generate
       - run: php artisan test
+      - run: yarn test:frontend
       - run: yarn typecheck
       - run: yarn build

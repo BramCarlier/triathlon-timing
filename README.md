@@ -14,7 +14,7 @@ A race-day web application for organizers and athletes. It supports a shared rac
 
 ## Race model
 
-The race has one authoritative `started_at` timestamp stored by the server. Browsers derive the displayed chronometer from that timestamp and a server-time anchor; they do not increment an independent stopwatch. A browser reload therefore does not reset the race clock.
+The race has one authoritative `started_at` timestamp stored by the server. Browsers derive the displayed chronometer from that timestamp and a server-time anchor; they do not increment an independent stopwatch. Timestamps are serialized in UTC with an explicit timezone marker, so the clock starts at zero in every browser timezone. A browser reload does not reset the clock. After finishing, the clock displays the fixed difference between `finished_at` and `started_at`.
 
 Each organizer chooses a checkpoint for the current browser session. Every participant tap is then recorded against that checkpoint automatically. The backend validates race/checkpoint/entry relationships and warns when required earlier checkpoints are missing.
 
@@ -31,7 +31,7 @@ Admins/organizers can add arbitrary extra splits such as `SWIM_500M`, `BIKE_10K`
 
 ## Participant model
 
-An **entry** owns the bib number. An entry is either:
+An **entry** may have a bib number. Bibs are optional; supplied bibs must be unique within a race. Entries without a bib are identified by athlete or team name. An entry is either:
 
 - `solo`: one athlete is linked to swim, bike and run.
 - `relay`: one swim athlete, one bike athlete and one run athlete.
@@ -42,8 +42,9 @@ This means timing is always attached to the race entry while the app can still a
 
 ### Administrator
 
-- create/configure races
+- create/configure races, move them to Deleted races and restore them with their participants and timings intact
 - create organizer and athlete accounts
+- edit user names, email addresses, roles, active status, linked athletes and race assignments
 - assign organizers to races
 - import/manage participants
 - start/finish race clocks
@@ -128,7 +129,7 @@ bib,type,team_name,first_name,last_name,email,discipline,category,club
 200,relay,Fast Three,Rae,Runner,rae@example.com,run,Relay,
 ```
 
-The three relay rows share the same bib. `discipline` must be `swim`, `bike`, or `run`.
+Bibs may be omitted from every format, including the entire CSV/XLSX column. Solo athletes each occupy their own row. Relay rows share the same bib when supplied; otherwise they are grouped by `team_name`. For teams with the same name and no bib, use a distinct `entry_key` for each team. `discipline` must be `swim`, `bike`, or `run`, exactly once per relay.
 
 A wide relay spreadsheet is also accepted when a single row contains fields such as `swim_first_name`, `swim_last_name`, `bike_first_name`, and `run_first_name`.
 
@@ -188,14 +189,22 @@ See [`deploy/FORGE.md`](deploy/FORGE.md). It covers:
 ## Race-day checklist
 
 1. Import participants and resolve import warnings.
-2. Verify bib numbers and relay disciplines.
+2. Verify names, any assigned bib numbers, and relay disciplines.
 3. Configure every checkpoint in correct sequence.
 4. Assign organizer accounts to the race.
 5. Sign in on each checkpoint device and select its station.
 6. Confirm every device appears in Race Control with `Synced` status.
 7. Start the race from Race Control once the starter gives the signal.
-8. Operators tap/search bibs at their own checkpoint only.
+8. Operators tap/search athlete names, team names or bibs at their own checkpoint only.
 9. Use recent-tap Undo immediately for mistakes.
 10. Watch Race Control for offline devices and queued timings.
 11. Finish the race only after the final participants have completed.
 12. Review/export results.
+
+## Navigation and account management
+
+Every organizer race page has the same race navigation: All races, Race settings, Participants, Timing station, Race control and Results. Imports remain within Participants. The global navigation remains available on phones and stations.
+
+Use Users → Edit user to update identity, role, active status and role-specific access. Organizer permissions are scoped to assigned races; athlete access is scoped to the linked athlete profile. At least one administrator must remain active. Disabling an account also blocks its existing sessions on their next request.
+
+Deleting a race is reversible from the Deleted races section on the race list. No participant, checkpoint or timing history is purged. Deleted races are hidden from organizers and athletes until an administrator restores them.

@@ -17,7 +17,7 @@ class RaceControlController extends Controller
     {
         Gate::authorize('manage-race', $race);
         $race->load('checkpoints')->loadCount('entries');
-        $recent = $race->timings()->where('status', TimingStatus::Recorded->value)->with(['entry:id,bib_number,team_name,type', 'checkpoint:id,name', 'operator:id,name'])->latest('recorded_at')->limit(20)->get();
+        $recent = $race->timings()->where('status', TimingStatus::Recorded->value)->with(['entry.members.athlete', 'checkpoint:id,name', 'operator:id,name'])->latest('recorded_at')->limit(20)->get();
         $presence = OperatorPresence::where('race_id', $race->id)->where('last_seen_at', '>=', now()->subMinutes(5))->with(['user:id,name', 'checkpoint:id,name'])->get();
         $entries = $race->entries()->with('members.athlete')->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')->get()->map(fn ($entry) => ['id' => $entry->id, 'bib_number' => $entry->bib_number, 'name' => $entry->displayName()])->values();
         $completed = $race->timings()->where('status', TimingStatus::Recorded->value)->whereHas('checkpoint', fn ($q) => $q->where('kind', 'finish'))->distinct('entry_id')->count('entry_id');

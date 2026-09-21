@@ -27,3 +27,7 @@ export async function jsonRequest<T>(url: string, options: RequestInit = {}): Pr
   try { data = await response.json() as T; } catch { data = {} as T; }
   return { response, data };
 }
+
+export function bibLabel(bib: string | null | undefined): string {
+  return bib ? `#${bib}` : 'No bib';
+}
