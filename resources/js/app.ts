@@ -1,10 +1,12 @@
 import '../css/app.css';
 import { createApp, h } from 'vue';
+import type { DefineComponent } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 (window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
+
 if (import.meta.env.VITE_REVERB_APP_KEY) {
   (window as any).Echo = new Echo({
     broadcaster: 'reverb',
@@ -14,18 +16,25 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
     wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
-    auth: { headers: { 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name=\"csrf-token\"]')?.content ?? '' } },
+    auth: {
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+      },
+    },
   });
 }
 
+const pages = import.meta.glob<DefineComponent>('./Pages/**/*.vue', { eager: true });
+
 createInertiaApp({
   title: (title) => title ? `${title} · Triathlon Timing` : 'Triathlon Timing',
-  resolve: (name) => {
-    const pages = import.meta.glob('./Pages/**/*.vue', { eager: true });
-    return pages[`./Pages/${name}.vue`];
+  resolve: (name) => pages[`./Pages/${name}.vue`],
+  setup({ el, App, props, plugin }) {
+    createApp({ render: () => h(App, props) }).use(plugin).mount(el);
   },
-  setup({ el, App, props, plugin }) { createApp({ render: () => h(App, props) }).use(plugin).mount(el); },
   progress: { color: '#22d3ee' },
 });
 
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => undefined));
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => undefined));
+}
