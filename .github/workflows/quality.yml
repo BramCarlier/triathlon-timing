@@ -12,16 +12,16 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, dom, fileinfo, mysql, sqlite3
+          extensions: mbstring, dom, fileinfo, pdo_mysql, pdo_sqlite, zip, gd, intl
           coverage: none
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-          cache: yarn
       - run: corepack enable
       - run: composer validate --strict --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: yarn install --frozen-lockfile --non-interactive
+      - run: yarn install --immutable
+      - run: bash -n deploy/forge-deploy.sh
       - run: cp .env.example .env && php artisan key:generate
       - run: php artisan test
       - run: yarn typecheck
