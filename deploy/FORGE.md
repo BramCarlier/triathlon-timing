@@ -6,6 +6,8 @@ Create a Laravel site for `BramCarlier/triathlon-timing`, branch `main`, with PH
 
 Keep Forge's default zero-downtime deployment enabled. Add `storage` to shared paths; `.env` is shared automatically. Commands and background processes must use `/home/forge/YOUR_SITE/current`, not a numbered release. Disable initial automatic deployment until environment and deployment settings are ready. Enable push-to-deploy for `main` after the first successful deployment.
 
+When website isolation is enabled, replace `/home/forge` in every example with the isolated user's home. For the triathlon deployment this is `/home/triathlon-timing`, so the active application path is `/home/triathlon-timing/triathlon-timing.on-forge.com/current`. Its Node 24 installation is `/home/triathlon-timing/.local/node24`; prepend its `bin` directory to the deployment's `PATH`. This leaves the server's other applications on their existing Node version. Verify with `node --version` inside the same deployment environment.
+
 Use an `on-forge.com` domain or point a custom domain's DNS to the server. Install/verify SSL and redirect HTTP to HTTPS before testing authentication and WebSockets.
 
 Create a separate MySQL 8+ database and a database user restricted to that database. PostgreSQL is also supported; use `DB_CONNECTION=pgsql`, port 5432 and `pdo_pgsql`. PHP needs the extensions required by `composer.lock`, including `mbstring`, `dom`, `xml`, `fileinfo`, `curl`, `zip`, `gd`, `intl` and `pdo_mysql` for MySQL. Do not use `--ignore-platform-reqs`.
@@ -122,19 +124,21 @@ The current `routes/console.php` defines no recurring business tasks; the schedu
 For zero-downtime sites, use this in Forge's deployment editor. Retain the literal Forge macros: Forge expands them before Bash execution.
 
 ```bash
-set -euo pipefail
-
 $CREATE_RELEASE()
 cd "$FORGE_RELEASE_DIRECTORY"
+set -euo pipefail
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# For the isolated triathlon site (adjust for a different Node installation):
+export PATH="/home/triathlon-timing/.local/node24/bin:$PATH"
 bash deploy/forge-deploy.sh "$FORGE_RELEASE_DIRECTORY"
 
 $ACTIVATE_RELEASE()
+$RESTART_QUEUES()
 cd "$FORGE_SITE_PATH"
-$FORGE_PHP artisan queue:restart
 $FORGE_PHP artisan reverb:restart
 ```
 
-Restart **after** activation so supervised processes start the new code from `current`. This uses an explicit queue restart instead of an additional `$RESTART_QUEUES()` call. Configure both processes to restart on exit. Zero-downtime releases do not require a PHP-FPM reload.
+Retain all three Forge macros, including `$RESTART_QUEUES()`. Restart **after** activation so supervised processes start the new code from `current`. Configure both processes to restart on exit. Zero-downtime releases do not require a PHP-FPM reload.
 
 For existing standard (in-place) sites, use this wrapper instead:
 
