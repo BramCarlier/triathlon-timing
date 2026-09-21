@@ -182,3 +182,11 @@ Open checkpoint devices while connectivity is good before race day. Do not clear
 - [Reverb production configuration](https://laravel.com/framework/docs/13.x/reverb)
 - [Queue timeouts](https://laravel.com/framework/docs/13.x/queues#job-expirations-and-timeouts)
 - [Yarn immutable installs](https://yarnpkg.com/cli/install)
+
+## Verify live connections
+
+Use a URL-safe Reverb app key (letters, digits, underscores or hyphens). A random hex string works. Generate an independent Reverb secret; do not copy Laravel's base64 APP_KEY into either Reverb field. Keep Laravel APP_KEY unchanged when repairing Reverb credentials. The deployment script runs `php artisan timing:check-reverb` before migrations and release activation.
+
+A running Supervisor process is not sufficient proof of live updates. Verify that the public `/app/<REVERB_APP_KEY>` endpoint completes a WebSocket upgrade (HTTP 101), then use two tabs to confirm start, finish and timing events arrive without waiting for the periodic refresh. An invalid key containing `/` can produce HTTP 404 even when `/app/test` correctly upgrades.
+
+After changing Reverb credentials, rebuild Vite assets and restart Reverb. Existing browser tabs should reload to receive the new public key.
