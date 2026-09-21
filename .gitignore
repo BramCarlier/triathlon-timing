@@ -16,3 +16,7 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
+.yarn/cache
+.yarn/install-state.gz
+.idea
+/dist
