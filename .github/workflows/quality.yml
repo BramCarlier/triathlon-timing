@@ -16,7 +16,7 @@ jobs:
           coverage: none
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
       - run: corepack enable
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: yarn install --non-interactive
@@ -24,3 +24,11 @@ jobs:
       - run: php artisan test
       - run: yarn typecheck
       - run: yarn build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-lockfiles
+          path: |
+            composer.lock
+            yarn.lock
+          if-no-files-found: error
+          retention-days: 3
