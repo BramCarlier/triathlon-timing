@@ -16,10 +16,12 @@ jobs:
           coverage: none
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
+          cache: yarn
       - run: corepack enable
+      - run: composer validate --strict --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: yarn install --non-interactive
+      - run: yarn install --frozen-lockfile --non-interactive
       - run: cp .env.example .env && php artisan key:generate
       - run: php artisan test
       - run: yarn typecheck
