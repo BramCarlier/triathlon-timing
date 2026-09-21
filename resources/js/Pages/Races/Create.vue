@@ -1,0 +1,7 @@
+<script setup lang="ts">
+import { Head, useForm } from '@inertiajs/vue3';
+import AppLayout from '../../Layouts/AppLayout.vue';
+const form = useForm({ name: '', event_date: '', timezone: 'Europe/Brussels', swim_km: 1, bike_km: 35, run_km: 8 });
+const submit = () => form.post('/races');
+</script>
+<template><Head title="Create race"/><AppLayout title="Create race"><form class="panel-pad max-w-2xl" @submit.prevent="submit"><div class="grid gap-4 sm:grid-cols-2"><div class="sm:col-span-2"><label class="label">Race name</label><input v-model="form.name" class="field" placeholder="Halle Triathlon 2027"><p class="text-sm text-red-300">{{ form.errors.name }}</p></div><div><label class="label">Event date</label><input v-model="form.event_date" type="date" class="field"></div><div><label class="label">Timezone</label><input v-model="form.timezone" class="field"></div><div><label class="label">Swim distance (km)</label><input v-model="form.swim_km" type="number" min="0" step="0.001" class="field"></div><div><label class="label">Bike distance (km)</label><input v-model="form.bike_km" type="number" min="0" step="0.001" class="field"></div><div><label class="label">Run distance (km)</label><input v-model="form.run_km" type="number" min="0" step="0.001" class="field"></div></div><p class="mt-5 muted text-sm">The race starts with Start, Swim Finish, Bike Finish and Finish checkpoints. You can add any extra splits after creating it.</p><button class="btn-primary mt-6" :disabled="form.processing">Create race</button></form></AppLayout></template>

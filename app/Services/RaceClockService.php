@@ -1,0 +1,39 @@
+<?php
+namespace App\Services;
+
+use App\Enums\RaceStatus;
+use App\Events\RaceFinished;
+use App\Events\RaceStarted;
+use App\Models\Race;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class RaceClockService
+{
+    public function start(Race $race): Race
+    {
+        $race = DB::transaction(function () use ($race) {
+            $locked = Race::query()->lockForUpdate()->findOrFail($race->id);
+            if ($locked->started_at) {
+                throw ValidationException::withMessages(['race' => 'This race has already been started.']);
+            }
+            $locked->forceFill(['started_at' => now('UTC'), 'status' => RaceStatus::Running])->save();
+            return $locked->fresh();
+        });
+        RaceStarted::dispatch($race);
+        return $race;
+    }
+
+    public function finish(Race $race): Race
+    {
+        $race = DB::transaction(function () use ($race) {
+            $locked = Race::query()->lockForUpdate()->findOrFail($race->id);
+            if (!$locked->started_at) throw ValidationException::withMessages(['race' => 'The race has not started.']);
+            if ($locked->finished_at) return $locked;
+            $locked->forceFill(['finished_at' => now('UTC'), 'status' => RaceStatus::Finished])->save();
+            return $locked->fresh();
+        });
+        RaceFinished::dispatch($race);
+        return $race;
+    }
+}

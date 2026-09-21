@@ -1,0 +1,11 @@
+name: Deploy trigger
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  note:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Production deployment is handled by Laravel Forge after main is updated."

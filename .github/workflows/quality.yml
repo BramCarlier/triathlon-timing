@@ -1,0 +1,26 @@
+name: Quality
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, fileinfo, mysql, sqlite3
+          coverage: none
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: yarn install --non-interactive
+      - run: cp .env.example .env && php artisan key:generate
+      - run: php artisan test
+      - run: yarn typecheck
+      - run: yarn build

@@ -1,0 +1,6 @@
+bib,type,team_name,first_name,last_name,email,discipline,category,club
+101,solo,,Jane,Doe,jane@example.com,,Open,Halle Tri Club
+102,solo,,John,Smith,john@example.com,,Open,
+200,relay,Fast Three,Sam,Swimmer,sam@example.com,swim,Relay,
+200,relay,Fast Three,Ben,Biker,ben@example.com,bike,Relay,
+200,relay,Fast Three,Rae,Runner,rae@example.com,run,Relay,

@@ -1,0 +1,8 @@
+{
+  "participants": [
+    {"bib":"101","type":"solo","first_name":"Jane","last_name":"Doe","email":"jane@example.com","category":"Open"},
+    {"bib":"200","type":"relay","team_name":"Fast Three","first_name":"Sam","last_name":"Swimmer","discipline":"swim"},
+    {"bib":"200","type":"relay","team_name":"Fast Three","first_name":"Ben","last_name":"Biker","discipline":"bike"},
+    {"bib":"200","type":"relay","team_name":"Fast Three","first_name":"Rae","last_name":"Runner","discipline":"run"}
+  ]
+}
