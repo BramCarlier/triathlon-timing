@@ -27,11 +27,11 @@ let refreshTimer:number|undefined;
 onMounted(() => {
   const echo = (window as any).Echo;
   if (echo) echo.private(channelName)
-    .listen('.timing.recorded', () => router.reload({only:['recentTimings','completedCount'],preserveScroll:true}))
-    .listen('.timing.voided', () => router.reload({only:['recentTimings','completedCount'],preserveScroll:true}))
-    .listen('.race.started', () => router.reload({only:['race','serverNow'],preserveScroll:true}))
-    .listen('.race.finished', () => router.reload({only:['race','serverNow'],preserveScroll:true}));
-  refreshTimer = window.setInterval(() => router.reload({only:['presence'],preserveScroll:true}), 30000);
+    .listen('.timing.recorded', () => router.reload({only:['recentTimings','completedCount']}))
+    .listen('.timing.voided', () => router.reload({only:['recentTimings','completedCount']}))
+    .listen('.race.started', () => router.reload({only:['race','serverNow']}))
+    .listen('.race.finished', () => router.reload({only:['race','serverNow']}));
+  refreshTimer = window.setInterval(() => router.reload({only:['presence']}), 30000);
 });
 onBeforeUnmount(() => { if(refreshTimer) clearInterval(refreshTimer); const echo=(window as any).Echo; if(echo) echo.leave(channelName); });
 
