@@ -10,11 +10,7 @@ php artisan migrate --force
 php artisan optimize:clear
 
 corepack enable
-if [ -f yarn.lock ]; then
-  yarn install --frozen-lockfile --non-interactive
-else
-  yarn install --non-interactive
-fi
+yarn install --frozen-lockfile --non-interactive
 yarn build
 
 php artisan optimize
