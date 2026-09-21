@@ -2,7 +2,7 @@
 
 ## Site
 
-Use PHP 8.4, point the web root at `/public`, and create a MySQL 8+ or PostgreSQL database. Copy `.env.example` to `.env`, set `APP_ENV=production`, `APP_DEBUG=false`, the production `APP_URL`, database credentials, and mail settings. Run `php artisan key:generate` once.
+Use PHP 8.4 and Node.js 24 LTS, point the web root at `/public`, and create a MySQL 8+ or PostgreSQL database. Copy `.env.example` to `.env`, set `APP_ENV=production`, `APP_DEBUG=false`, the production `APP_URL`, database credentials, and mail settings. Run `php artisan key:generate` once.
 
 ## Reverb
 
