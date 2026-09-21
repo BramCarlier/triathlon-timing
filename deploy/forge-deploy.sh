@@ -6,7 +6,12 @@ set -euo pipefail
 cd "${1:-${FORGE_SITE_PATH:?Pass the release path or set FORGE_SITE_PATH}}"
 
 timing_php="${FORGE_PHP:-php8.4}"
-timing_composer="${FORGE_COMPOSER:-$(command -v composer)}"
+# Forge may supply either a Composer path or a command such as
+# "php8.4 /usr/local/bin/composer". Keep its arguments separate, without eval.
+read -r -a timing_composer <<< "${FORGE_COMPOSER:-composer}"
+if (( ${#timing_composer[@]} == 1 )); then
+    timing_composer=("$timing_php" "$(command -v "${timing_composer[0]}")")
+fi
 
 node -e 'if (process.versions.node.split(".")[0] !== "24") { console.error("Deployment requires Node.js 24 LTS."); process.exit(1); }'
 "$timing_php" -r 'if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 4) { fwrite(STDERR, "Deployment requires PHP 8.4.\n"); exit(1); }'
@@ -15,7 +20,7 @@ node -e 'if (process.versions.node.split(".")[0] !== "24") { console.error("Depl
 # shims. Keep development dependencies available for the Vite build.
 corepack yarn install --immutable
 corepack yarn build
-"$timing_php" "$timing_composer" install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+"${timing_composer[@]}" install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 # Clear only cached configuration before migrations: optimize:clear also clears
 # the database cache, whose table does not exist on the initial deployment.
