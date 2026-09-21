@@ -3,14 +3,12 @@ on:
   pull_request:
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -19,28 +17,12 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: yarn
       - run: corepack enable
+      - run: composer validate --strict --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: yarn install --non-interactive
+      - run: yarn install --frozen-lockfile --non-interactive
       - run: cp .env.example .env && php artisan key:generate
       - run: php artisan test
       - run: yarn typecheck
       - run: yarn build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dependency-lockfiles
-          path: |
-            composer.lock
-            yarn.lock
-          if-no-files-found: error
-          retention-days: 3
-      - name: Commit generated lockfiles
-        if: github.event_name == 'pull_request' && github.head_ref == 'chore/stabilize-toolchain-and-lockfiles'
-        run: |
-          if [[ -n "$(git status --porcelain -- composer.lock yarn.lock)" ]]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add composer.lock yarn.lock
-            git commit -m "Add dependency lockfiles"
-            git push origin HEAD:${GITHUB_HEAD_REF}
-          fi
