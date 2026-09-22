@@ -40,10 +40,10 @@ class UserController extends Controller
         $data = $request->validate(['name' => ['required','string','max:255'], 'email' => ['required','email','max:255','unique:users,email'], 'delivery'=>['nullable','in:email,manual'], 'password' => ['nullable','required_if:delivery,manual','string','min:12'], 'role' => ['required', Rule::enum(UserRole::class)], 'athlete_id' => ['nullable','exists:athletes,id','unique:users,athlete_id'], 'race_ids' => ['nullable','array'], 'race_ids.*' => ['integer', Rule::exists('races', 'id')->whereNull('deleted_at')]]);
         if ($data['role'] === UserRole::Athlete->value && empty($data['athlete_id'])) return back()->withErrors(['athlete_id' => 'Athlete accounts must be linked to an athlete.']);
         $emailInvite=($data['delivery']??(empty($data['password'])?'email':'manual'))==='email';
-        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>'Email sending is not configured. Connect SMTP first, or choose a temporary password and share it yourself.']);
+        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>'Email sending is not configured. Connect email sending first, or choose a temporary password and share it yourself.']);
         $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($emailInvite ? \Illuminate\Support\Str::random(64) : $data['password']), 'role' => $data['role'], 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
         if ($user->role === UserRole::Organizer) $user->races()->sync($data['race_ids'] ?? []);
-        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error','Account created, but the invitation could not be sent. Check SMTP settings and use Resend invitation.');
+        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error','Account created, but the invitation could not be sent. Check email settings and use Resend invitation.');
         return back()->with('success', $emailInvite ? 'Account created. Invitation accepted by the mail server; ask the recipient to check their inbox and spam folder.' : 'Account created. Share the temporary password privately; it must be changed at first login.');
     }
 

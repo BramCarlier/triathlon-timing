@@ -223,3 +223,40 @@ Invitations expire according to `auth.passwords.users.expire` (60 minutes by def
 ## Public results
 
 Results are private by default. An assigned organizer or administrator can publish them from **Overview & setup → Public leaderboard**, after reviewing the participant-data notice. The unguessable link shows names, bibs, categories, relay members and results; it never includes email addresses, credentials or timing audit notes. It does not expose timing writes or exports. Public pages are marked noindex and no-store. Unpublishing or deleting a race disables the link; republishing after unpublishing creates a new link. Spectator display rotates ten rows every 15 seconds and refreshes results every five seconds. “Race closed” does not imply ratified results: corrections can still change them.
+
+## Gmail API (free Gmail account; HTTPS instead of SMTP)
+
+Use this when SMTP ports are blocked. The application supports `MAIL_MAILER=gmail` for invitations and password resets. It sends MIME email through Gmail API over HTTPS port 443, with automatic OAuth access-token refresh. It needs no extra Composer package, paid mailbox, purchased domain or Google app password. Gmail account quotas still apply. The sender must be the authorized Gmail account; this does not grant permission to use an unrelated domain.
+
+### One-time Google setup
+
+1. Sign in to [Google Cloud Console](https://console.cloud.google.com/) using the event account (`kokolocochallenge@gmail.com`). Create a project named **KOKO LOCO CHALLENGE**. No paid Cloud services are needed for this integration.
+2. In **APIs & Services → Library**, enable **Gmail API**.
+3. Configure **Google Auth Platform** (or OAuth consent screen): app name **KOKO LOCO CHALLENGE**, your support/contact email, audience **External**. While testing, add the event account as a test user. Request only `https://www.googleapis.com/auth/gmail.send`; this allows sending, not reading the inbox.
+4. Create an OAuth client of type **Web application**, named **Triathlon Timing mail**. Add the exact authorized redirect URI `https://developers.google.com/oauthplayground`. Keep the client ID and secret private.
+5. Open [OAuth Playground](https://developers.google.com/oauthplayground). In its settings (gear), enable **Use your own OAuth credentials**, enter that client ID/secret, and use **Offline** access with consent prompting. Using your own credentials is essential; the playground's shared credentials are for short-lived testing.
+6. Enter only `https://www.googleapis.com/auth/gmail.send` as the scope and click **Authorize APIs**. Sign in as `kokolocochallenge@gmail.com`, inspect the requested permission and approve your own app. Exchange the returned authorization code for tokens. Copy the **refresh token** directly into Forge; do not post tokens or client secrets in chat, screenshots, Git, or tickets.
+7. For ongoing use, switch the OAuth app audience publishing status from **Testing** to **In production**, and authorize again to obtain a fresh refresh token. Testing-mode refresh tokens with Gmail scopes expire after seven days. Google may display an unverified-app notice or request verification depending on the app's use; follow its requirements. This is a private connection for the one sending account, not Google login for race participants. Do not leave it in Testing and assume delivery will keep working through race day.
+
+### Forge configuration
+
+Replace the mail settings with:
+
+```dotenv
+MAIL_MAILER=gmail
+MAIL_FROM_ADDRESS="kokolocochallenge@gmail.com"
+MAIL_FROM_NAME="KOKO LOCO CHALLENGE"
+GMAIL_SENDER="kokolocochallenge@gmail.com"
+GMAIL_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+GMAIL_CLIENT_SECRET="your-client-secret"
+GMAIL_REFRESH_TOKEN="your-refresh-token"
+APP_URL=https://triathlon-timing.on-forge.com
+```
+
+Remove the obsolete `MAIL_PASSWORD`, `MAIL_USERNAME`, and `MAIL_URL`; revoke the old Google app password. Save and deploy so cached configuration and workers are refreshed. OAuth secrets stay server-side; never use `VITE_` for them.
+
+Run `php8.4 artisan timing:check-mail` from the current release. This refreshes an access token without sending mail or printing credentials. It does not prove the Gmail API is enabled or the chosen sender has permission to send: next, create a test account using **Email a password setup link**, check receipt and complete password setup, then test **Forgot password**. Do not invite real participants until both tests work.
+
+If the diagnostic reports expired/revoked authorization, repeat the consent/token step. If Google denies sending, check Gmail API activation, the `gmail.send` scope, matching sending account and quota. If an API send times out, check the sending account's Sent folder before resending: delivery may have happened. Automatic send retries are intentionally disabled to avoid duplicates. A successful API submission indicates acceptance, not guaranteed inbox placement.
+
+References: [Gmail sending guide](https://developers.google.com/workspace/gmail/api/guides/sending), [OAuth web-server flow](https://developers.google.com/identity/protocols/oauth2/web-server), [refresh-token expiration](https://developers.google.com/identity/protocols/oauth2#expiration).

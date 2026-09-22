@@ -4,7 +4,12 @@ use App\Models\User;
 use App\Notifications\AccountInvitation;
 use Illuminate\Support\Facades\Password;
 class AccountInvitationService {
- public function configured(): bool { return config('mail.default') === 'smtp' && (bool)config('mail.mailers.smtp.host'); }
+ public function configured(): bool {
+  if(config('mail.default') === 'smtp') return (bool)config('mail.mailers.smtp.host');
+  if(config('mail.default') !== 'gmail') return false;
+  foreach(['client_id','client_secret','refresh_token','sender'] as $key) if(!config('services.gmail.'.$key)) return false;
+  return strcasecmp((string)config('mail.from.address'), (string)config('services.gmail.sender')) === 0;
+ }
  public function send(User $user): bool {
   if (!$this->configured() || !$user->is_active || !$user->force_password_change) return false;
   try {
