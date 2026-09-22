@@ -18,7 +18,7 @@ class RaceManagementTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $this->actingAs($admin)->post('/races', ['name' => 'Club triathlon', 'event_date' => '2026-09-21', 'timezone' => 'Europe/Brussels'])->assertSessionHasNoErrors();
         $race = Race::sole();
-        $this->assertSame(4, $race->checkpoints()->count());
+        $this->assertSame(6, $race->checkpoints()->count());
         $entry = $race->entries()->create(['type' => 'solo', 'bib_number' => null]);
         $this->put("/races/{$race->id}", ['name' => 'Updated triathlon', 'event_date' => '2026-09-22', 'timezone' => 'Europe/Brussels', 'status' => 'ready', 'organizer_ids' => [$admin->id]])->assertSessionHasNoErrors();
         $this->assertSame('Updated triathlon', $race->fresh()->name);
@@ -29,7 +29,7 @@ class RaceManagementTest extends TestCase
         $this->post("/races/{$race->id}/restore")->assertRedirect("/races/{$race->id}");
         $this->assertNotNull(Race::find($race->id));
         $this->assertDatabaseHas('entries', ['id' => $entry->id, 'race_id' => $race->id]);
-        $this->assertSame(4, $race->fresh()->checkpoints()->count());
+        $this->assertSame(6, $race->fresh()->checkpoints()->count());
         $this->assertTrue($race->fresh()->organizers->contains($admin));
     }
 

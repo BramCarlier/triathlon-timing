@@ -15,6 +15,12 @@ class CheckpointController extends Controller
     public function store(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        if (!$request->filled('code')) {
+            $base = substr(strtoupper(\Illuminate\Support\Str::slug((string) $request->input('name'), '_')), 0, 36) ?: 'CHECKPOINT';
+            $code = $base;
+            for ($suffix = 2; $race->checkpoints()->where('code', $code)->exists(); $suffix++) $code = $base.'_'.$suffix;
+            $request->merge(['code' => $code]);
+        }
         $data = $this->validated($request, $race);
         $race->checkpoints()->create($data);
         return back()->with('success', 'Checkpoint added.');
