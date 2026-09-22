@@ -28,7 +28,7 @@ export function useOfflineTimingQueue(raceId:number,operatorId:number) {
   let disposed=false;onBeforeUnmount(()=>{disposed=true;});
   const items=ref<QueuedTiming[]>([]); const foreignCount=ref(0); const legacy=ref<QueuedTiming[]>([]);
   const error=ref(''); const flushing=ref(false); const pending=computed(()=>items.value.length);
-  const scoped=async()=> (await all()).filter(i=>i.url===`/races/${raceId}/timings`);
+  const scoped=async()=> (await all()).filter(i=>i.url===`/races/${raceId}/timings`).sort((a,b)=>a.queued_at.localeCompare(b.queued_at));
   const refresh=async()=>{
     try {const rows=await scoped();items.value=rows.filter(i=>mayReplay(i.operator_id,operatorId)).sort((a,b)=>a.queued_at.localeCompare(b.queued_at));foreignCount.value=rows.filter(i=>i.operator_id!==undefined&&!mayReplay(i.operator_id,operatorId)).length;legacy.value=rows.filter(i=>i.operator_id===undefined);error.value='';}
     catch {error.value='Device storage is unavailable. Keep this page open; offline timing cannot be saved safely.';throw new Error(error.value);}
