@@ -28,3 +28,6 @@ corepack yarn build
 "$timing_php" artisan timing:check-reverb
 "$timing_php" artisan migrate --force
 "$timing_php" artisan optimize
+
+# Report connection health; activation/restart is owned by the Forge wrapper.
+"$timing_php" artisan timing:check-reverb-connection || echo "Reverb connection needs attention; verify after activation and restart."

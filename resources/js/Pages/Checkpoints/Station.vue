@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import RaceClock from '../../Components/RaceClock.vue';
+import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import LiveUpdatesStatus from '../../Components/LiveUpdatesStatus.vue';
 import { useRaceClock } from '../../Composables/useRaceClock';
 import { useOfflineTimingQueue } from '../../Composables/useOfflineTimingQueue';
@@ -24,6 +25,7 @@ watch([() => props.checkpoint?.id, () => props.recentTimings], ([, value]) => {
 });
 const { elapsedMs, serverNowMs } = useRaceClock(() => props.race.started_at, () => props.serverNow, () => props.race.finished_at);
 const { pending, queue, flush, discard } = useOfflineTimingQueue(props.race.id);
+const refreshRace = useRaceRefresh(() => ['race', 'serverNow']);
 const deviceUuid = localStorage.getItem('triathlon-device-uuid') ?? uuid();
 localStorage.setItem('triathlon-device-uuid', deviceUuid);
 
@@ -102,8 +104,8 @@ async function undo(timing:Timing) {
 async function ping() {
   if (!props.checkpoint || !online.value) return;
   try {
-    const { data } = await jsonRequest<{started_at?:string|null;finished_at?:string|null}>(`/races/${props.race.id}/presence`, {method:'POST',body:JSON.stringify({device_uuid:deviceUuid,checkpoint_id:props.checkpoint.id,pending_count:pending.value})});
-    if ((data.started_at ?? null) !== (props.race.started_at ?? null) || (data.finished_at ?? null) !== (props.race.finished_at ?? null)) router.reload({only:['race','serverNow']});
+    const { response, data } = await jsonRequest<{started_at?:string|null;finished_at?:string|null}>(`/races/${props.race.id}/presence`, {method:'POST',body:JSON.stringify({device_uuid:deviceUuid,checkpoint_id:props.checkpoint.id,pending_count:pending.value})});
+    if (response.ok && ((data.started_at ?? null) !== (props.race.started_at ?? null) || (data.finished_at ?? null) !== (props.race.finished_at ?? null))) refreshRace();
   } catch { /* presence is best-effort */ }
 }
 const handleOnline = async () => { online.value=true; await flush(); await ping(); showFeedback('ok','Connection restored. Pending timings are syncing.'); };
@@ -120,7 +122,9 @@ onMounted(async () => {
       .listen('.timing.recorded', (event:any) => { const p=participants.value.find(item=>item.id===event.entry_id); if(p && !p.completed_checkpoint_ids.includes(event.checkpoint_id)) p.completed_checkpoint_ids.push(event.checkpoint_id); })
       .listen('.timing.voided', (event:any) => { const p=participants.value.find(item=>item.id===event.entry_id); if(p) p.completed_checkpoint_ids=p.completed_checkpoint_ids.filter(id=>id!==event.checkpoint_id); });
   }
-  await flush(); await ping(); pingTimer=window.setInterval(ping,30000);
+  pingTimer=window.setInterval(ping,30000);
+  try { await flush(); } catch { showFeedback('error', 'Unable to access saved offline timings. Keep this browser open and check device storage.'); }
+  await ping();
 });
 onBeforeUnmount(() => {
   window.removeEventListener('online',handleOnline); window.removeEventListener('offline',handleOffline); if(pingTimer) clearInterval(pingTimer);

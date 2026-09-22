@@ -37,6 +37,16 @@ class RaceClockTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_station_presence_returns_the_authoritative_finish_timestamp(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $race = Race::create(['name' => 'Finished', 'slug' => 'finished', 'event_date' => '2026-09-22', 'timezone' => 'Europe/Brussels', 'created_by' => $admin->id, 'status' => RaceStatus::Finished, 'started_at' => '2026-09-22 12:00:00.123', 'finished_at' => '2026-09-22 12:10:00.456']);
+        $checkpoint = $race->checkpoints()->create(['name' => 'Finish', 'code' => 'FINISH', 'sequence' => 30, 'kind' => 'finish']);
+        $this->actingAs($admin)->postJson("/races/{$race->id}/presence", [
+            'device_uuid' => (string) \Illuminate\Support\Str::uuid(), 'checkpoint_id' => $checkpoint->id, 'pending_count' => 0,
+        ])->assertOk()->assertJsonPath('finished_at', '2026-09-22T12:10:00.456000Z')->assertJsonPath('status', 'finished');
+    }
+
     public function test_race_start_sets_one_authoritative_timestamp(): void
     {
         Event::fake();
