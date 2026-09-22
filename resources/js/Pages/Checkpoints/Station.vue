@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import RaceClock from '../../Components/RaceClock.vue';
+import LiveUpdatesStatus from '../../Components/LiveUpdatesStatus.vue';
 import { useRaceClock } from '../../Composables/useRaceClock';
 import { useOfflineTimingQueue } from '../../Composables/useOfflineTimingQueue';
 import { formatDuration, jsonRequest, uuid, bibLabel } from '../../lib';
@@ -136,7 +137,7 @@ onBeforeUnmount(() => {
     <p v-if="race.finished_at" class="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200">Race finished. The shared clock is stopped. Open Race control to correct timings.</p>
     <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_auto]">
       <section class="panel-pad"><div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-xs font-semibold uppercase tracking-[.2em] text-cyan-300">{{ checkpoint.name }}</div><div class="mt-1 text-sm muted">{{ checkpoint.discipline ?? 'race' }}<span v-if="checkpoint.distance_km"> · {{ checkpoint.distance_km }} km</span></div></div><RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/></div></section>
-      <section class="panel-pad flex min-w-64 flex-col justify-center"><div class="flex items-center justify-between"><span class="text-sm muted">Connection</span><span class="font-semibold" :class="online?'text-emerald-300':'text-amber-300'">{{ online ? 'Online' : 'Offline' }}</span></div><div class="mt-2 flex items-center justify-between"><span class="text-sm muted">Pending sync</span><span class="font-semibold" :class="pending?'text-amber-300':'text-slate-300'">{{ pending }}</span></div><form class="mt-3" @submit.prevent="selectCheckpoint"><select v-model="selectForm.checkpoint_id" class="field text-sm" @change="selectCheckpoint"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">Change to: {{ cp.name }}</option></select></form></section>
+      <section class="panel-pad flex min-w-64 flex-col justify-center"><div class="flex items-center justify-between"><span class="text-sm muted">Connection</span><span class="font-semibold" :class="online?'text-emerald-300':'text-amber-300'">{{ online ? 'Online' : 'Offline' }}</span></div><div class="mt-2 flex items-center justify-between"><span class="text-sm muted">Pending sync</span><span class="font-semibold" :class="pending?'text-amber-300':'text-slate-300'">{{ pending }}</span></div><div class="mt-2"><LiveUpdatesStatus :race-id="race.id"/></div><form class="mt-3" @submit.prevent="selectCheckpoint"><select v-model="selectForm.checkpoint_id" class="field text-sm" @change="selectCheckpoint"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">Change to: {{ cp.name }}</option></select></form></section>
     </div>
 
     <div class="grid gap-4 xl:grid-cols-[1fr_360px]">
