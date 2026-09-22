@@ -106,4 +106,31 @@ class TimingServiceTest extends TestCase
         $this->assertSame('recorded', $timing->status->value);
     }
 
+    public function test_a_request_identifier_cannot_be_reused_for_another_participant(): void
+    {
+        $data = $this->setupRace();
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        app(TimingService::class)->record($data['race'], $data['entry'], $data['swim'], $data['operator'], ['client_uuid' => $uuid, 'source' => 'online']);
+        $other = Entry::create(['race_id' => $data['race']->id, 'bib_number' => '102', 'type' => EntryType::Solo]);
+        $this->expectException(TimingConflictException::class);
+        app(TimingService::class)->record($data['race'], $other, $data['swim'], $data['operator'], ['client_uuid' => $uuid, 'source' => 'online']);
+    }
+
+    public function test_disabled_required_checkpoints_do_not_block_progression(): void
+    {
+        $data = $this->setupRace();
+        $data['swim']->update(['is_active' => false]);
+        $timing = app(TimingService::class)->record($data['race'], $data['entry'], $data['bike'], $data['operator'], ['client_uuid' => (string) \Illuminate\Support\Str::uuid(), 'source' => 'online']);
+        $this->assertSame($data['bike']->id, $timing->checkpoint_id);
+    }
+
+    public function test_station_requests_cannot_bypass_clock_checks_with_manual_source(): void
+    {
+        $data = $this->setupRace();
+        $this->actingAs($data['operator'])->postJson('/races/'.$data['race']->id.'/timings', [
+            'entry_id' => $data['entry']->id, 'checkpoint_id' => $data['swim']->id,
+            'client_uuid' => (string) \Illuminate\Support\Str::uuid(), 'source' => 'manual',
+        ])->assertUnprocessable()->assertJsonValidationErrors('source');
+    }
+
 }

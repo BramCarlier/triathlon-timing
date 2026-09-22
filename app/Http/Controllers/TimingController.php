@@ -62,7 +62,7 @@ class TimingController extends Controller
     public function record(Request $request, Race $race, TimingService $service): JsonResponse
     {
         Gate::authorize('manage-race', $race);
-        $data = $request->validate(['entry_id' => ['required', Rule::exists('entries','id')->where('race_id', $race->id)], 'checkpoint_id' => ['required', Rule::exists('checkpoints','id')->where('race_id', $race->id)], 'client_uuid' => ['required','uuid'], 'observed_at' => ['nullable','date'], 'source' => ['required', Rule::in(['online','offline','manual'])], 'override_warning' => ['nullable','boolean'], 'notes' => ['nullable','string','max:1000']]);
+        $data = $request->validate(['entry_id' => ['required', Rule::exists('entries','id')->where('race_id', $race->id)], 'checkpoint_id' => ['required', Rule::exists('checkpoints','id')->where('race_id', $race->id)], 'client_uuid' => ['required','uuid'], 'observed_at' => ['nullable','date'], 'source' => ['required', Rule::in(['online','offline'])], 'override_warning' => ['nullable','boolean'], 'notes' => ['nullable','string','max:1000']]);
         $selectedId = (int) $request->session()->get("checkpoint.{$race->id}");
         abort_unless($request->user()->isAdmin() || $selectedId === (int) $data['checkpoint_id'], 403, 'Your active checkpoint does not match this timing request.');
         try {

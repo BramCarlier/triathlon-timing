@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Support\RaceBroadcast;
+
 use App\Enums\RaceStatus;
 use App\Events\RaceFinished;
 use App\Events\RaceStarted;
@@ -20,7 +22,7 @@ class RaceClockService
             $locked->forceFill(['started_at' => now('UTC'), 'status' => RaceStatus::Running])->save();
             return $locked->fresh();
         });
-        RaceStarted::dispatch($race);
+        RaceBroadcast::dispatch(new RaceStarted($race));
         return $race;
     }
 
@@ -33,7 +35,7 @@ class RaceClockService
             $locked->forceFill(['finished_at' => now('UTC'), 'status' => RaceStatus::Finished])->save();
             return $locked->fresh();
         });
-        RaceFinished::dispatch($race);
+        RaceBroadcast::dispatch(new RaceFinished($race));
         return $race;
     }
 }

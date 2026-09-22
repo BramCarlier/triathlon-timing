@@ -17,6 +17,7 @@ class LoginController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string'], 'remember' => ['nullable', 'boolean']]);
+        $credentials['email'] = strtolower($credentials['email']);
         $remember = (bool) ($credentials['remember'] ?? false);
         unset($credentials['remember']);
         $user = User::where('email', strtolower($credentials['email']))->first();

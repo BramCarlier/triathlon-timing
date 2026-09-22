@@ -22,7 +22,6 @@ onMounted(() => {
   connection.bind('state_change', changed);
   connection.bind('error', failed);
   changed({current: connection.state});
-  console.info('Live update endpoint', { host: echo.options.wsHost, port: echo.options.wssPort, secure: echo.options.forceTLS, state: connection.state });
 });
 onBeforeUnmount(() => {
   subscription?.unbind('pusher:subscription_succeeded', subscribed);

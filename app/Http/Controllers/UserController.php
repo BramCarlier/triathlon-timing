@@ -56,7 +56,7 @@ class UserController extends Controller
             $account->athlete_id = $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null;
             if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; }
             $account->save();
-            if ($account->role === UserRole::Organizer) $account->races()->sync($data['race_ids'] ?? []); else $account->races()->detach();
+            if ($account->role === UserRole::Organizer) $account->races()->sync($data['race_ids'] ?? []); elseif ($account->role === UserRole::Athlete) $account->races()->detach();
         });
         return redirect()->route($request->user()->id === $user->id && !$user->fresh()->isAdmin() ? 'dashboard' : 'users.index')->with('success', 'User account updated.');
     }
