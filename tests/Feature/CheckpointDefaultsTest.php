@@ -18,6 +18,7 @@ class CheckpointDefaultsTest extends TestCase
         $this->actingAs($admin)->post('/races', ['name'=>'New course','event_date'=>'2026-09-27','timezone'=>'Europe/Brussels','swim_km'=>1,'run_km'=>8,'bike_km'=>35])->assertSessionHasNoErrors();
         $race = Race::firstOrFail();
         $checkpoints = $race->checkpoints()->get();
+        $this->assertSame(['Race Start','Swim Exit','T1 (Bike Start)','Bike Finish','T2 (Run Start)','Finish'], $checkpoints->pluck('name')->all());
         $this->assertSame(['START','SWIM_FINISH','BIKE_START','BIKE_FINISH','RUN_START','RUN_FINISH'], $checkpoints->pluck('code')->all());
         $this->assertSame(['start','transition','transition','transition','transition','finish'], $checkpoints->map(fn($cp)=>$cp->kind->value)->all());
         $this->assertSame([null,'swim','bike','bike','run','run'], $checkpoints->map(fn($cp)=>$cp->discipline?->value)->all());
@@ -44,4 +45,17 @@ class CheckpointDefaultsTest extends TestCase
         $this->assertSame(['RUN_4_KM','RUN_4_KM_2'],$race->checkpoints()->pluck('code')->all());
         $this->post("/races/$race->id/checkpoints",$data+['sequence'=>26])->assertSessionHasErrors('sequence');
     }
+    public function test_label_upgrade_preserves_custom_names_and_checkpoint_identity(): void
+    {
+        $admin=User::factory()->create(['role'=>'admin']);
+        $race=Race::create(['name'=>'Existing','slug'=>'existing','event_date'=>'2026-09-27','created_by'=>$admin->id]);
+        $default=$race->checkpoints()->create(['name'=>'Swim Finish','code'=>'SWIM_FINISH','kind'=>'transition','discipline'=>'swim','sequence'=>10,'distance_km'=>1]);
+        $custom=$race->checkpoints()->create(['name'=>'Bridge bike start','code'=>'BIKE_START','kind'=>'transition','discipline'=>'bike','sequence'=>20,'distance_km'=>0]);
+        $migration=require database_path('migrations/2026_09_22_000400_clarify_default_checkpoint_names.php');$migration->up();
+        $this->assertSame('Swim Exit',$default->fresh()->name);
+        $this->assertSame('Bridge bike start',$custom->fresh()->name);
+        $this->assertSame([$default->id,$custom->id],$race->checkpoints()->pluck('id')->all());
+        $this->assertSame(10,$default->fresh()->sequence);
+    }
+
 }
