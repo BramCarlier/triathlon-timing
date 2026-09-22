@@ -41,6 +41,23 @@ class EventReadinessTest extends TestCase {
     public function test_offline_replay_can_use_its_original_checkpoint_after_selection_changes():void {
         Event::fake();[$admin,$race,$entry]=$this->fixture();$organizer=User::factory()->create(['role'=>UserRole::Organizer]);$organizer->races()->attach($race);
         $cp=$race->checkpoints()->create(['name'=>'Swim','code'=>'SWIM','kind'=>'transition','sequence'=>10]);
-        $this->actingAs($organizer)->withSession(["checkpoint.$race->id"=>999])->postJson("/races/$race->id/timings",['entry_id'=>$entry->id,'checkpoint_id'=>$cp->id,'client_uuid'=>(string)\Illuminate\Support\Str::uuid(),'source'=>'offline','observed_at'=>now()->subSeconds(10)->toISOString()])->assertOk();
+        $this->actingAs($organizer)->withSession(["checkpoint.$race->id"=>999])->postJson("/races/$race->id/timings",['operator_id'=>$organizer->id,'entry_id'=>$entry->id,'checkpoint_id'=>$cp->id,'client_uuid'=>(string)\Illuminate\Support\Str::uuid(),'source'=>'offline','observed_at'=>now()->subSeconds(10)->toISOString()])->assertOk();
     }
+    public function test_offline_replay_rejects_a_different_operator():void {
+        [$admin,$race,$entry]=$this->fixture();$other=User::factory()->create(['role'=>UserRole::Admin]);
+        $cp=$race->checkpoints()->create(['name'=>'Swim','code'=>'SWIM','kind'=>'transition','sequence'=>10]);
+        $this->postJson("/races/$race->id/timings",['operator_id'=>$other->id,'entry_id'=>$entry->id,'checkpoint_id'=>$cp->id,'client_uuid'=>(string)\Illuminate\Support\Str::uuid(),'source'=>'offline','observed_at'=>now()->toISOString()])->assertUnprocessable()->assertJsonValidationErrors('operator_id');
+        $this->assertDatabaseCount('timing_records',0);
+    }
+    public function test_organizer_cannot_change_a_profile_shared_with_an_unassigned_race():void {
+        [$admin,$race,$entry,$athlete]=$this->fixture();$organizer=User::factory()->create(['role'=>UserRole::Organizer]);$organizer->races()->attach($race);
+        $other=Race::create(['name'=>'Other','slug'=>'other','event_date'=>'2026-09-23','created_by'=>$admin->id]);$otherEntry=$other->entries()->create(['type'=>'solo']);$otherEntry->members()->create(['athlete_id'=>$athlete->id,'discipline'=>'swim','position'=>1]);
+        $person=$athlete->only(['id','first_name','last_name','email','club']);$person['first_name']='Changed';
+        $payload=['bib_number'=>'008','category'=>'Open','status'=>'registered','reason'=>'Registration correction','athletes'=>[$person]];
+        $this->actingAs($organizer)->put("/races/$race->id/participants/$entry->id",$payload)->assertSessionHasErrors('athletes');
+        $this->assertSame('Test',$athlete->fresh()->first_name);$this->assertNull($entry->fresh()->bib_number);
+        $payload['athletes'][0]['first_name']='Test';
+        $this->put("/races/$race->id/participants/$entry->id",$payload)->assertSessionHasNoErrors();$this->assertSame('008',$entry->fresh()->bib_number);
+    }
+
 }

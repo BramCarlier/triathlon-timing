@@ -9,7 +9,7 @@ class TimingConcurrencyTest extends TestCase {
     use DatabaseMigrations;
     private function contend(bool $sameId):array {
         $user=User::factory()->create(['role'=>'admin']);$race=Race::create(['name'=>'Concurrent','slug'=>'concurrent','event_date'=>'2026-09-22','started_at'=>now()->subMinute(),'created_by'=>$user->id]);
-        $entry=$race->entries()->create(['type'=>'solo']);$cp=$race->checkpoints()->create(['name'=>'Swim','code'=>'SWIM','sequence'=>10,'kind'=>'transition']);$uuid=(string)Str::uuid();
+        $entry=$race->entries()->create(['type'=>'solo','bib_number'=>'101']);$cp=$race->checkpoints()->create(['name'=>'Swim','code'=>'SWIM','sequence'=>10,'kind'=>'transition']);$uuid=(string)Str::uuid();
         // Hold the entry lock until both child processes are running. They must
         // serialize on the same row after release, as two checkpoint devices do.
         \Illuminate\Support\Facades\DB::beginTransaction();\App\Models\Entry::lockForUpdate()->findOrFail($entry->id);

@@ -61,7 +61,7 @@ async function record(participant: StationParticipant, override = false, clientU
     confirmation.value={message:`Earlier required timing missing: ${names}. Record ${participant.name} here anyway?`,label:'Record anyway',action:()=>record(participant,true,clientUuid)};return;
   }
 
-  const payload = { entry_id:participant.id, checkpoint_id:props.checkpoint.id, client_uuid:clientUuid, observed_at:new Date(serverNowMs()).toISOString(), source:online.value ? 'online' : 'offline', override_warning:override };
+  const payload = { operator_id:account.id, entry_id:participant.id, checkpoint_id:props.checkpoint.id, client_uuid:clientUuid, observed_at:new Date(serverNowMs()).toISOString(), source:online.value ? 'online' : 'offline', override_warning:override };
   const localTiming: Timing = { client_uuid:clientUuid, elapsed_ms:elapsedMs.value, recorded_at:String(payload.observed_at), entry:{id:participant.id,bib_number:participant.bib_number,display_name:participant.name}, queued:!online.value };
 
   saving.value.add(participant.id);

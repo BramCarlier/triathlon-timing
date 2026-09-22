@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, onBeforeUnmount } from 'vue';
 import { jsonRequest } from '../lib';
 import { mayReplay, retryDisposition } from '../queuePolicy';
 export interface QueuedTiming {
@@ -25,6 +25,7 @@ const all=()=>transaction<QueuedTiming[]>('readonly',s=>s.getAll());
 const put=(item:QueuedTiming)=>transaction('readwrite',s=>s.put(item));
 const remove=(id:string)=>transaction('readwrite',s=>s.delete(id));
 export function useOfflineTimingQueue(raceId:number,operatorId:number) {
+  let disposed=false;onBeforeUnmount(()=>{disposed=true;});
   const items=ref<QueuedTiming[]>([]); const foreignCount=ref(0); const legacy=ref<QueuedTiming[]>([]);
   const error=ref(''); const flushing=ref(false); const pending=computed(()=>items.value.length);
   const scoped=async()=> (await all()).filter(i=>i.url===`/races/${raceId}/timings`);
@@ -33,14 +34,15 @@ export function useOfflineTimingQueue(raceId:number,operatorId:number) {
     catch {error.value='Device storage is unavailable. Keep this page open; offline timing cannot be saved safely.';throw new Error(error.value);}
   };
   const queue=async(url:string,payload:Record<string,unknown>,label:string,elapsed_ms:number)=>{
-    await put({client_uuid:String(payload.client_uuid),url,payload:{...payload,source:'offline'},operator_id:operatorId,label,elapsed_ms,queued_at:new Date().toISOString()});await refresh();
+    await put({client_uuid:String(payload.client_uuid),url,payload:{...payload,source:'offline',operator_id:operatorId},operator_id:operatorId,label,elapsed_ms,queued_at:new Date().toISOString()});await refresh();
   };
   const flush=async()=>{
-    if(!navigator.onLine||flushing.value)return false;
+    if(disposed||!navigator.onLine||flushing.value)return false;
     flushing.value=true;let changed=false;
     try {
       const run=async()=>{
         for(const item of await scoped()) {
+          if(disposed)break;
           if(!mayReplay(item.operator_id,operatorId)||item.blocked)continue;
           try {
             const {response,data}=await jsonRequest<{message?:string;warning?:boolean;timing?:{client_uuid:string}}>(item.url,{method:'POST',body:JSON.stringify(item.payload),signal:AbortSignal.timeout(12000)});

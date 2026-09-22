@@ -97,7 +97,12 @@ class EntryController extends Controller
             foreach($data['athletes'] as $person){
                 $email=empty($person['email'])?null:strtolower($person['email']);
                 if($email&&Athlete::where('email',$email)->where('id','!=',$person['id'])->exists())throw ValidationException::withMessages(['athletes'=>'That email belongs to another athlete.']);
-                Athlete::whereKey($person['id'])->update(['first_name'=>$person['first_name'],'last_name'=>$person['last_name'],'email'=>$email,'club'=>$person['club']??null]);
+                $athlete=Athlete::lockForUpdate()->findOrFail($person['id']);
+                $athlete->fill(['first_name'=>$person['first_name'],'last_name'=>$person['last_name'],'email'=>$email,'club'=>$person['club']??null]);
+                if($athlete->isDirty()&&!$request->user()->isAdmin()&&$athlete->memberships()->whereHas('entry.race',fn($query)=>$query->whereDoesntHave('organizers',fn($users)=>$users->whereKey($request->user()->id)))->exists()) {
+                    throw ValidationException::withMessages(['athletes'=>'This athlete also belongs to another organizer’s race. Ask an administrator to change their shared profile. You can still edit this entry’s bib, category and status.']);
+                }
+                $athlete->save();
             }
             $entry->update(collect($data)->only(['bib_number','team_name','category','status'])->all());
             EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>$data['reason']]);
