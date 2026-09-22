@@ -22,7 +22,7 @@ class RaceController extends Controller
         $query = Race::withCount('entries')->latest('event_date');
         if (!$request->user()->isAdmin()) $query->whereHas('organizers', fn ($q) => $q->whereKey($request->user()->id));
         return Inertia::render('Races/Index', [
-            'races' => $query->get(),
+            'races' => $query->get(), 'serverNow'=>now('UTC')->toISOString(),
             'deletedRaces' => $request->user()->isAdmin() ? Race::onlyTrashed()->latest('deleted_at')->get() : [],
         ]);
     }
@@ -59,7 +59,7 @@ class RaceController extends Controller
     public function show(Request $request, Race $race): Response
     {
         Gate::authorize('manage-race', $race);
-        $race->load(['checkpoints', 'organizers:id,name,email'])->loadCount('entries');
+        $race->load(['checkpoints', 'organizers:id,name,email,is_active'])->loadCount('entries');
         $organizers = $request->user()->isAdmin() ? User::whereIn('role', ['admin', 'organizer'])->where('is_active', true)->orderBy('name')->get(['id','name','email']) : [];
         return Inertia::render('Races/Show', ['race' => $race, 'organizers' => $organizers, 'serverNow' => now('UTC')->toISOString()]);
     }
@@ -70,8 +70,17 @@ class RaceController extends Controller
         $allowedStatuses = $race->started_at
             ? ($race->finished_at ? [RaceStatus::Finished->value, RaceStatus::Archived->value] : [RaceStatus::Running->value])
             : [RaceStatus::Draft->value, RaceStatus::Ready->value];
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'status' => ['required', Rule::in($allowedStatuses)], 'organizer_ids' => ['nullable', 'array'], 'organizer_ids.*' => ['integer', Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', ['admin', 'organizer'])->where('is_active', true))]]);
-        $race->update(collect($data)->except('organizer_ids')->all());
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'status' => ['required', Rule::in($allowedStatuses)], 'swim_km'=>['sometimes','numeric','min:0.001'],'bike_km'=>['sometimes','numeric','min:0.001'],'run_km'=>['sometimes','numeric','min:0.001'],'organizer_ids' => ['nullable', 'array'], 'organizer_ids.*' => ['integer', Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', ['admin', 'organizer'])->where('is_active', true))]]);
+        $settings=$race->settings??[];
+        foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code){
+            if(!array_key_exists($key,$data))continue;
+            if($race->started_at && (float)($settings[$key]??0)!==(float)$data[$key])throw \Illuminate\Validation\ValidationException::withMessages([$key=>'Course distances cannot change after the race starts.']);
+            $settings[$key]=$data[$key];
+        }
+        DB::transaction(function()use($race,$data,$settings){
+            $race->update([...collect($data)->except(['organizer_ids','swim_km','bike_km','run_km'])->all(),'settings'=>$settings]);
+            if(!$race->started_at)foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code)if(array_key_exists($key,$data))$race->checkpoints()->where('code',$code)->update(['distance_km'=>$data[$key]]);
+        });
         if ($request->user()->isAdmin() && array_key_exists('organizer_ids', $data)) $race->organizers()->sync($data['organizer_ids'] ?: [$request->user()->id]);
         return back()->with('success', 'Race settings updated.');
     }

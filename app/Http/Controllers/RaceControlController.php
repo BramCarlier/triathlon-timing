@@ -16,10 +16,10 @@ class RaceControlController extends Controller
     public function show(Race $race): Response
     {
         Gate::authorize('manage-race', $race);
-        $race->load('checkpoints')->loadCount('entries');
+        $race->load('checkpoints')->loadCount(['entries','organizers'=>fn($q)=>$q->where('is_active',true)]);
         $recent = $race->timings()->where('status', TimingStatus::Recorded->value)->with(['entry.members.athlete', 'checkpoint:id,name', 'operator:id,name'])->latest('recorded_at')->limit(20)->get();
         $presence = OperatorPresence::where('race_id', $race->id)->where('last_seen_at', '>=', now()->subMinutes(5))->with(['user:id,name', 'checkpoint:id,name'])->get();
-        $entries = $race->entries()->with('members.athlete')->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')->get()->map(fn ($entry) => ['id' => $entry->id, 'bib_number' => $entry->bib_number, 'name' => $entry->displayName()])->values();
+        $entries = $race->entries()->with(['members.athlete','timings'=>fn($q)=>$q->where('status',TimingStatus::Recorded->value)])->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')->get()->map(fn ($entry) => ['id' => $entry->id, 'bib_number' => $entry->bib_number, 'name' => $entry->displayName(), 'timings'=>$entry->timings->map(fn($timing)=>['checkpoint_id'=>$timing->checkpoint_id,'elapsed_ms'=>$timing->elapsed_ms])->all()])->values();
         $completed = $race->timings()->where('status', TimingStatus::Recorded->value)->whereHas('checkpoint', fn ($q) => $q->where('kind', 'finish'))->distinct('entry_id')->count('entry_id');
         return Inertia::render('Races/Control', ['race' => $race, 'recentTimings' => $recent, 'presence' => $presence, 'completedCount' => $completed, 'entries' => $entries, 'serverNow' => now('UTC')->toISOString()]);
     }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { watch } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import AthletePicker from '../../Components/AthletePicker.vue';
@@ -8,8 +8,8 @@ import type { UserRole } from '../../types';
 
 interface Athlete { id: number; first_name: string; last_name: string; email?: string }
 interface Race { id: number; name: string; event_date: string }
-interface Account { id: number; name: string; email: string; role: UserRole; is_active: boolean; athlete_id: number | null; races: Race[] }
-const props = defineProps<{ account: Account; linkedAthlete: Athlete|null; races: Race[] }>();
+interface Account { id: number; name: string; email: string; role: UserRole; is_active: boolean; force_password_change:boolean; invitation_sent_at?:string; athlete_id: number | null; races: Race[] }
+const props = defineProps<{ account: Account; linkedAthlete: Athlete|null; races: Race[]; mailConfigured:boolean }>();
 const form = useForm({
   name: props.account.name,
   email: props.account.email,
@@ -29,7 +29,7 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
   <Head :title="`Edit ${account.name}`" />
   <AppLayout title="Edit user & access">
     <Link href="/users" class="btn-secondary mb-5">Back to users</Link>
-    <form class="grid gap-5 lg:grid-cols-2" @submit.prevent="save">
+    <section v-if="account.force_password_change" class="panel-pad mb-5"><h2 class="font-bold">Password setup pending</h2><p class="mt-2 muted">{{ account.invitation_sent_at?'An invitation was accepted by the mail server. You can send a fresh link if needed.':'This user must choose a password before using the app.' }}</p><button type="button" class="btn-secondary mt-3" :disabled="!mailConfigured || !account.is_active" @click="router.post(`/users/${account.id}/invitation`)">Resend invitation</button><p v-if="!mailConfigured" class="mt-2 text-sm text-warning">Connect SMTP to send invitations.</p></section><form class="grid gap-5 lg:grid-cols-2" @submit.prevent="save">
       <section class="panel-pad space-y-4">
         <h2 class="text-lg font-bold">Account details</h2>
         <div><label for="user-name" class="label">Name</label><input id="user-name" v-model="form.name" class="field" required maxlength="255"></div>

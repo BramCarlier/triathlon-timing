@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { checkpointDistanceText } from '../../checkpointDistance';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import RaceChecklist from '../../Components/RaceChecklist.vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { ref, computed } from 'vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
@@ -10,6 +11,7 @@ interface Organizer {
   id: number;
   name: string;
   email: string;
+  is_active?:boolean;
 }
 
 const props = defineProps<{
@@ -20,6 +22,9 @@ const props = defineProps<{
 
 const page = usePage<PageProps>();
 const deleting = ref(false);
+const publishing=ref(false);
+const publication=useForm({published:!props.race.results_published_at});
+const publish=()=>{publication.published=!props.race.results_published_at;publication.post(`/races/${props.race.id}/publication`,{preserveScroll:true,onSuccess:()=>{publishing.value=false;}});};
 const removingCheckpoint=ref<Checkpoint|null>(null);
 const checkpointError=ref('');
 const confirmCheckpointRemoval=()=>{if(removingCheckpoint.value)router.delete(`/races/${props.race.id}/checkpoints/${removingCheckpoint.value.id}`,{preserveScroll:true,onSuccess:()=>{removingCheckpoint.value=null;},onError:errors=>{checkpointError.value=Object.values(errors)[0]??'Unable to remove checkpoint';}});};
@@ -31,6 +36,7 @@ const raceForm = useForm({
   event_date: props.race.event_date,
   timezone: props.race.timezone,
   status: props.race.status,
+  swim_km:Number(props.race.settings?.swim_km??0),bike_km:Number(props.race.settings?.bike_km??0),run_km:Number(props.race.settings?.run_km??0),
   organizer_ids: props.race.organizers.map((organizer) => organizer.id),
 });
 
@@ -81,7 +87,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
 <template>
   <Head :title="race.name" />
   <AppLayout :title="race.name">
-    <div class="grid gap-6 lg:grid-cols-2">
+    <RaceChecklist :race="race"/><section v-if="race.started_at" class="panel-pad mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-bold">{{ race.finished_at?'Race completed':'Race in progress' }}</h2><p class="mt-1 muted">{{ race.finished_at?'Review the results, make any corrections, and share the leaderboard.':'Open your timing station or monitor the race from Race control.' }}</p></div><Link :href="`/races/${race.id}/${race.finished_at?'results':'station'}`" class="btn-primary">{{ race.finished_at?'View results':'Open timing station' }}</Link></section><div class="grid gap-6 lg:grid-cols-2">
       <form class="panel-pad" @submit.prevent="saveRace">
         <h2 class="mb-4 text-lg font-bold">Race settings</h2>
         <div class="space-y-4">
@@ -114,7 +120,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             </select>
             <p class="mt-1 text-xs muted">Running/finished status is controlled by the shared race clock.</p>
           </div>
-          <div v-if="organizers.length">
+          <fieldset id="course-distances"><legend class="label">Course distances (km)</legend><p class="mb-3 text-xs muted">Distances can be changed before the race starts. Standard leg-end checkpoints update with them.</p><div class="grid grid-cols-3 gap-3"><label class="label">Swim<input v-model="raceForm.swim_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Bike<input v-model="raceForm.bike_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Run<input v-model="raceForm.run_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label></div></fieldset><div id="organizers" v-if="organizers.length">
             <label class="label">Organizers</label>
             <div class="grid gap-2 rounded-xl border border-outline p-3">
               <label v-for="organizer in organizers" :key="organizer.id" class="flex gap-2">
@@ -128,7 +134,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
         <button class="btn-primary mt-5" :disabled="raceForm.processing">Save settings</button>
       </form>
 
-      <div class="panel-pad">
+      <div id="checkpoints" class="panel-pad">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-bold">Checkpoints</h2>
@@ -145,7 +151,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
           >
             <div class="flex items-start justify-between gap-3">
               <div>
-                <div class="font-semibold">{{ cp.sequence }} · {{ cp.name }}</div>
+                <div class="font-semibold" :data-discipline="cp.discipline">{{ cp.sequence }} · {{ cp.name }}</div>
                 <div class="text-sm muted">
                   {{ cp.discipline ?? 'Race-wide' }} · {{ kindLabel(cp.kind) }}
                   <div class="mt-1 text-accent">{{ checkpointDistanceText(race, cp) }}</div>
@@ -188,6 +194,8 @@ const removeCheckpoint = (cp: Checkpoint) => {
         </form>
       </div>
     </div>
+    <section class="panel-pad mt-6"><h2 class="text-lg font-bold">Public leaderboard</h2><p class="mt-2 muted">{{ race.results_published_at?'Published — anyone with the link can view results.':'Private — only authorized signed-in users can view results.' }}</p><p class="mt-2 text-sm muted">Publishing shares participant names, bibs, categories, relay member names and timings. Email addresses and organizer controls are never included. Share only when participants have been informed.</p><div v-if="race.results_published_at && race.public_results_token" class="mt-4"><a :href="`/live/${race.public_results_token}`" target="_blank" rel="noopener" class="font-semibold text-accent underline">Open public leaderboard ↗</a><p class="mt-2 text-sm muted">Copy the address from the opened page to share. Use Large-screen display there for spectators.</p></div><button class="btn-secondary mt-4" @click="publishing=true">{{ race.results_published_at?'Unpublish leaderboard':'Publish leaderboard' }}</button></section>
+    <ConfirmDialog v-if="publishing" :title="race.results_published_at?'Unpublish leaderboard?':'Publish participant results?'" :message="race.results_published_at?'The existing public link will stop working.':'Anyone with the link will be able to view participant names and results without signing in.'" :confirm-label="race.results_published_at?'Unpublish':'Publish results'" :busy="publication.processing" @cancel="publishing=false" @confirm="publish"><p v-if="Object.keys(publication.errors).length" role="alert">{{ Object.values(publication.errors)[0] }}</p></ConfirmDialog>
     <section v-if="page.props.auth.user?.role==='admin'" class="panel-pad mt-6 border-red-500/30">
       <h2 class="font-bold">Delete race</h2>
       <p class="mt-2 muted">Remove this race from active lists. Participants, timings and organizer assignments are preserved. You can restore it from Deleted races.</p>

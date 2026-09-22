@@ -20,5 +20,7 @@ test('theme follows system until chosen and persists through login, navigation a
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Users', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

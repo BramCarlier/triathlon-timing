@@ -12,8 +12,8 @@ class PasswordController extends Controller
     public function edit(): Response { return Inertia::render('Auth/Password'); }
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate(['current_password' => ['required','current_password'], 'password' => ['required','string','min:12','confirmed']]);
+        $data = $request->validate(['current_password' => ['required','current_password'], 'password' => ['required','string','min:12','confirmed','different:current_password']]);
         $request->user()->forceFill(['password' => Hash::make($data['password']), 'force_password_change' => false])->save();
-        return back()->with('success', 'Password updated.');
+        return redirect()->route('dashboard')->with('success', 'Password updated. Your account is ready.');
     }
 }

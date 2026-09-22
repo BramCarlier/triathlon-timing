@@ -18,6 +18,7 @@ class ResetPasswordController extends Controller
     public function create(Request $request, string $token): Response
     {
         return Inertia::render('Auth/ResetPassword', [
+            'welcome'=>$request->boolean('welcome'),
             'token' => $token,
             'email' => $request->string('email')->toString(),
         ]);
@@ -31,7 +32,7 @@ class ResetPasswordController extends Controller
             'password' => ['required', 'string', 'min:12', 'confirmed'],
         ]);
 
-        $status = Password::reset($data, function (User $user, string $password): void {
+        $status = Password::reset([...$data, 'is_active'=>true], function (User $user, string $password): void {
             $user->forceFill([
                 'password' => Hash::make($password),
                 'remember_token' => Str::random(60),

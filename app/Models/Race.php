@@ -13,8 +13,8 @@ class Race extends Model
     use SoftDeletes;
 
     protected $dateFormat = 'Y-m-d H:i:s.v';
-    protected $fillable = ['name', 'slug', 'event_date', 'timezone', 'status', 'started_at', 'finished_at', 'settings', 'created_by'];
-    protected function casts(): array { return ['event_date' => 'date:Y-m-d', 'status' => RaceStatus::class, 'started_at' => 'datetime', 'finished_at' => 'datetime', 'settings' => 'array']; }
+    protected $fillable = ['name', 'slug', 'event_date', 'timezone', 'status', 'started_at', 'finished_at', 'settings', 'created_by', 'public_results_token', 'results_published_at'];
+    protected function casts(): array { return ['results_published_at'=>'datetime', 'event_date' => 'date:Y-m-d', 'status' => RaceStatus::class, 'started_at' => 'datetime', 'finished_at' => 'datetime', 'settings' => 'array']; }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function organizers(): BelongsToMany { return $this->belongsToMany(User::class)->withTimestamps(); }
     public function entries(): HasMany { return $this->hasMany(Entry::class); }
