@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
 import type { Checkpoint, Race, PageProps } from '../../types';
 
@@ -36,7 +36,7 @@ const raceForm = useForm({
 const checkpoint = useForm({
   name: '',
   code: '',
-  sequence: 15,
+  sequence: 25,
   discipline: '',
   kind: 'split',
   distance_km: '',
@@ -44,6 +44,14 @@ const checkpoint = useForm({
   is_active: true,
 });
 
+const checkpointPosition = computed(() => {
+  const ordered = [...props.race.checkpoints].sort((a,b)=>a.sequence-b.sequence);
+  const before = ordered.filter(cp=>cp.sequence<Number(checkpoint.sequence)).at(-1);
+  const after = ordered.find(cp=>cp.sequence>Number(checkpoint.sequence));
+  if(ordered.some(cp=>cp.sequence===Number(checkpoint.sequence)))return 'This order number is already used. Choose an unused number.';
+  return `${before ? 'After '+before.name : 'Before all checkpoints'}${after ? ' · before '+after.name : ' · last checkpoint'}`;
+});
+const kindLabel = (kind:string) => ({start:'Shared race start',split:'Intermediate timing point',transition:'Leg boundary / transition',finish:'Overall race finish'}[kind] ?? kind);
 const saveRace = () => raceForm.put(`/races/${props.race.id}`);
 const addCheckpoint = () => checkpoint.post(`/races/${props.race.id}/checkpoints`, {
   preserveScroll: true,
@@ -123,7 +131,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-bold">Checkpoints</h2>
-            <p class="mt-1 text-sm muted">Operators choose one active checkpoint for their session/device.</p>
+            <p class="mt-1 text-sm muted">Listed in race order. Record each transition at its exit, when the next leg starts. Race Start is controlled by the shared clock, not a station.</p>
           </div>
           <span class="badge">{{ race.checkpoints.length }} total</span>
         </div>
@@ -138,7 +146,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
               <div>
                 <div class="font-semibold">{{ cp.sequence }} · {{ cp.name }}</div>
                 <div class="text-sm muted">
-                  {{ cp.code }} · {{ cp.discipline ?? 'race' }} · {{ cp.kind }}
+                  {{ cp.discipline ?? 'Race-wide' }} · {{ kindLabel(cp.kind) }}
                   <span v-if="cp.distance_km">· {{ cp.distance_km }} km</span>
                 </div>
               </div>
@@ -161,28 +169,20 @@ const removeCheckpoint = (cp: Checkpoint) => {
         </div>
 
         <form class="mt-5 border-t border-slate-800 pt-5" @submit.prevent="addCheckpoint">
-          <h3 class="mb-3 font-semibold">Add checkpoint</h3>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <input v-model="checkpoint.name" class="field" placeholder="Bike 10 km" required>
-            <input v-model="checkpoint.code" class="field" placeholder="BIKE_10K" required>
-            <input v-model="checkpoint.sequence" type="number" class="field" placeholder="Sequence" required>
-            <select v-model="checkpoint.discipline" class="field">
-              <option value="">Race-wide</option>
-              <option value="swim">Swim</option>
-              <option value="bike">Bike</option>
-              <option value="run">Run</option>
-            </select>
-            <select v-model="checkpoint.kind" class="field">
-              <option value="split">Split</option>
-              <option value="transition">Transition</option>
-              <option value="finish">Finish</option>
-            </select>
-            <input v-model="checkpoint.distance_km" type="number" step="0.001" min="0" class="field" placeholder="Distance km">
+          <h3 class="mb-2 font-semibold">Add checkpoint</h3>
+          <p class="mb-4 text-sm muted">Add a place where an organizer records each participant passing. For example, “Run 4 km” is an intermediate timing point between Run Start and Run Finish.</p>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2"><label for="checkpoint-name" class="label">Checkpoint name</label><input id="checkpoint-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" maxlength="255" required><p class="mt-1 text-xs muted">Shown to organizers at the timing station and in results.</p></div>
+            <div><label for="checkpoint-sequence" class="label">Order in the race</label><input id="checkpoint-sequence" v-model="checkpoint.sequence" type="number" min="1" max="65535" step="1" class="field" required aria-describedby="checkpoint-order-help"><p id="checkpoint-order-help" class="mt-1 text-xs muted">Smaller numbers come first. Use 25 between Run Start (20) and Run Finish (30) in a new race. Each number must be unique.</p><p class="mt-2 text-sm text-cyan-200" aria-live="polite">{{ checkpointPosition }}</p></div>
+            <div><label for="checkpoint-discipline" class="label">Sport / leg</label><select id="checkpoint-discipline" v-model="checkpoint.discipline" class="field"><option value="">Race-wide (no specific sport)</option><option value="swim">Swim</option><option value="run">Run</option><option value="bike">Bike</option></select><p class="mt-1 text-xs muted">For a transition exit, choose the sport starting there. Relay timings are linked to that sport’s athlete.</p></div>
+            <div><label for="checkpoint-kind" class="label">What happens here?</label><select id="checkpoint-kind" v-model="checkpoint.kind" class="field"><option value="split">Intermediate timing point</option><option value="transition">Leg boundary / transition</option><option value="finish">Overall race finish</option></select><p class="mt-1 text-xs muted">Intermediate: partway through a leg. Boundary: a leg ends or the next begins. Overall finish: completes the participant’s result; use only at the end of the whole race.</p></div>
+            <div><label for="checkpoint-distance" class="label">Distance into this leg (km, optional)</label><input id="checkpoint-distance" v-model="checkpoint.distance_km" type="number" step="0.001" min="0" class="field" placeholder="For example: 4"><p class="mt-1 text-xs muted">Use 0 at a leg’s start, or leave blank if unknown. This is a distance label, not a target time or total race distance.</p></div>
           </div>
-          <div class="mt-3 flex gap-4 text-sm">
-            <label><input v-model="checkpoint.is_required" type="checkbox"> Required</label>
-            <label><input v-model="checkpoint.is_active" type="checkbox"> Active</label>
+          <div class="mt-4 space-y-3 text-sm">
+            <div><label class="flex gap-2"><input v-model="checkpoint.is_required" type="checkbox"> Expected for every participant</label><p class="mt-1 text-xs muted">Warn organizers at later checkpoints if this timing is missing. They can explicitly record anyway.</p></div>
+            <div><label class="flex gap-2"><input v-model="checkpoint.is_active" type="checkbox"> Available at timing stations</label><p class="mt-1 text-xs muted">Turn off to keep this checkpoint in the setup without allowing new taps there.</p></div>
           </div>
+          <details class="mt-4"><summary class="cursor-pointer text-sm muted">Advanced: checkpoint code</summary><label for="checkpoint-code" class="label mt-3">Unique code (optional)</label><input id="checkpoint-code" v-model="checkpoint.code" class="field" placeholder="Generated automatically from the name" maxlength="48"><p class="mt-1 text-xs muted">A stable identifier for integrations. Normally leave this blank. If supplied, it must be unique within this race.</p></details>
           <p v-if="Object.keys(checkpoint.errors).length" role="alert" class="mt-3 text-red-300">{{ Object.values(checkpoint.errors).join(' · ') }}</p><button class="btn-secondary mt-4" :disabled="checkpoint.processing">Add checkpoint</button>
         </form>
       </div>
