@@ -45,11 +45,11 @@ class RaceController extends Controller
             $race->organizers()->syncWithoutDetaching([$request->user()->id]);
             $race->checkpoints()->createMany([
                 ['name' => 'Race Start', 'code' => 'START', 'sequence' => 0, 'kind' => CheckpointKind::Start, 'discipline' => null, 'distance_km' => 0, 'is_required' => true],
-                ['name' => 'Swim Finish', 'code' => 'SWIM_FINISH', 'sequence' => 10, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Swim, 'distance_km' => $data['swim_km'] ?? 1, 'is_required' => true],
-                ['name' => 'Swim–bike transition (Bike Start)', 'code' => 'BIKE_START', 'sequence' => 20, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Bike, 'distance_km' => 0, 'is_required' => true],
+                ['name' => 'Swim Exit', 'code' => 'SWIM_FINISH', 'sequence' => 10, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Swim, 'distance_km' => $data['swim_km'] ?? 1, 'is_required' => true],
+                ['name' => 'T1 (Bike Start)', 'code' => 'BIKE_START', 'sequence' => 20, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Bike, 'distance_km' => 0, 'is_required' => true],
                 ['name' => 'Bike Finish', 'code' => 'BIKE_FINISH', 'sequence' => 30, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Bike, 'distance_km' => $data['bike_km'] ?? 35, 'is_required' => true],
-                ['name' => 'Bike–run transition (Run Start)', 'code' => 'RUN_START', 'sequence' => 40, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Run, 'distance_km' => 0, 'is_required' => true],
-                ['name' => 'Run Finish', 'code' => 'RUN_FINISH', 'sequence' => 50, 'kind' => CheckpointKind::Finish, 'discipline' => Discipline::Run, 'distance_km' => $data['run_km'] ?? 8, 'is_required' => true],
+                ['name' => 'T2 (Run Start)', 'code' => 'RUN_START', 'sequence' => 40, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Run, 'distance_km' => 0, 'is_required' => true],
+                ['name' => 'Finish', 'code' => 'RUN_FINISH', 'sequence' => 50, 'kind' => CheckpointKind::Finish, 'discipline' => Discipline::Run, 'distance_km' => $data['run_km'] ?? 8, 'is_required' => true],
             ]);
             return $race;
         });
