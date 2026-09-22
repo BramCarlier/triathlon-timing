@@ -15,7 +15,8 @@ class OperationalHealth {
         $free=@disk_free_space(storage_path());$checks[]=['name'=>'Storage space','ok'=>$free!==false&&$free>1073741824,'detail'=>$free===false?'Unable to read free space':round($free/1073741824,1).' GB free'];
         $mail=config('mail.default');$checks[]=['name'=>'Email delivery configuration','ok'=>!in_array($mail,['log','array',null],true),'detail'=>in_array($mail,['log','array',null],true)?'A delivering mail provider still needs configuration.':'Mail transport configured; verify delivery with a real reset email.'];
         $races=Race::where('status','running')->pluck('id');$active=OperatorPresence::whereIn('race_id',$races)->where('last_seen_at','>=',now()->subMinutes(2))->count();
-        $checks[]=['name'=>'Running race stations','ok'=>$races->isEmpty()||$active>0,'detail'=>$races->count().' running races; '.$active.' stations seen in the last two minutes'];
+        $covered=OperatorPresence::whereIn('race_id',$races)->where('last_seen_at','>=',now()->subMinutes(2))->distinct()->count('race_id');
+        $checks[]=['name'=>'Running race stations','ok'=>$races->count()===$covered,'detail'=>$races->count().' running races; '.$active.' stations seen in the last two minutes; '.($races->count()-$covered).' races without a recent station'];
         return $checks;
     }
 }

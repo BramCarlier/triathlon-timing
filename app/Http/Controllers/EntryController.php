@@ -113,7 +113,7 @@ class EntryController extends Controller
     public function destroy(Race $race, Entry $entry): RedirectResponse
     {
         Gate::authorize('manage-race', $race); abort_unless($entry->race_id === $race->id, 404);
-        abort_if($entry->timings()->exists(), 422, 'Entries with timings cannot be deleted.');
+        if($entry->timings()->exists())throw ValidationException::withMessages(['entry'=>'Entries with timings cannot be deleted. Use a result status to retain their history.']);
         $entry->delete();
         return back()->with('success', 'Participant removed.');
     }
