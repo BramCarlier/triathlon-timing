@@ -72,3 +72,11 @@ input[type="checkbox"] { accent-color: var(--app-accent); }
   .muted { @apply text-muted; }
   .badge { @apply inline-flex items-center rounded-full border border-outline-strong bg-raised px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-secondary; }
 }
+
+[data-discipline="swim"] { border-inline-start: 3px solid var(--app-accent); padding-inline-start: .6rem; }
+[data-discipline="bike"] { border-inline-start: 3px solid var(--app-warning); padding-inline-start: .6rem; }
+[data-discipline="run"] { border-inline-start: 3px solid var(--app-success); padding-inline-start: .6rem; }
+.badge[data-status="running"] { color: var(--app-success); border-color: var(--app-success); }
+.badge[data-status="finished"], .badge[data-status="archived"] { color: var(--app-accent); }
+summary { min-height: 44px; align-content: center; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }

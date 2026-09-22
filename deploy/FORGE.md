@@ -196,3 +196,30 @@ After changing Reverb credentials, rebuild Vite assets and restart Reverb. Exist
 The admin **Health** page and `php8.4 artisan timing:health` check application dependencies without showing credentials. Scheduler and queue heartbeats should appear within two minutes after deployment; Reverb handshake checks run every five minutes. The Forge scheduler must run as the isolated site user, and the queue worker must consume the default database queue. Failed jobs are retained for diagnosis; do not purge them as a substitute for resolving the cause.
 
 On the current Forge account, built-in backups and server monitoring are Business-plan features. This deployment does not automatically upgrade the account or establish off-server backups. Configure an approved storage provider, retention policy and independent alert destination, then rehearse restoring to a separate database. Never test a restoration against the live race database.
+
+## Email invitations and delivery
+
+Create an SMTP account with a transactional mail provider (for example Postmark), or use an existing provider that permits transactional SMTP. Verify a sender address/domain and add the DNS authentication records the provider supplies. The `on-forge.com` hostname is not a sending domain you control: use a verified sender on your own domain. Never commit SMTP credentials.
+
+Set these values in the site's Forge Environment editor using the provider's exact values:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=smtp.postmarkapp.com
+MAIL_PORT=587
+MAIL_USERNAME="provider-smtp-username"
+MAIL_PASSWORD="provider-smtp-password"
+MAIL_FROM_ADDRESS="timing@your-verified-domain.example"
+MAIL_FROM_NAME="Triathlon Timing"
+```
+
+For Postmark, use the SMTP credentials shown for the transactional message stream (server token or SMTP token credentials, as instructed by the provider). Port 587 uses STARTTLS; use `MAIL_SCHEME=smtps` only when a different provider explicitly requires implicit TLS, commonly port 465. Remove stale `MAIL_URL` settings if configuring individual fields. Keep `APP_URL` set to the public HTTPS URL, then deploy to refresh cached configuration and restart workers.
+
+Create a test organizer with an email address you control and select **Email a password setup link**. Confirm receipt, follow the one-use link, set a password (minimum 12 characters), and sign in. Verify Forgot password too. A successful SMTP submission means the mail server accepted the message, not that inbox delivery is guaranteed: check the provider's delivery/bounce logs and the recipient's spam folder.
+
+Invitations expire according to `auth.passwords.users.expire` (60 minutes by default). **Users → Edit user → Resend invitation** generates a fresh link and invalidates the old one. Password setup is required before app access. Temporary-password accounts are still supported and must change that password on first login. Passwords are never included in invitation emails. `log`/`array` mailers are not treated as real delivery, and the create-account form clearly shows when SMTP is unavailable.
+
+## Public results
+
+Results are private by default. An assigned organizer or administrator can publish them from **Overview & setup → Public leaderboard**, after reviewing the participant-data notice. The unguessable link shows names, bibs, categories, relay members and results; it never includes email addresses, credentials or timing audit notes. It does not expose timing writes or exports. Public pages are marked noindex and no-store. Unpublishing or deleting a race disables the link; republishing after unpublishing creates a new link. Spectator display rotates ten rows every 15 seconds and refreshes results every five seconds. “Race closed” does not imply ratified results: corrections can still change them.

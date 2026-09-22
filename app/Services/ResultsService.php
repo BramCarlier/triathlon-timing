@@ -14,9 +14,10 @@ class ResultsService
             (empty($filters['category'])||$row['category']===$filters['category'])&&
             (empty($filters['status'])||$row['result_status']===$filters['status'])
         )->values()->all();
-        $previous=null;$place=null;
+        $previous=null;$place=null;$leader=null;
         foreach($rows as $index=>&$row){
-            if(!$row['finished']){$row['place']=null;continue;}
+            if(!$row['finished']){$row['place']=null;$row['gap_ms']=null;continue;}
+            $leader??=$row['total_ms'];$row['gap_ms']=$row['total_ms']-$leader;
             if($row['total_ms']!==$previous)$place=$index+1;
             $row['place']=$place;$previous=$row['total_ms'];
         }

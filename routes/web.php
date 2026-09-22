@@ -19,6 +19,7 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class);
+Route::get('/live/{token}', [ResultController::class,'publicIndex'])->middleware('throttle:120,1')->name('results.public');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -42,6 +43,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/races/create', [RaceController::class, 'create'])->name('races.create');
         Route::post('/races', [RaceController::class, 'store'])->name('races.store');
         Route::get('/races/{race}', [RaceController::class, 'show'])->name('races.show');
+        Route::post('/races/{race}/publication', [ResultController::class,'publish'])->name('results.publish');
         Route::put('/races/{race}', [RaceController::class, 'update'])->name('races.update');
 
         Route::post('/races/{race}/checkpoints', [CheckpointController::class, 'store'])->name('races.checkpoints.store');
@@ -82,6 +84,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::post('/users/{user}/invitation', [UserController::class,'invite'])->middleware('throttle:5,1')->name('users.invite');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
     });
 });

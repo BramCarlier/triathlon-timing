@@ -30,6 +30,27 @@ class ResultController extends Controller
         ]);
     }
 
+    public function publish(Request $request, Race $race): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('manage-race',$race);
+        $data=$request->validate(['published'=>['required','boolean']]);
+        $race->update(['results_published_at'=>$data['published']?now():null,'public_results_token'=>$data['published']?($race->public_results_token??(string)\Illuminate\Support\Str::uuid()):null]);
+        return back()->with('success',$data['published']?'Public leaderboard published. Anyone with the link can view participant names and results.':'Public leaderboard unpublished. The old link no longer works.');
+    }
+
+    public function publicIndex(Request $request,string $token, ResultsService $results): \Symfony\Component\HttpFoundation\Response
+    {
+        $race=Race::where('public_results_token',$token)->whereNotNull('results_published_at')->firstOrFail();
+        $race->load('checkpoints');
+        return Inertia::render('Results/Index',[
+            'publicMode'=>true,
+            'race'=>array_merge($race->only(['id','name','event_date','timezone','status','started_at','finished_at']),['settings'=>collect($race->settings??[])->only(['swim_km','bike_km','run_km'])->all(),'checkpoints'=>$race->checkpoints->map(fn($cp)=>$cp->only(['id','name','sequence','kind','discipline','distance_km']))]),
+            'results'=>$results->filtered($race,$this->filters($request)),
+            'filters'=>$this->filters($request),
+            'categories'=>$race->entries()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category'),
+        ])->toResponse($request)->withHeaders(['Cache-Control'=>'no-store, private','X-Robots-Tag'=>'noindex, nofollow']);
+    }
+
     public function csv(Request $request, Race $race, ResultsService $results): StreamedResponse
     {
         Gate::authorize('manage-race', $race);

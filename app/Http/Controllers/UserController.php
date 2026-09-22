@@ -20,7 +20,7 @@ class UserController extends Controller
     {
         $q=mb_substr(trim((string)$request->query('q','')),0,100);
         $users=User::with(['athlete:id,first_name,last_name','races:id,name'])->when($q!=='',fn($query)=>$query->where(fn($match)=>$match->where('name','like',"%$q%")->orWhere('email','like',"%$q%")))->orderBy('name')->orderBy('id')->paginate(25)->withQueryString();
-        return Inertia::render('Users/Index', ['users'=>$users,'filters'=>['q'=>$q], 'races'=>Race::latest('event_date')->get(['id','name','event_date'])]);
+        return Inertia::render('Users/Index', ['users'=>$users,'filters'=>['q'=>$q], 'mailConfigured'=>app(\App\Services\AccountInvitationService::class)->configured(), 'races'=>Race::latest('event_date')->get(['id','name','event_date'])]);
     }
 
     public function athletes(Request $request): \Illuminate\Http\JsonResponse
@@ -37,20 +37,31 @@ class UserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->merge(['email' => strtolower((string) $request->input('email'))]);
-        $data = $request->validate(['name' => ['required','string','max:255'], 'email' => ['required','email','max:255','unique:users,email'], 'password' => ['required','string','min:12'], 'role' => ['required', Rule::enum(UserRole::class)], 'athlete_id' => ['nullable','exists:athletes,id','unique:users,athlete_id'], 'race_ids' => ['nullable','array'], 'race_ids.*' => ['integer', Rule::exists('races', 'id')->whereNull('deleted_at')]]);
+        $data = $request->validate(['name' => ['required','string','max:255'], 'email' => ['required','email','max:255','unique:users,email'], 'delivery'=>['nullable','in:email,manual'], 'password' => ['nullable','required_if:delivery,manual','string','min:12'], 'role' => ['required', Rule::enum(UserRole::class)], 'athlete_id' => ['nullable','exists:athletes,id','unique:users,athlete_id'], 'race_ids' => ['nullable','array'], 'race_ids.*' => ['integer', Rule::exists('races', 'id')->whereNull('deleted_at')]]);
         if ($data['role'] === UserRole::Athlete->value && empty($data['athlete_id'])) return back()->withErrors(['athlete_id' => 'Athlete accounts must be linked to an athlete.']);
-        $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($data['password']), 'role' => $data['role'], 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
+        $emailInvite=($data['delivery']??(empty($data['password'])?'email':'manual'))==='email';
+        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>'Email sending is not configured. Connect SMTP first, or choose a temporary password and share it yourself.']);
+        $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($emailInvite ? \Illuminate\Support\Str::random(64) : $data['password']), 'role' => $data['role'], 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
         if ($user->role === UserRole::Organizer) $user->races()->sync($data['race_ids'] ?? []);
-        return back()->with('success', 'User account created.');
+        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error','Account created, but the invitation could not be sent. Check SMTP settings and use Resend invitation.');
+        return back()->with('success', $emailInvite ? 'Account created. Invitation accepted by the mail server; ask the recipient to check their inbox and spam folder.' : 'Account created. Share the temporary password privately; it must be changed at first login.');
     }
 
     public function edit(User $user): Response
     {
         return Inertia::render('Users/Edit', [
+            'mailConfigured'=>app(\App\Services\AccountInvitationService::class)->configured(),
             'account' => $user->load('races:id,name'),
             'linkedAthlete' => $user->athlete?->only(['id','first_name','last_name','email']),
             'races' => Race::latest('event_date')->get(['id', 'name', 'event_date']),
         ]);
+    }
+
+    public function invite(User $user): RedirectResponse
+    {
+        abort_unless($user->is_active && $user->force_password_change,422,'Only active accounts awaiting password setup can be invited.');
+        $sent=app(\App\Services\AccountInvitationService::class)->send($user);
+        return back()->with($sent?'success':'error',$sent?'Invitation accepted by the mail server. The previous setup link is no longer valid.':'Invitation could not be sent. Check email settings and retry.');
     }
 
     public function update(Request $request, User $user): RedirectResponse
@@ -67,7 +78,7 @@ class UserController extends Controller
             }
             $account->fill(collect($data)->except(['race_ids','password'])->all());
             $account->athlete_id = $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null;
-            if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; }
+            if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; $account->invitation_sent_at=null; \Illuminate\Support\Facades\Password::deleteToken($account); }
             $account->save();
             if ($account->role === UserRole::Organizer) $account->races()->sync($data['race_ids'] ?? []); elseif ($account->role === UserRole::Athlete) $account->races()->detach();
         });
