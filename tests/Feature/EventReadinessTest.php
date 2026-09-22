@@ -60,4 +60,13 @@ class EventReadinessTest extends TestCase {
         $this->put("/races/$race->id/participants/$entry->id",$payload)->assertSessionHasNoErrors();$this->assertSame('008',$entry->fresh()->bib_number);
     }
 
+    public function test_user_search_and_athlete_picker_are_paginated_and_admin_only():void {
+        [$admin,$race,$entry,$athlete]=$this->fixture();
+        for($i=0;$i<30;$i++)Athlete::create(['first_name'=>'Other','last_name'=>'Athlete'.$i]);
+        $this->getJson('/users/athletes')->assertOk()->assertJsonCount(25,'data');
+        $this->getJson('/users/athletes?q=Person')->assertOk()->assertJsonPath('data.0.id',$athlete->id);
+        $this->get('/users?q='.urlencode($admin->email))->assertOk();
+        $this->actingAs(User::factory()->create(['role'=>UserRole::Organizer]))->getJson('/users/athletes')->assertForbidden();
+    }
+
 }

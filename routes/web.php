@@ -78,6 +78,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/health', \App\Http\Controllers\HealthController::class)->name('admin.health');
         Route::delete('/races/{race}', [RaceController::class, 'destroy'])->name('races.destroy');
         Route::post('/races/{race}/restore', [RaceController::class, 'restore'])->withTrashed()->name('races.restore');
+        Route::get('/users/athletes', [UserController::class, 'athletes'])->name('users.athletes');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
