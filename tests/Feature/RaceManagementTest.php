@@ -29,7 +29,7 @@ class RaceManagementTest extends TestCase
         $this->post("/races/{$race->id}/restore")->assertRedirect("/races/{$race->id}");
         $this->assertNotNull(Race::find($race->id));
         $this->assertDatabaseHas('entries', ['id' => $entry->id, 'race_id' => $race->id]);
-        $this->assertSame(4, $race->fresh()->checkpoints()->count());
+        $this->assertSame(6, $race->fresh()->checkpoints()->count());
         $this->assertTrue($race->fresh()->organizers->contains($admin));
     }
 
