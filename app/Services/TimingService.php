@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Support\RaceBroadcast;
+
 use App\Enums\CheckpointKind;
 use App\Enums\TimingSource;
 use App\Enums\TimingStatus;
@@ -26,10 +28,16 @@ class TimingService
 
         $source = TimingSource::tryFrom((string) ($data['source'] ?? 'online')) ?? TimingSource::Online;
         $uuid = (string) $data['client_uuid'];
-        if ($existing = TimingRecord::where('client_uuid', $uuid)->first()) return $existing;
+
 
         $timing = DB::transaction(function () use ($race, $entry, $checkpoint, $operator, $data, $uuid, $source) {
             Entry::query()->lockForUpdate()->findOrFail($entry->id);
+            if ($existing = TimingRecord::where('client_uuid', $uuid)->first()) {
+                if ($existing->race_id !== $race->id || $existing->entry_id !== $entry->id || $existing->checkpoint_id !== $checkpoint->id || $existing->operator_id !== $operator->id) {
+                    throw new TimingConflictException('This timing request identifier is already in use.');
+                }
+                return $existing;
+            }
             $active = TimingRecord::query()
                 ->where('entry_id', $entry->id)
                 ->where('checkpoint_id', $checkpoint->id)
@@ -41,6 +49,7 @@ class TimingService
                 ->where('race_id', $race->id)
                 ->where('sequence', '<', $checkpoint->sequence)
                 ->where('is_required', true)
+                ->where('is_active', true)
                 ->where('kind', '!=', CheckpointKind::Start->value)
                 ->pluck('id');
             $recordedPrior = TimingRecord::query()
@@ -83,7 +92,7 @@ class TimingService
             ]);
         });
 
-        TimingRecorded::dispatch($timing);
+        RaceBroadcast::dispatch(new TimingRecorded($timing));
         return $timing;
     }
 
@@ -131,8 +140,8 @@ class TimingService
             ]);
         });
 
-        if ($voided) TimingVoided::dispatch($voided);
-        TimingRecorded::dispatch($timing);
+        if ($voided) RaceBroadcast::dispatch(new TimingVoided($voided));
+        RaceBroadcast::dispatch(new TimingRecorded($timing));
         return $timing;
     }
 
@@ -140,7 +149,7 @@ class TimingService
     {
         if ($timing->status === TimingStatus::Voided) return $timing;
         $timing->forceFill(['status' => TimingStatus::Voided, 'voided_at' => now('UTC'), 'voided_by' => $user->id, 'notes' => trim(($timing->notes ? $timing->notes."\n" : '').($reason ?? 'Voided by operator'))])->save();
-        TimingVoided::dispatch($timing);
+        RaceBroadcast::dispatch(new TimingVoided($timing));
         return $timing->fresh();
     }
 }

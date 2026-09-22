@@ -159,7 +159,11 @@ class ParticipantImportService
             throw ValidationException::withMessages(['file' => 'The JSON file must contain an array of participants or a participants array.']);
         }
 
-        return is_array($data['participants'] ?? null) ? $data['participants'] : $data;
+        $rows = is_array($data['participants'] ?? null) ? $data['participants'] : $data;
+        if (!array_is_list($rows) || array_filter($rows, fn ($row) => !is_array($row))) {
+            throw ValidationException::withMessages(['file' => 'Every participant must be an object in a participants array.']);
+        }
+        return $rows;
     }
 
     private function parseCsv(string $path): array
@@ -192,6 +196,7 @@ class ParticipantImportService
         $normalized = [];
         foreach ($row as $key => $value) {
             $key = Str::snake(trim((string) $key));
+            if (is_array($value) || is_object($value)) throw ValidationException::withMessages(['file' => 'Participant fields must contain text or numbers, not nested objects.']);
             $normalized[$key] = is_string($value) ? trim($value) : $value;
         }
         if (isset($normalized['bib_number']) && !isset($normalized['bib'])) $normalized['bib'] = $normalized['bib_number'];

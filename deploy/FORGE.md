@@ -10,7 +10,7 @@ When website isolation is enabled, replace `/home/forge` in every example with t
 
 Use an `on-forge.com` domain or point a custom domain's DNS to the server. Install/verify SSL and redirect HTTP to HTTPS before testing authentication and WebSockets.
 
-Create a separate MySQL 8+ database and a database user restricted to that database. PostgreSQL is also supported; use `DB_CONNECTION=pgsql`, port 5432 and `pdo_pgsql`. PHP needs the extensions required by `composer.lock`, including `mbstring`, `dom`, `xml`, `fileinfo`, `curl`, `zip`, `gd`, `intl` and `pdo_mysql` for MySQL. Do not use `--ignore-platform-reqs`.
+Create a separate MySQL 8+ database and a database user restricted to that database. PostgreSQL portability is not verified; use MySQL for this deployment (participant sorting currently includes MySQL-specific SQL). PHP needs the extensions required by `composer.lock`, including `mbstring`, `dom`, `xml`, `fileinfo`, `curl`, `zip`, `gd`, `intl` and `pdo_mysql` for MySQL. Do not use `--ignore-platform-reqs`.
 
 ## Environment and first installation
 
@@ -115,7 +115,7 @@ Create exactly one scheduler entry for this site, every minute as the site's Uni
 php8.4 /home/forge/YOUR_SITE/current/artisan schedule:run
 ```
 
-The current `routes/console.php` defines no recurring business tasks; the scheduler can therefore report no commands as due.
+The scheduler runs `model:prune` daily to remove expired participant imports and their stored files. Between scheduled runs it can report no commands as due.
 
 ## Deployment
 

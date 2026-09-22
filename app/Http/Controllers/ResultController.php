@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\CheckpointKind;
 use App\Models\Race;
 use App\Services\ResultsService;
+use App\Support\SpreadsheetText;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -44,7 +46,7 @@ class ResultController extends Controller
 
         return response()->streamDownload(function () use ($rows, $headers) {
             $out = fopen('php://output', 'wb');
-            fputcsv($out, $headers);
+            fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $headers));
 
             foreach ($rows as $row) {
                 $values = [$row['bib_number'], $row['type'], $row['name'], $row['category']];
@@ -54,7 +56,7 @@ class ResultController extends Controller
                 }
                 $values[] = $row['finished'] ? 'yes' : 'no';
                 $values[] = $row['total_ms'];
-                fputcsv($out, $values);
+                fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $values));
             }
 
             fclose($out);
@@ -80,7 +82,7 @@ class ResultController extends Controller
         $spreadsheet = new Spreadsheet();
         $active = $spreadsheet->getActiveSheet();
         $active->setTitle('Results');
-        $active->fromArray($headers, null, 'A1');
+        foreach ($headers as $index => $header) $active->setCellValueExplicit([$index + 1, 1], $header, DataType::TYPE_STRING);
         $rowNumber = 2;
 
         foreach ($rows as $result) {
@@ -91,7 +93,11 @@ class ResultController extends Controller
             }
             $values[] = $result['finished'] ? 'yes' : 'no';
             $values[] = $result['total_ms'];
-            $active->fromArray($values, null, 'A'.$rowNumber++);
+            foreach ($values as $index => $value) {
+                if (is_string($value)) $active->setCellValueExplicit([$index + 1, $rowNumber], $value, DataType::TYPE_STRING);
+                else $active->setCellValue([$index + 1, $rowNumber], $value);
+            }
+            $rowNumber++;
         }
 
         $active->freezePane('A2');
