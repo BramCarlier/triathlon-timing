@@ -36,7 +36,7 @@ const raceForm = useForm({
 const checkpoint = useForm({
   name: '',
   code: '',
-  sequence: 25,
+  sequence: 45,
   discipline: '',
   kind: 'split',
   distance_km: '',
@@ -173,7 +173,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
           <p class="mb-4 text-sm muted">Add a place where an organizer records each participant passing. For example, “Run 4 km” is an intermediate timing point between Run Start and Run Finish.</p>
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2"><label for="checkpoint-name" class="label">Checkpoint name</label><input id="checkpoint-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" maxlength="255" required><p class="mt-1 text-xs muted">Shown to organizers at the timing station and in results.</p></div>
-            <div><label for="checkpoint-sequence" class="label">Order in the race</label><input id="checkpoint-sequence" v-model="checkpoint.sequence" type="number" min="1" max="65535" step="1" class="field" required aria-describedby="checkpoint-order-help"><p id="checkpoint-order-help" class="mt-1 text-xs muted">Smaller numbers come first. Use 25 between Run Start (20) and Run Finish (30) in a new race. Each number must be unique.</p><p class="mt-2 text-sm text-cyan-200" aria-live="polite">{{ checkpointPosition }}</p></div>
+            <div><label for="checkpoint-sequence" class="label">Order in the race</label><input id="checkpoint-sequence" v-model="checkpoint.sequence" type="number" min="1" max="65535" step="1" class="field" required aria-describedby="checkpoint-order-help"><p id="checkpoint-order-help" class="mt-1 text-xs muted">Smaller numbers come first. Use 45 between Run Start (40) and Run Finish (50) in a new race. Each number must be unique.</p><p class="mt-2 text-sm text-cyan-200" aria-live="polite">{{ checkpointPosition }}</p></div>
             <div><label for="checkpoint-discipline" class="label">Sport / leg</label><select id="checkpoint-discipline" v-model="checkpoint.discipline" class="field"><option value="">Race-wide (no specific sport)</option><option value="swim">Swim</option><option value="run">Run</option><option value="bike">Bike</option></select><p class="mt-1 text-xs muted">For a transition exit, choose the sport starting there. Relay timings are linked to that sport’s athlete.</p></div>
             <div><label for="checkpoint-kind" class="label">What happens here?</label><select id="checkpoint-kind" v-model="checkpoint.kind" class="field"><option value="split">Intermediate timing point</option><option value="transition">Leg boundary / transition</option><option value="finish">Overall race finish</option></select><p class="mt-1 text-xs muted">Intermediate: partway through a leg. Boundary: a leg ends or the next begins. Overall finish: completes the participant’s result; use only at the end of the whole race.</p></div>
             <div><label for="checkpoint-distance" class="label">Distance into this leg (km, optional)</label><input id="checkpoint-distance" v-model="checkpoint.distance_km" type="number" step="0.001" min="0" class="field" placeholder="For example: 4"><p class="mt-1 text-xs muted">Use 0 at a leg’s start, or leave blank if unknown. This is a distance label, not a target time or total race distance.</p></div>

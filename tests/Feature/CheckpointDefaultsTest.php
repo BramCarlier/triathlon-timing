@@ -11,17 +11,17 @@ class CheckpointDefaultsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_new_race_uses_swim_run_bike_with_separate_transition_times(): void
+    public function test_new_race_uses_swim_bike_run_with_separate_transition_times(): void
     {
         Event::fake();
         $admin = User::factory()->create(['role'=>'admin']);
         $this->actingAs($admin)->post('/races', ['name'=>'New course','event_date'=>'2026-09-27','timezone'=>'Europe/Brussels','swim_km'=>1,'run_km'=>8,'bike_km'=>35])->assertSessionHasNoErrors();
         $race = Race::firstOrFail();
         $checkpoints = $race->checkpoints()->get();
-        $this->assertSame(['START','SWIM_FINISH','RUN_START','RUN_FINISH','BIKE_START','BIKE_FINISH'], $checkpoints->pluck('code')->all());
+        $this->assertSame(['START','SWIM_FINISH','BIKE_START','BIKE_FINISH','RUN_START','RUN_FINISH'], $checkpoints->pluck('code')->all());
         $this->assertSame(['start','transition','transition','transition','transition','finish'], $checkpoints->map(fn($cp)=>$cp->kind->value)->all());
-        $this->assertSame([null,'swim','run','run','bike','bike'], $checkpoints->map(fn($cp)=>$cp->discipline?->value)->all());
-        $this->assertSame([0.0,1.0,0.0,8.0,0.0,35.0], $checkpoints->map(fn($cp)=>(float)$cp->distance_km)->all());
+        $this->assertSame([null,'swim','bike','bike','run','run'], $checkpoints->map(fn($cp)=>$cp->discipline?->value)->all());
+        $this->assertSame([0.0,1.0,0.0,35.0,0.0,8.0], $checkpoints->map(fn($cp)=>(float)$cp->distance_km)->all());
         $race->update(['started_at'=>now()->subHour()]);
         $entry=$race->entries()->create(['type'=>'solo']);
         $elapsed=[600000,660000,1860000,1980000,5580000];
