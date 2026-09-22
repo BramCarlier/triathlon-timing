@@ -18,7 +18,7 @@ class RaceManagementTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $this->actingAs($admin)->post('/races', ['name' => 'Club triathlon', 'event_date' => '2026-09-21', 'timezone' => 'Europe/Brussels'])->assertSessionHasNoErrors();
         $race = Race::sole();
-        $this->assertSame(4, $race->checkpoints()->count());
+        $this->assertSame(6, $race->checkpoints()->count());
         $entry = $race->entries()->create(['type' => 'solo', 'bib_number' => null]);
         $this->put("/races/{$race->id}", ['name' => 'Updated triathlon', 'event_date' => '2026-09-22', 'timezone' => 'Europe/Brussels', 'status' => 'ready', 'organizer_ids' => [$admin->id]])->assertSessionHasNoErrors();
         $this->assertSame('Updated triathlon', $race->fresh()->name);
