@@ -78,7 +78,7 @@ class UserController extends Controller
             }
             $account->fill(collect($data)->except(['race_ids','password'])->all());
             $account->athlete_id = $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null;
-            if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; }
+            if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; $account->invitation_sent_at=null; \Illuminate\Support\Facades\Password::deleteToken($account); }
             $account->save();
             if ($account->role === UserRole::Organizer) $account->races()->sync($data['race_ids'] ?? []); elseif ($account->role === UserRole::Athlete) $account->races()->detach();
         });

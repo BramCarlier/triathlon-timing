@@ -37,6 +37,15 @@ class InvitationsAndPublicResultsTest extends TestCase {
   $this->assertDatabaseMissing('users',['email'=>'invite@example.test']);
   $user=User::factory()->create(['force_password_change'=>true]);$token=Password::createToken($user);$this->travel(61)->minutes();$this->assertFalse(Password::tokenExists($user,$token));
  }
+ public function test_password_reset_does_not_claim_log_delivery():void {
+  config(['mail.default'=>'log']);
+  $this->post('/forgot-password',['email'=>'someone@example.test'])->assertSessionHasErrors('email');
+ }
+ public function test_failed_invitation_keeps_account_for_retry_without_claiming_sent():void {
+  config(['mail.default'=>'smtp']);Notification::shouldReceive('send')->once()->andThrow(new \RuntimeException('SMTP transport failed'));
+  $this->actingAs($this->admin())->post('/users',['name'=>'Retry','email'=>'retry@example.test','role'=>'organizer','delivery'=>'email'])->assertSessionHas('error');
+  $user=User::where('email','retry@example.test')->firstOrFail();$this->assertNull($user->invitation_sent_at);$this->assertTrue($user->force_password_change);
+ }
  public function test_temporary_password_must_be_changed_and_cannot_be_reused():void {
   $user=User::factory()->create(['role'=>'organizer','password'=>Hash::make('temporary-password-123'),'force_password_change'=>true]);
   $this->actingAs($user)->get('/races')->assertRedirect('/account/password');
