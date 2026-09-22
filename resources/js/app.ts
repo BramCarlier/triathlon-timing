@@ -4,6 +4,7 @@ import type { DefineComponent } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import { jsonRequest } from './lib';
 
 (window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
 
@@ -16,11 +17,13 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
     wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
-    auth: {
-      headers: {
-        'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+    authorizer: (channel: {name:string}) => ({
+      authorize: (socketId, callback) => {
+        jsonRequest<{auth:string;channel_data?:string;shared_secret?:string}>('/broadcasting/auth',{method:'POST',body:JSON.stringify({socket_id:socketId,channel_name:channel.name}),signal:AbortSignal.timeout(12000)})
+          .then(({response,data})=>callback(response.ok?null:new Error(`Live authorization failed (${response.status})`),data))
+          .catch(error=>callback(error,null));
       },
-    },
+    }),
   });
 }
 

@@ -24,20 +24,22 @@ class ResultController extends Controller
 
         return Inertia::render('Results/Index', [
             'race' => $race->load('checkpoints'),
-            'results' => $results->rows($race),
+            'results' => $results->filtered($race,$this->filters($request)),
+            'filters' => $this->filters($request),
+            'categories' => $race->entries()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category'),
         ]);
     }
 
     public function csv(Request $request, Race $race, ResultsService $results): StreamedResponse
     {
         Gate::authorize('manage-race', $race);
-        $rows = $results->rows($race);
+        $rows = $results->filtered($race,$this->filters($request));
         $checkpoints = $race->checkpoints()
             ->where('kind', '!=', CheckpointKind::Start->value)
             ->orderBy('sequence')
             ->get();
 
-        $headers = ['Bib', 'Type', 'Name', 'Category'];
+        $headers = ['Place', 'Bib', 'Type', 'Name', 'Category', 'Status'];
         foreach ($checkpoints as $checkpoint) {
             $headers[] = $checkpoint->name.' elapsed ms';
             $headers[] = $checkpoint->name.' split ms';
@@ -49,7 +51,7 @@ class ResultController extends Controller
             fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $headers));
 
             foreach ($rows as $row) {
-                $values = [$row['bib_number'], $row['type'], $row['name'], $row['category']];
+                $values = [$row['place'], $row['bib_number'], $row['type'], $row['name'], $row['category'], $row['result_status']];
                 foreach ($row['splits'] as $split) {
                     $values[] = $split['elapsed_ms'];
                     $values[] = $split['split_ms'];
@@ -66,13 +68,13 @@ class ResultController extends Controller
     public function xlsx(Request $request, Race $race, ResultsService $results): BinaryFileResponse
     {
         Gate::authorize('manage-race', $race);
-        $rows = $results->rows($race);
+        $rows = $results->filtered($race,$this->filters($request));
         $checkpoints = $race->checkpoints()
             ->where('kind', '!=', CheckpointKind::Start->value)
             ->orderBy('sequence')
             ->get();
 
-        $headers = ['Bib', 'Type', 'Name', 'Category'];
+        $headers = ['Place', 'Bib', 'Type', 'Name', 'Category', 'Status'];
         foreach ($checkpoints as $checkpoint) {
             $headers[] = $checkpoint->name.' elapsed ms';
             $headers[] = $checkpoint->name.' split ms';
@@ -86,7 +88,7 @@ class ResultController extends Controller
         $rowNumber = 2;
 
         foreach ($rows as $result) {
-            $values = [$result['bib_number'], $result['type'], $result['name'], $result['category']];
+            $values = [$result['place'], $result['bib_number'], $result['type'], $result['name'], $result['category'], $result['result_status']];
             foreach ($result['splits'] as $split) {
                 $values[] = $split['elapsed_ms'];
                 $values[] = $split['split_ms'];
@@ -111,6 +113,11 @@ class ResultController extends Controller
         $spreadsheet->disconnectWorksheets();
 
         return response()->download($path, $race->slug.'-results.xlsx')->deleteFileAfterSend(true);
+    }
+
+    private function filters(Request $request): array
+    {
+        return $request->validate(['type'=>['nullable','in:solo,relay'],'category'=>['nullable','string','max:100'],'status'=>['nullable','in:FINISHED,IN PROGRESS,DNS,DNF,DSQ']]);
     }
 
     private function authorizeView(Request $request, Race $race): void

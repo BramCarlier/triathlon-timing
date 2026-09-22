@@ -50,6 +50,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/races/{race}/participants', [EntryController::class, 'index'])->name('races.entries.index');
         Route::post('/races/{race}/participants', [EntryController::class, 'store'])->name('races.entries.store');
+        Route::get('/races/{race}/participants/{entry}/edit', [EntryController::class, 'edit'])->name('races.entries.edit');
+        Route::put('/races/{race}/participants/{entry}', [EntryController::class, 'update'])->name('races.entries.update');
         Route::delete('/races/{race}/participants/{entry}', [EntryController::class, 'destroy'])->name('races.entries.destroy');
         Route::get('/races/{race}/participants/import', [ParticipantImportController::class, 'create'])->name('races.import.create');
         Route::post('/races/{race}/participants/import/preview', [ParticipantImportController::class, 'preview'])->name('races.import.preview');
@@ -73,6 +75,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/health', \App\Http\Controllers\HealthController::class)->name('admin.health');
         Route::delete('/races/{race}', [RaceController::class, 'destroy'])->name('races.destroy');
         Route::post('/races/{race}/restore', [RaceController::class, 'restore'])->withTrashed()->name('races.restore');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');

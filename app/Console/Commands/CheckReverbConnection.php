@@ -11,6 +11,13 @@ class CheckReverbConnection extends Command
 
     public function handle(): int
     {
+        $result=$this->checkConnection();
+        \Illuminate\Support\Facades\Cache::put('health.reverb',['ok'=>$result===self::SUCCESS,'checked_at'=>now()->toISOString()],900);
+        return $result;
+    }
+
+    private function checkConnection(): int
+    {
         $key = (string) config('reverb.apps.apps.0.key');
         $host = parse_url(config('app.url'), PHP_URL_HOST);
         $assets = glob(public_path('build/assets/app-*.js'));

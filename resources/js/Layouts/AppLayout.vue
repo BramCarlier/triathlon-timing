@@ -19,6 +19,7 @@ const logout = () => router.post('/logout');
         <nav v-if="user" aria-label="Main navigation" class="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2">
           <Link v-if="user.role !== 'athlete'" href="/races" class="rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">Races</Link>
           <Link v-if="user.role === 'admin'" href="/users" class="rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">Users</Link>
+          <Link v-if="user.role === 'admin'" href="/admin/health" class="rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">Health</Link>
           <Link v-if="user.role === 'athlete'" href="/athlete" class="rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">My race</Link>
           <Link href="/account/password" class="rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">Account</Link>
           <button class="rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-800" @click="logout">Log out</button>
