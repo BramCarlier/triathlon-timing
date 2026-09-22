@@ -13,6 +13,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Mail::extend('gmail', fn (array $config = []) => new \App\Mail\GmailApiTransport(config('services.gmail', [])));
         Gate::before(fn (User $user) => $user->isAdmin() ? true : null);
         Gate::define('manage-race', fn (User $user, Race $race) => $user->isOrganizer() && $user->races()->whereKey($race->id)->exists());
         Broadcast::routes(['middleware' => ['web', 'auth']]);
