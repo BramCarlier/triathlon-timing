@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import RaceClock from '../../Components/RaceClock.vue';
+import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import LiveUpdatesStatus from '../../Components/LiveUpdatesStatus.vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
 import { formatDuration, bibLabel } from '../../lib';
@@ -32,7 +33,7 @@ const submitCorrection = () => {
 };
 
 const channelName = `race.${props.race.id}`;
-let refreshTimer:number|undefined;
+useRaceRefresh(() => ['presence','race','serverNow','recentTimings','completedCount']);
 onMounted(() => {
   const echo = (window as any).Echo;
   if (echo) echo.private(channelName)
@@ -40,9 +41,8 @@ onMounted(() => {
     .listen('.timing.voided', () => router.reload({only:['recentTimings','completedCount']}))
     .listen('.race.started', () => router.reload({only:['race','serverNow']}))
     .listen('.race.finished', () => router.reload({only:['race','serverNow']}));
-  refreshTimer = window.setInterval(() => router.reload({only:['presence','race','serverNow','recentTimings','completedCount']}), 30000);
 });
-onBeforeUnmount(() => { if(refreshTimer) clearInterval(refreshTimer); const echo=(window as any).Echo; if(echo) echo.leave(channelName); });
+onBeforeUnmount(() => { const echo=(window as any).Echo; if(echo) echo.leave(channelName); });
 
 </script>
 <template><Head :title="`${race.name} control`"/><AppLayout :title="`${race.name} · Race control`">
