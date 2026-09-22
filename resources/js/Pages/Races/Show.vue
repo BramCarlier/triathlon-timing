@@ -19,6 +19,9 @@ const props = defineProps<{
 
 const page = usePage<PageProps>();
 const deleting = ref(false);
+const removingCheckpoint=ref<Checkpoint|null>(null);
+const checkpointError=ref('');
+const confirmCheckpointRemoval=()=>{if(removingCheckpoint.value)router.delete(`/races/${props.race.id}/checkpoints/${removingCheckpoint.value.id}`,{preserveScroll:true,onSuccess:()=>{removingCheckpoint.value=null;},onError:errors=>{checkpointError.value=Object.values(errors)[0]??'Unable to remove checkpoint';}});};
 const deleteForm = useForm({});
 const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, {onSuccess:()=>{deleting.value=false;}});
 
@@ -57,13 +60,12 @@ const toggleCheckpoint = (cp: Checkpoint) => {
     distance_km: cp.distance_km,
     is_required: cp.is_required,
     is_active: !cp.is_active,
-  }, { preserveScroll: true });
+  }, { preserveScroll: true, onError:errors=>{checkpointError.value=Object.values(errors)[0]??'Unable to update checkpoint';} });
 };
 
 const removeCheckpoint = (cp: Checkpoint) => {
   if (cp.kind === 'start') return;
-  if (!confirm(`Delete checkpoint “${cp.name}”? Checkpoints with timings cannot be deleted.`)) return;
-  router.delete(`/races/${props.race.id}/checkpoints/${cp.id}`, { preserveScroll: true });
+  removingCheckpoint.value=cp;checkpointError.value='';
 };
 </script>
 
@@ -126,7 +128,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
           <span class="badge">{{ race.checkpoints.length }} total</span>
         </div>
 
-        <div class="space-y-2">
+        <p v-if="checkpointError" role="alert" class="mb-3 text-red-300">{{ checkpointError }}</p><div class="space-y-2">
           <div
             v-for="cp in race.checkpoints"
             :key="cp.id"
@@ -181,7 +183,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             <label><input v-model="checkpoint.is_required" type="checkbox"> Required</label>
             <label><input v-model="checkpoint.is_active" type="checkbox"> Active</label>
           </div>
-          <button class="btn-secondary mt-4" :disabled="checkpoint.processing">Add checkpoint</button>
+          <p v-if="Object.keys(checkpoint.errors).length" role="alert" class="mt-3 text-red-300">{{ Object.values(checkpoint.errors).join(' · ') }}</p><button class="btn-secondary mt-4" :disabled="checkpoint.processing">Add checkpoint</button>
         </form>
       </div>
     </div>
@@ -192,5 +194,6 @@ const removeCheckpoint = (cp: Checkpoint) => {
     </section>
     <ConfirmDialog v-if="deleting" title="Delete race?" :message="`Move ${race.name} to Deleted races? It will no longer be available at timing stations until restored.`"
       confirm-label="Move to Deleted races" :busy="deleteForm.processing" @cancel="deleting=false" @confirm="deleteRace" />
+<ConfirmDialog v-if="removingCheckpoint" title="Delete checkpoint?" :message="`Delete ${removingCheckpoint.name}? Checkpoints with timing history cannot be deleted.`" confirm-label="Delete checkpoint" @cancel="removingCheckpoint=null" @confirm="confirmCheckpointRemoval"><p v-if="checkpointError" class="mt-2 text-red-300">{{ checkpointError }}</p></ConfirmDialog>
   </AppLayout>
 </template>

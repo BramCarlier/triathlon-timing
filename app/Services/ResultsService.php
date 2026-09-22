@@ -7,6 +7,22 @@ use App\Models\Race;
 
 class ResultsService
 {
+    public function filtered(Race $race,array $filters=[]): array
+    {
+        $rows=collect($this->rows($race))->filter(fn($row)=>
+            (empty($filters['type'])||$row['type']===$filters['type'])&&
+            (empty($filters['category'])||$row['category']===$filters['category'])&&
+            (empty($filters['status'])||$row['result_status']===$filters['status'])
+        )->values()->all();
+        $previous=null;$place=null;
+        foreach($rows as $index=>&$row){
+            if(!$row['finished']){$row['place']=null;continue;}
+            if($row['total_ms']!==$previous)$place=$index+1;
+            $row['place']=$place;$previous=$row['total_ms'];
+        }
+        return $rows;
+    }
+
     public function rows(Race $race): array
     {
         $checkpoints = $race->checkpoints()->where('kind', '!=', CheckpointKind::Start->value)->get();
@@ -28,6 +44,8 @@ class ResultsService
             $finish = $entry->timings->filter(fn ($t) => $t->checkpoint?->kind === CheckpointKind::Finish)->sortByDesc('elapsed_ms')->first();
             return [
                 'id' => $entry->id,
+                'status' => $entry->status,
+                'result_status' => $entry->status !== 'registered' ? strtoupper($entry->status) : ($finish ? 'FINISHED' : 'IN PROGRESS'),
                 'bib_number' => $entry->bib_number,
                 'type' => $entry->type->value,
                 'name' => $entry->displayName(),
@@ -35,8 +53,8 @@ class ResultsService
                 'members' => $entry->members->map(fn ($member) => ['discipline' => $member->discipline->value, 'name' => $member->athlete->full_name])->values()->all(),
                 'splits' => $splits,
                 'total_ms' => $finish?->elapsed_ms,
-                'finished' => (bool) $finish,
+                'finished' => (bool) $finish && $entry->status === 'registered',
             ];
-        })->sortBy(fn ($row) => $row['total_ms'] ?? PHP_INT_MAX)->values()->all();
+        })->sortBy(fn ($row) => $row['finished'] ? ($row['total_ms'] ?? PHP_INT_MAX) : PHP_INT_MAX)->values()->all();
     }
 }

@@ -30,7 +30,8 @@ class CheckpointController extends Controller
     public function destroy(Race $race, Checkpoint $checkpoint): RedirectResponse
     {
         Gate::authorize('manage-race', $race); abort_unless($checkpoint->race_id === $race->id, 404);
-        abort_if($checkpoint->timings()->exists(), 422, 'A checkpoint with timings cannot be deleted. Disable it instead.');
+        if($checkpoint->kind===CheckpointKind::Start)throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>'The race start checkpoint cannot be deleted.']);
+        if($checkpoint->timings()->exists())throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>'A checkpoint with timings cannot be deleted. Disable it instead.']);
         $checkpoint->delete();
         return back()->with('success', 'Checkpoint deleted.');
     }

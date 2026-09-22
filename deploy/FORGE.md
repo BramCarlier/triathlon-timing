@@ -190,3 +190,9 @@ Use a URL-safe Reverb app key (letters, digits, underscores or hyphens). A rando
 A running Supervisor process is not sufficient proof of live updates. Verify that the public `/app/<REVERB_APP_KEY>` endpoint completes a WebSocket upgrade (HTTP 101), then use two tabs to confirm start, finish and timing events arrive without waiting for the periodic refresh. An invalid key containing `/` can produce HTTP 404 even when `/app/test` correctly upgrades.
 
 After changing Reverb credentials, rebuild Vite assets and restart Reverb. Existing browser tabs should reload to receive the new public key.
+
+## Operational health
+
+The admin **Health** page and `php8.4 artisan timing:health` check application dependencies without showing credentials. Scheduler and queue heartbeats should appear within two minutes after deployment; Reverb handshake checks run every five minutes. The Forge scheduler must run as the isolated site user, and the queue worker must consume the default database queue. Failed jobs are retained for diagnosis; do not purge them as a substitute for resolving the cause.
+
+On the current Forge account, built-in backups and server monitoring are Business-plan features. This deployment does not automatically upgrade the account or establish off-server backups. Configure an approved storage provider, retention policy and independent alert destination, then rehearse restoring to a separate database. Never test a restoration against the live race database.

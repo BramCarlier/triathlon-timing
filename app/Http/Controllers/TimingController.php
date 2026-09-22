@@ -39,7 +39,7 @@ class TimingController extends Controller
         $checkpoints = $race->checkpoints()->where('is_active', true)->where('kind', '!=', CheckpointKind::Start->value)->orderBy('sequence')->get();
         $recent = $checkpoint ? TimingRecord::where('checkpoint_id', $checkpoint->id)->where('operator_id', $request->user()->id)->where('status', TimingStatus::Recorded->value)->with('entry.members.athlete')->latest('recorded_at')->limit(10)->get() : [];
         $participants = $race->entries()->with(['members.athlete', 'timings' => fn ($q) => $q->where('status', TimingStatus::Recorded->value)->select('id', 'entry_id', 'checkpoint_id')])->get()->map(fn ($entry) => [
-            'id' => $entry->id,
+            'id' => $entry->id, 'status' => $entry->status,
             'bib_number' => $entry->bib_number,
             'type' => $entry->type->value,
             'name' => $entry->displayName(),
@@ -56,15 +56,15 @@ class TimingController extends Controller
         $entries = $race->entries()->with(['members.athlete', 'timings' => fn ($q) => $q->where('status', TimingStatus::Recorded->value)->select('id','entry_id','checkpoint_id','elapsed_ms')])
             ->when($term, fn ($q) => $q->where(function ($query) use ($term) { $query->where('bib_number', 'like', "%{$term}%")->orWhere('team_name', 'like', "%{$term}%")->orWhereHas('members.athlete', fn ($a) => $a->where('first_name', 'like', "%{$term}%")->orWhere('last_name', 'like', "%{$term}%")); }))
             ->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')->limit(30)->get();
-        return response()->json($entries->map(fn ($entry) => ['id' => $entry->id, 'bib_number' => $entry->bib_number, 'type' => $entry->type->value, 'name' => $entry->displayName(), 'members' => $entry->members->map(fn ($m) => ['discipline' => $m->discipline->value, 'name' => $m->athlete->full_name]), 'completed_checkpoint_ids' => $entry->timings->pluck('checkpoint_id')])->values());
+        return response()->json($entries->map(fn ($entry) => ['id' => $entry->id, 'status' => $entry->status, 'bib_number' => $entry->bib_number, 'type' => $entry->type->value, 'name' => $entry->displayName(), 'members' => $entry->members->map(fn ($m) => ['discipline' => $m->discipline->value, 'name' => $m->athlete->full_name]), 'completed_checkpoint_ids' => $entry->timings->pluck('checkpoint_id')])->values());
     }
 
     public function record(Request $request, Race $race, TimingService $service): JsonResponse
     {
         Gate::authorize('manage-race', $race);
-        $data = $request->validate(['entry_id' => ['required', Rule::exists('entries','id')->where('race_id', $race->id)], 'checkpoint_id' => ['required', Rule::exists('checkpoints','id')->where('race_id', $race->id)], 'client_uuid' => ['required','uuid'], 'observed_at' => ['nullable','date'], 'source' => ['required', Rule::in(['online','offline'])], 'override_warning' => ['nullable','boolean'], 'notes' => ['nullable','string','max:1000']]);
+        $data = $request->validate(['operator_id'=>['required_if:source,offline','integer',Rule::in([$request->user()->id])], 'entry_id' => ['required', Rule::exists('entries','id')->where('race_id', $race->id)], 'checkpoint_id' => ['required', Rule::exists('checkpoints','id')->where('race_id', $race->id)], 'client_uuid' => ['required','uuid'], 'observed_at' => ['nullable','date'], 'source' => ['required', Rule::in(['online','offline'])], 'override_warning' => ['nullable','boolean'], 'notes' => ['nullable','string','max:1000']]);
         $selectedId = (int) $request->session()->get("checkpoint.{$race->id}");
-        abort_unless($request->user()->isAdmin() || $selectedId === (int) $data['checkpoint_id'], 403, 'Your active checkpoint does not match this timing request.');
+        abort_unless($request->user()->isAdmin() || ($selectedId === (int) $data['checkpoint_id'] || $data['source'] === 'offline'), 403, 'Your active checkpoint does not match this timing request.');
         try {
             $timing = $service->record($race, Entry::findOrFail($data['entry_id']), Checkpoint::findOrFail($data['checkpoint_id']), $request->user(), $data);
             $timing->load(['entry.members.athlete', 'checkpoint']);

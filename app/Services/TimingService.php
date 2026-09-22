@@ -31,13 +31,14 @@ class TimingService
 
 
         $timing = DB::transaction(function () use ($race, $entry, $checkpoint, $operator, $data, $uuid, $source) {
-            Entry::query()->lockForUpdate()->findOrFail($entry->id);
+            $lockedEntry = Entry::query()->lockForUpdate()->findOrFail($entry->id);
             if ($existing = TimingRecord::where('client_uuid', $uuid)->first()) {
                 if ($existing->race_id !== $race->id || $existing->entry_id !== $entry->id || $existing->checkpoint_id !== $checkpoint->id || $existing->operator_id !== $operator->id) {
                     throw new TimingConflictException('This timing request identifier is already in use.');
                 }
                 return $existing;
             }
+            if ($lockedEntry->status !== 'registered') throw new TimingConflictException('This participant is marked '.strtoupper($lockedEntry->status).'. Review their status before recording.');
             $active = TimingRecord::query()
                 ->where('entry_id', $entry->id)
                 ->where('checkpoint_id', $checkpoint->id)

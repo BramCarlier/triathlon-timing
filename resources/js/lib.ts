@@ -1,3 +1,4 @@
+import { csrfHeaders } from './csrf';
 export function csrfToken(): string {
   return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 }
@@ -21,7 +22,7 @@ export async function jsonRequest<T>(url: string, options: RequestInit = {}): Pr
   const response = await fetch(url, {
     credentials: 'same-origin',
     ...options,
-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken(), ...(options.headers ?? {}) },
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfHeaders(document.cookie,csrfToken()), ...(options.headers ?? {}) },
   });
   let data: T;
   try { data = await response.json() as T; } catch { data = {} as T; }

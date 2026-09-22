@@ -16,9 +16,22 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        return Inertia::render('Users/Index', ['users' => User::with(['athlete:id,first_name,last_name', 'races:id,name'])->orderBy('name')->get(), 'athletes' => Athlete::doesntHave('user')->orderBy('last_name')->limit(500)->get(['id','first_name','last_name','email']), 'races' => Race::latest('event_date')->get(['id','name','event_date'])]);
+        $q=mb_substr(trim((string)$request->query('q','')),0,100);
+        $users=User::with(['athlete:id,first_name,last_name','races:id,name'])->when($q!=='',fn($query)=>$query->where(fn($match)=>$match->where('name','like',"%$q%")->orWhere('email','like',"%$q%")))->orderBy('name')->orderBy('id')->paginate(25)->withQueryString();
+        return Inertia::render('Users/Index', ['users'=>$users,'filters'=>['q'=>$q], 'races'=>Race::latest('event_date')->get(['id','name','event_date'])]);
+    }
+
+    public function athletes(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data=$request->validate(['q'=>['nullable','string','max:100'],'page'=>['nullable','integer','min:1'],'account_id'=>['nullable','integer','exists:users,id']]);
+        $linked=isset($data['account_id'])?User::findOrFail($data['account_id'])->athlete_id:null;
+        $q=trim($data['q']??'');
+        $athletes=Athlete::where(fn($query)=>$query->doesntHave('user')->when($linked,fn($query)=>$query->orWhere('id',$linked)))
+            ->when($q!=='',fn($query)=>$query->where(fn($match)=>$match->where('first_name','like',"%$q%")->orWhere('last_name','like',"%$q%")->orWhere('email','like',"%$q%")))
+            ->orderBy('last_name')->orderBy('id')->paginate(25,['id','first_name','last_name','email']);
+        return response()->json($athletes);
     }
 
     public function store(Request $request): RedirectResponse
@@ -35,7 +48,7 @@ class UserController extends Controller
     {
         return Inertia::render('Users/Edit', [
             'account' => $user->load('races:id,name'),
-            'athletes' => Athlete::where(fn ($query) => $query->doesntHave('user')->orWhere('id', $user->athlete_id))->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'email']),
+            'linkedAthlete' => $user->athlete?->only(['id','first_name','last_name','email']),
             'races' => Race::latest('event_date')->get(['id', 'name', 'event_date']),
         ]);
     }

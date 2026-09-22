@@ -2,13 +2,14 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { watch } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import AthletePicker from '../../Components/AthletePicker.vue';
 import RolePermissions from '../../Components/RolePermissions.vue';
 import type { UserRole } from '../../types';
 
 interface Athlete { id: number; first_name: string; last_name: string; email?: string }
 interface Race { id: number; name: string; event_date: string }
 interface Account { id: number; name: string; email: string; role: UserRole; is_active: boolean; athlete_id: number | null; races: Race[] }
-const props = defineProps<{ account: Account; athletes: Athlete[]; races: Race[] }>();
+const props = defineProps<{ account: Account; linkedAthlete: Athlete|null; races: Race[] }>();
 const form = useForm({
   name: props.account.name,
   email: props.account.email,
@@ -49,7 +50,7 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
             <p v-if="!races.length" class="muted">No races available.</p>
           </div>
         </div>
-        <div v-if="form.role==='athlete'"><label for="user-athlete" class="label">Linked athlete</label><select id="user-athlete" v-model="form.athlete_id" class="field" required><option :value="null">Select athlete…</option><option v-for="athlete in athletes" :key="athlete.id" :value="athlete.id">{{ athlete.last_name }}, {{ athlete.first_name }}{{ athlete.email ? ` · ${athlete.email}` : '' }}</option></select></div>
+        <AthletePicker v-if="form.role==='athlete'" v-model="form.athlete_id" :account-id="account.id" :initial="linkedAthlete"/>
       </section>
       <div class="lg:col-span-2">
         <ul v-if="Object.keys(form.errors).length" role="alert" class="mb-4 list-disc rounded-xl border border-red-500/30 bg-red-500/10 p-4 pl-8 text-red-200"><li v-for="(error, field) in form.errors" :key="field">{{ error }}</li></ul>

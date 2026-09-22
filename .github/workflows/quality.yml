@@ -28,3 +28,75 @@ jobs:
       - run: yarn test:frontend
       - run: yarn typecheck
       - run: yarn build
+
+  browser:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /tmp/triathlon-browser.sqlite
+      SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: 'false'
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      BROADCAST_CONNECTION: 'null'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, fileinfo, pdo_sqlite, zip, gd, intl
+          coverage: none
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: corepack enable
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: yarn install --immutable
+      - run: yarn playwright install --with-deps chromium
+      - run: cp .env.example .env && php artisan key:generate && touch /tmp/triathlon-browser.sqlite && php artisan migrate --force && php tests/Browser/seed.php
+      - run: yarn build
+      - run: yarn playwright test
+      - name: Browser failure context
+        if: failure()
+        run: find test-results -name error-context.md -exec cat {} \;
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-traces
+          path: test-results/
+          retention-days: 7
+  mysql-concurrency:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: testing-only
+          MYSQL_DATABASE: triathlon_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptesting-only"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: triathlon_test
+      DB_USERNAME: root
+      DB_PASSWORD: testing-only
+      BROADCAST_CONNECTION: 'null'
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, fileinfo, pdo_mysql, zip, gd, intl
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: cp .env.example .env && php artisan key:generate
+      - run: vendor/bin/phpunit -c phpunit-mysql.xml
