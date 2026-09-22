@@ -116,7 +116,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
           </div>
           <div v-if="organizers.length">
             <label class="label">Organizers</label>
-            <div class="grid gap-2 rounded-xl border border-slate-800 p-3">
+            <div class="grid gap-2 rounded-xl border border-outline p-3">
               <label v-for="organizer in organizers" :key="organizer.id" class="flex gap-2">
                 <input v-model="raceForm.organizer_ids" type="checkbox" :value="organizer.id">
                 <span>{{ organizer.name }} <span class="muted">{{ organizer.email }}</span></span>
@@ -124,7 +124,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             </div>
           </div>
         </div>
-        <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-red-300">{{ Object.values(raceForm.errors)[0] }}</p>
+        <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-error">{{ Object.values(raceForm.errors)[0] }}</p>
         <button class="btn-primary mt-5" :disabled="raceForm.processing">Save settings</button>
       </form>
 
@@ -137,18 +137,18 @@ const removeCheckpoint = (cp: Checkpoint) => {
           <span class="badge">{{ race.checkpoints.length }} total</span>
         </div>
 
-        <p v-if="checkpointError" role="alert" class="mb-3 text-red-300">{{ checkpointError }}</p><div class="space-y-2">
+        <p v-if="checkpointError" role="alert" class="mb-3 text-error">{{ checkpointError }}</p><div class="space-y-2">
           <div
             v-for="cp in race.checkpoints"
             :key="cp.id"
-            class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+            class="rounded-xl border border-outline bg-canvas/60 p-3"
           >
             <div class="flex items-start justify-between gap-3">
               <div>
                 <div class="font-semibold">{{ cp.sequence }} · {{ cp.name }}</div>
                 <div class="text-sm muted">
                   {{ cp.discipline ?? 'Race-wide' }} · {{ kindLabel(cp.kind) }}
-                  <div class="mt-1 text-cyan-200">{{ checkpointDistanceText(race, cp) }}</div>
+                  <div class="mt-1 text-accent">{{ checkpointDistanceText(race, cp) }}</div>
                 </div>
               </div>
               <span class="badge">{{ cp.is_active ? 'active' : 'off' }}</span>
@@ -169,12 +169,12 @@ const removeCheckpoint = (cp: Checkpoint) => {
           </div>
         </div>
 
-        <form class="mt-5 border-t border-slate-800 pt-5" @submit.prevent="addCheckpoint">
+        <form class="mt-5 border-t border-outline pt-5" @submit.prevent="addCheckpoint">
           <h3 class="mb-2 font-semibold">Add checkpoint</h3>
           <p class="mb-4 text-sm muted">Add a place where an organizer records each participant passing. For example, “Run 4 km” is an intermediate timing point between T2 (Run Start) and Finish.</p>
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2"><label for="checkpoint-name" class="label">Checkpoint name</label><input id="checkpoint-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" maxlength="255" required><p class="mt-1 text-xs muted">Shown to organizers at the timing station and in results.</p></div>
-            <div><label for="checkpoint-sequence" class="label">Order in the race</label><input id="checkpoint-sequence" v-model="checkpoint.sequence" type="number" min="1" max="65535" step="1" class="field" required aria-describedby="checkpoint-order-help"><p id="checkpoint-order-help" class="mt-1 text-xs muted">Smaller numbers come first. Use 45 between T2 (40) and Finish (50) in a new race. Each number must be unique.</p><p class="mt-2 text-sm text-cyan-200" aria-live="polite">{{ checkpointPosition }}</p></div>
+            <div><label for="checkpoint-sequence" class="label">Order in the race</label><input id="checkpoint-sequence" v-model="checkpoint.sequence" type="number" min="1" max="65535" step="1" class="field" required aria-describedby="checkpoint-order-help"><p id="checkpoint-order-help" class="mt-1 text-xs muted">Smaller numbers come first. Use 45 between T2 (40) and Finish (50) in a new race. Each number must be unique.</p><p class="mt-2 text-sm text-accent" aria-live="polite">{{ checkpointPosition }}</p></div>
             <div><label for="checkpoint-discipline" class="label">Sport / leg</label><select id="checkpoint-discipline" v-model="checkpoint.discipline" class="field"><option value="">Race-wide (no specific sport)</option><option value="swim">Swim</option><option value="run">Run</option><option value="bike">Bike</option></select><p class="mt-1 text-xs muted">For a transition exit, choose the sport starting there. Relay timings are linked to that sport’s athlete.</p></div>
             <div><label for="checkpoint-kind" class="label">What happens here?</label><select id="checkpoint-kind" v-model="checkpoint.kind" class="field"><option value="split">Intermediate timing point</option><option value="transition">Leg boundary / transition</option><option value="finish">Overall race finish</option></select><p class="mt-1 text-xs muted">Intermediate: partway through a leg. Boundary: a leg ends or the next begins. Overall finish: completes the participant’s result; use only at the end of the whole race.</p></div>
             <div><label for="checkpoint-distance" class="label">Distance into this leg (km, optional)</label><input id="checkpoint-distance" v-model="checkpoint.distance_km" type="number" step="0.001" min="0" class="field" placeholder="For example: 4"><p class="mt-1 text-xs muted">Use 0 at a leg’s start, or leave blank if unknown. The total race distance shown at this checkpoint adds the preceding sports’ configured distances.</p></div>
@@ -184,7 +184,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             <div><label class="flex gap-2"><input v-model="checkpoint.is_active" type="checkbox"> Available at timing stations</label><p class="mt-1 text-xs muted">Turn off to keep this checkpoint in the setup without allowing new taps there.</p></div>
           </div>
           <details class="mt-4"><summary class="cursor-pointer text-sm muted">Advanced: checkpoint code</summary><label for="checkpoint-code" class="label mt-3">Unique code (optional)</label><input id="checkpoint-code" v-model="checkpoint.code" class="field" placeholder="Generated automatically from the name" maxlength="48"><p class="mt-1 text-xs muted">A stable identifier for integrations. Normally leave this blank. If supplied, it must be unique within this race.</p></details>
-          <p v-if="Object.keys(checkpoint.errors).length" role="alert" class="mt-3 text-red-300">{{ Object.values(checkpoint.errors).join(' · ') }}</p><button class="btn-secondary mt-4" :disabled="checkpoint.processing">Add checkpoint</button>
+          <p v-if="Object.keys(checkpoint.errors).length" role="alert" class="mt-3 text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p><button class="btn-secondary mt-4" :disabled="checkpoint.processing">Add checkpoint</button>
         </form>
       </div>
     </div>
@@ -195,6 +195,6 @@ const removeCheckpoint = (cp: Checkpoint) => {
     </section>
     <ConfirmDialog v-if="deleting" title="Delete race?" :message="`Move ${race.name} to Deleted races? It will no longer be available at timing stations until restored.`"
       confirm-label="Move to Deleted races" :busy="deleteForm.processing" @cancel="deleting=false" @confirm="deleteRace" />
-<ConfirmDialog v-if="removingCheckpoint" title="Delete checkpoint?" :message="`Delete ${removingCheckpoint.name}? Checkpoints with timing history cannot be deleted.`" confirm-label="Delete checkpoint" @cancel="removingCheckpoint=null" @confirm="confirmCheckpointRemoval"><p v-if="checkpointError" class="mt-2 text-red-300">{{ checkpointError }}</p></ConfirmDialog>
+<ConfirmDialog v-if="removingCheckpoint" title="Delete checkpoint?" :message="`Delete ${removingCheckpoint.name}? Checkpoints with timing history cannot be deleted.`" confirm-label="Delete checkpoint" @cancel="removingCheckpoint=null" @confirm="confirmCheckpointRemoval"><p v-if="checkpointError" class="mt-2 text-error">{{ checkpointError }}</p></ConfirmDialog>
   </AppLayout>
 </template>
