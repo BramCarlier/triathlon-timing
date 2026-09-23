@@ -80,3 +80,30 @@ input[type="checkbox"] { accent-color: var(--app-accent); }
 .badge[data-status="finished"], .badge[data-status="archived"] { color: var(--app-accent); }
 summary { min-height: 44px; align-content: center; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+
+/* Content may shrink inside grids without hiding names or form controls. */
+.app-shell, .auth-screen, dialog { overflow-wrap: anywhere; }
+.app-shell :where(.grid, .flex) > *, .auth-screen form, fieldset { min-width: 0; }
+.field { min-width: 0; max-width: 100%; font-size: 1rem; }
+input[type="checkbox"] { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+button, a, input, select, textarea { scroll-margin-block: 6rem 2rem; }
+.btn-primary, .btn-secondary, .btn-danger { max-width: 100%; text-align: center; }
+.app-container { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
+.app-main { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+.app-header { padding-top: env(safe-area-inset-top); }
+.station-status { top: var(--app-header-height, 70px); }
+.race-clock { white-space: nowrap; font-size: clamp(1.4rem, 5vw, 3.75rem); }
+.auth-screen { min-height: 100vh; min-height: 100dvh; padding-top: max(5rem, env(safe-area-inset-top)); padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+.auth-theme { top: max(1rem, env(safe-area-inset-top)); right: max(1rem, env(safe-area-inset-right)); }
+.confirmation-dialog { width: calc(100% - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; }
+.scroll-region { max-width: 100%; overscroll-behavior-x: contain; }
+@media (min-width: 640px) { .app-container { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); } }
+@media (max-height: 500px) {
+  .app-header { position: static; }
+  .station-status { top: 0; }
+  .auth-theme { position: absolute; }
+  .station-list { max-height: none; }
+}
+@media (pointer: coarse) {
+  button, .app-header a { min-height: 44px; }
+}

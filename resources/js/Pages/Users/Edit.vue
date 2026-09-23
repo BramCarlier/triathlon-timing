@@ -49,7 +49,7 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
           <h3 class="label">Assigned races</h3>
           <p class="mb-3 text-sm muted">Select the races this official can manage. Access changes when you save.</p>
           <div class="max-h-72 space-y-3 overflow-auto rounded-xl border border-outline p-3">
-            <label v-for="race in races" :key="race.id" class="flex gap-3 text-sm"><input v-model="form.race_ids" type="checkbox" :value="race.id"><span>{{ race.name }} <span class="muted">· {{ formatDate(race.event_date) }}</span></span></label>
+            <label v-for="race in races" :key="race.id" class="flex flex-wrap gap-3 text-sm"><input v-model="form.race_ids" type="checkbox" :value="race.id"><span>{{ race.name }} <span class="muted">· {{ formatDate(race.event_date) }}</span></span></label>
             <p v-if="!races.length" class="muted">No races available.</p>
           </div>
         </div>
@@ -57,7 +57,7 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
       </section>
       <div class="lg:col-span-2">
         <ul v-if="Object.keys(form.errors).length" role="alert" class="mb-4 list-disc rounded-xl border border-red-500/30 bg-red-500/10 p-4 pl-8 text-error"><li v-for="(error, field) in form.errors" :key="field">{{ error }}</li></ul>
-        <div class="flex gap-3"><button class="btn-primary" :disabled="form.processing">Save user</button><Link href="/users" class="btn-secondary">Cancel</Link></div>
+        <div class="flex flex-wrap gap-3"><button class="btn-primary" :disabled="form.processing">Save user</button><Link href="/users" class="btn-secondary">Cancel</Link></div>
       </div>
     </form>
   </AppLayout>

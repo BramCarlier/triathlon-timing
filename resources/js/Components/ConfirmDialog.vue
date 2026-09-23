@@ -7,7 +7,7 @@ onMounted(() => dialog.value?.showModal());
 </script>
 <template>
   <dialog ref="dialog" aria-labelledby="confirmation-title" aria-describedby="confirmation-message"
-    class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-outline-strong bg-surface p-6 text-foreground shadow-2xl backdrop:bg-black/70"
+    class="confirmation-dialog m-auto max-w-lg rounded-2xl border border-outline-strong bg-surface p-4 sm:p-6 text-foreground shadow-2xl backdrop:bg-black/70"
     @cancel.prevent="!busy && emit('cancel')">
     <h2 id="confirmation-title" class="text-xl font-bold">{{ title }}</h2>
     <p id="confirmation-message" class="mt-3 text-secondary">{{ message }}</p>

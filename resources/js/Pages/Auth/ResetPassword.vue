@@ -7,9 +7,9 @@ const form = useForm({ token: props.token, email: props.email, password: '', pas
 const submit = () => form.post('/reset-password');
 </script>
 
-<template><div class="fixed right-4 top-4 z-30"><ThemeToggle /></div>
+<template><div class="auth-theme fixed right-4 top-4 z-30"><ThemeToggle /></div>
   <Head title="Reset password" />
-  <main class="mx-auto flex min-h-screen max-w-md items-center px-4 py-20">
+  <main class="auth-screen mx-auto flex min-h-screen max-w-md items-center px-4 py-20">
     <form class="panel-pad w-full" @submit.prevent="submit">
       <div class="mb-6">
         <div class="text-xs font-bold uppercase tracking-[.2em] text-accent">Triathlon Timing</div>

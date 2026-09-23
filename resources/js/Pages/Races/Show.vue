@@ -122,7 +122,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             </select>
             <p class="mt-1 text-xs muted">Running/finished status is controlled by the shared race clock.</p>
           </div>
-          <fieldset id="course-distances"><legend class="label">Course distances (km)</legend><p class="mb-3 text-xs muted">Distances can be changed before the race starts. Standard leg-end checkpoints update with them.</p><div class="grid grid-cols-3 gap-3"><label class="label">Swim<input v-model="raceForm.swim_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Bike<input v-model="raceForm.bike_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Run<input v-model="raceForm.run_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label></div></fieldset><div id="organizers" v-if="organizers.length">
+          <fieldset id="course-distances"><legend class="label">Course distances (km)</legend><p class="mb-3 text-xs muted">Distances can be changed before the race starts. Standard leg-end checkpoints update with them.</p><div class="grid grid-cols-1 gap-3 sm:grid-cols-3"><label class="label">Swim<input v-model="raceForm.swim_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Bike<input v-model="raceForm.bike_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Run<input v-model="raceForm.run_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label></div></fieldset><div id="organizers" v-if="organizers.length">
             <label class="label">Officials</label>
             <div class="grid gap-2 rounded-xl border border-outline p-3">
               <label v-for="organizer in organizers" :key="organizer.id" class="flex gap-2">
@@ -162,13 +162,13 @@ const removeCheckpoint = (cp: Checkpoint) => {
               <span class="badge">{{ cp.is_active ? 'active' : 'off' }}</span>
             </div>
             <div v-if="can('races.setup')" class="mt-3 flex flex-wrap gap-2">
-              <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="toggleCheckpoint(cp)">
+              <button type="button" class="btn-secondary !px-3 !py-1.5 min-h-11 text-xs" @click="toggleCheckpoint(cp)">
                 {{ cp.is_active ? 'Disable' : 'Enable' }}
               </button>
               <button
                 v-if="cp.kind !== 'start'"
                 type="button"
-                class="btn-danger !px-3 !py-1.5 text-xs"
+                class="btn-danger min-h-11 !px-3 text-xs"
                 @click="removeCheckpoint(cp)"
               >
                 Delete
