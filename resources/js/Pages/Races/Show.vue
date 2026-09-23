@@ -445,7 +445,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='existing'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='existing'">Existing Official</button>
                 <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='new'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='new'">New Official</button>
               </div>
-              <label v-if="officialForm.mode==='existing'" class="label mt-4">Official<select v-model="officialForm.user_id" class="field" required><option :value="null">Choose Official</option><option v-for="official in officials" :key="official.id" :value="official.id">{{ official.name }} · {{ official.email }}</option></select></label>
+              <div v-if="officialForm.mode==='existing'" class="mt-4"><label class="label" for="official-user">Official</label><select id="official-user" v-model="officialForm.user_id" class="field" required><option :value="null">Choose Official</option><option v-for="official in officials" :key="official.id" :value="official.id">{{ official.name }} · {{ official.email }}</option></select></div>
               <div v-else class="mt-4 space-y-3">
                 <label class="label">Name<input v-model="officialForm.name" class="field" required></label>
                 <label class="label">Email<input v-model="officialForm.email" type="email" class="field" required></label>
