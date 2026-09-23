@@ -31,8 +31,8 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
 <template>
   <Head :title="`Edit ${account.name}`" />
   <AppLayout title="Edit user & access">
-    <Link href="/users" class="btn-secondary mb-5">Back to users</Link>
-    <section v-if="account.force_password_change" class="panel-pad mb-5"><h2 class="font-bold">Password setup pending</h2><p class="mt-2 muted">{{ account.invitation_sent_at?'An invitation was accepted by the mail server. You can send a fresh link if needed.':'This user must choose a password before using the app.' }}</p><button type="button" class="btn-secondary mt-3" :disabled="!mailConfigured || !account.is_active" @click="router.post(`/users/${account.id}/invitation`)">Resend invitation</button><p v-if="!mailConfigured" class="mt-2 text-sm text-warning">Connect email sending to send invitations.</p></section><form class="grid gap-5 lg:grid-cols-2" @submit.prevent="save">
+    <Link href="/users" class="btn-secondary mb-5"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Back to users</Link>
+    <section v-if="account.force_password_change" class="panel-pad mb-5"><h2 class="font-bold">Password setup pending</h2><p class="mt-2 muted">{{ account.invitation_sent_at?'An invitation was accepted by the mail server. You can send a fresh link if needed.':'This user must choose a password before using the app.' }}</p><button type="button" class="btn-secondary mt-3" :disabled="!mailConfigured || !account.is_active" @click="router.post(`/users/${account.id}/invitation`)"><i class="fa-solid fa-envelope" aria-hidden="true"></i>Resend invitation</button><p v-if="!mailConfigured" class="mt-2 text-sm text-warning">Connect email sending to send invitations.</p></section><form class="grid gap-5 lg:grid-cols-2" @submit.prevent="save">
       <section class="panel-pad space-y-4">
         <h2 class="text-lg font-bold">Account details</h2>
         <div><label for="user-name" class="label">Name</label><input id="user-name" v-model="form.name" class="field" required maxlength="255"></div>
@@ -57,7 +57,7 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
       </section>
       <div class="lg:col-span-2">
         <ul v-if="Object.keys(form.errors).length" role="alert" class="mb-4 list-disc rounded-xl border border-red-500/30 bg-red-500/10 p-4 pl-8 text-error"><li v-for="(error, field) in form.errors" :key="field">{{ error }}</li></ul>
-        <div class="flex flex-wrap gap-3"><button class="btn-primary" :disabled="form.processing">Save user</button><Link href="/users" class="btn-secondary">Cancel</Link></div>
+        <div class="flex flex-wrap gap-3"><button class="btn-primary" :disabled="form.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save user</button><Link href="/users" class="btn-secondary"><i class="fa-solid fa-xmark" aria-hidden="true"></i>Cancel</Link></div>
       </div>
     </form>
   </AppLayout>
