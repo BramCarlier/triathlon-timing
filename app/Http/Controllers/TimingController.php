@@ -10,6 +10,7 @@ use App\Models\Entry;
 use App\Models\Race;
 use App\Models\TimingRecord;
 use App\Services\TimingService;
+use App\Services\RaceClockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,17 +60,41 @@ class TimingController extends Controller
         return response()->json($entries->map(fn ($entry) => ['id' => $entry->id, 'status' => $entry->status, 'bib_number' => $entry->bib_number, 'type' => $entry->type->value, 'name' => $entry->displayName(), 'members' => $entry->members->map(fn ($m) => ['discipline' => $m->discipline->value, 'name' => $m->athlete->full_name]), 'completed_checkpoint_ids' => $entry->timings->pluck('checkpoint_id')])->values());
     }
 
-    public function record(Request $request, Race $race, TimingService $service): JsonResponse
+    public function record(Request $request, Race $race, TimingService $service, RaceClockService $clock): JsonResponse
     {
         Gate::authorize('manage-race', $race);
-        $data = $request->validate(['operator_id'=>['required_if:source,offline','integer',Rule::in([$request->user()->id])], 'entry_id' => ['required', Rule::exists('entries','id')->where('race_id', $race->id)], 'checkpoint_id' => ['required', Rule::exists('checkpoints','id')->where('race_id', $race->id)], 'client_uuid' => ['required','uuid'], 'observed_at' => ['nullable','date'], 'source' => ['required', Rule::in(['online','offline'])], 'override_warning' => ['nullable','boolean'], 'notes' => ['nullable','string','max:1000']]);
+        $data = $request->validate(['operator_id'=>['required_if:source,offline','integer',Rule::in([$request->user()->id])], 'entry_id' => ['required', Rule::exists('entries','id')->where('race_id', $race->id)], 'checkpoint_id' => ['required', Rule::exists('checkpoints','id')->where('race_id', $race->id)], 'client_uuid' => ['required','uuid'], 'observed_at' => ['nullable','date'], 'source' => ['required', Rule::in(['online','offline'])], 'workspace' => ['nullable','boolean'], 'override_warning' => ['nullable','boolean'], 'notes' => ['nullable','string','max:1000']]);
         $selectedId = (int) $request->session()->get("checkpoint.{$race->id}");
-        abort_unless($request->user()->isAdmin() || ($selectedId === (int) $data['checkpoint_id'] || $data['source'] === 'offline'), 403, 'Your active checkpoint does not match this timing request.');
+        abort_unless($request->user()->isAdmin() || !empty($data['workspace']) || ($selectedId === (int) $data['checkpoint_id'] || $data['source'] === 'offline'), 403, 'Your active checkpoint does not match this timing request.');
         try {
             $timing = $service->record($race, Entry::findOrFail($data['entry_id']), Checkpoint::findOrFail($data['checkpoint_id']), $request->user(), $data);
             $timing->load(['entry.members.athlete', 'checkpoint']);
             $label = $timing->entry->displayName().($timing->entry->bib_number !== null ? " (#{$timing->entry->bib_number})" : '');
-            return response()->json(['timing' => $timing, 'message' => "{$label} recorded at {$timing->checkpoint->name}."]);
+
+            $autoFinished = false;
+            if (
+                $timing->checkpoint->kind === CheckpointKind::Finish
+                && (bool) data_get($race->settings, 'auto_finish', true)
+                && !$race->finished_at
+            ) {
+                $hasUnfinishedParticipants = $race->entries()
+                    ->where('status', 'registered')
+                    ->whereDoesntHave('timings', fn ($query) => $query
+                        ->where('status', TimingStatus::Recorded->value)
+                        ->whereHas('checkpoint', fn ($checkpointQuery) => $checkpointQuery->where('kind', CheckpointKind::Finish->value)))
+                    ->exists();
+
+                if (!$hasUnfinishedParticipants) {
+                    $clock->finish($race->fresh());
+                    $autoFinished = true;
+                }
+            }
+
+            return response()->json([
+                'timing' => $timing,
+                'auto_finished' => $autoFinished,
+                'message' => "{$label} recorded at {$timing->checkpoint->name}.".($autoFinished ? ' All active participants are finished, so the race was finished automatically.' : ''),
+            ]);
         } catch (TimingWarningException $e) {
             return response()->json(['warning' => true, 'message' => $e->getMessage(), ...$e->context], 409);
         } catch (TimingConflictException $e) {
