@@ -86,6 +86,7 @@ summary { min-height: 44px; align-content: center; cursor: pointer; }
 .app-shell :where(.grid, .flex) > *, .auth-screen form, fieldset { min-width: 0; }
 .field { min-width: 0; max-width: 100%; font-size: 1rem; }
 input[type="checkbox"] { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+label:has(> input[type="checkbox"]) { min-height: 44px; }
 button, a, input, select, textarea { scroll-margin-block: 6rem 2rem; }
 .btn-primary, .btn-secondary, .btn-danger { max-width: 100%; text-align: center; }
 .app-container { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }

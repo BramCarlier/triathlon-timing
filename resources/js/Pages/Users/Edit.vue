@@ -49,7 +49,7 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
           <h3 class="label">Assigned races</h3>
           <p class="mb-3 text-sm muted">Select the races this official can manage. Access changes when you save.</p>
           <div class="max-h-72 space-y-3 overflow-auto rounded-xl border border-outline p-3">
-            <label v-for="race in races" :key="race.id" class="flex flex-wrap gap-3 text-sm"><input v-model="form.race_ids" type="checkbox" :value="race.id"><span>{{ race.name }} <span class="muted">· {{ formatDate(race.event_date) }}</span></span></label>
+            <label v-for="race in races" :key="race.id" class="flex gap-3 text-sm"><input v-model="form.race_ids" type="checkbox" :value="race.id"><span>{{ race.name }} <span class="muted">· {{ formatDate(race.event_date) }}</span></span></label>
             <p v-if="!races.length" class="muted">No races available.</p>
           </div>
         </div>

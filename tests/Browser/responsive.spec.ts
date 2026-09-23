@@ -14,6 +14,10 @@ async function layout(page:Page,label:string) {
  expect(dimensions.scroll,`${label}: page must not scroll horizontally`).toBeLessThanOrEqual(dimensions.width+1);
  const offenders=await page.locator('input:not([type=checkbox]):not([type=hidden]),select,textarea').evaluateAll(elements=>elements.filter(el=>el.getClientRects().length && el.getBoundingClientRect().width>0).filter(el=>{const r=el.getBoundingClientRect();return r.left < -1 || r.right > innerWidth+1;}).map(el=>el.outerHTML.slice(0,180)));
  expect(offenders,`${label}: form controls fit`).toEqual([]);
+ if(await page.evaluate(()=>matchMedia('(pointer: coarse)').matches)) {
+  const smallButtons=await page.getByRole('button').evaluateAll(elements=>elements.filter(el=>el.getClientRects().length && el.getBoundingClientRect().height<43).map(el=>el.textContent));
+  expect(smallButtons,`${label}: touch buttons have usable height`).toEqual([]);
+ }
 }
 async function login(page:Page,email:string) {
  await page.goto('/login');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill('browser-test-password-123');await page.getByRole('button',{name:'Log in',exact:true}).click();await expect(page).not.toHaveURL(/\/login$/);
@@ -40,6 +44,7 @@ test('every reachable page fits portrait and landscape with long names, dialogs 
   await page.emulateMedia({colorScheme:size.width%2===0?'dark':'light'});
   for(const path of paths) {
    await page.goto(path);await expect(page.locator('h1')).toBeVisible();await layout(page,`${size.name} ${path}`);
+   if([320,844,1440].includes(size.width)&&['/races/9001/participants','/races/9001/control','/admin/roles'].includes(path))await page.screenshot({path:info.outputPath(`responsive-${size.name}-${path.split('/').pop()}.png`),fullPage:true});
   }
   await menu(page);await expect(page.getByRole('link',{name:'Roles & permissions',exact:true})).toBeVisible();await layout(page,`${size.name} open menu`);
   await page.getByRole('link',{name:'Roles & permissions',exact:true}).click();
@@ -55,7 +60,7 @@ test('every reachable page fits portrait and landscape with long names, dialogs 
   await page.getByLabel('Find participant').fill('TheLongestRelay');await expect(page.getByRole('button',{name:/TheLongestRelay.*TAP/})).toBeVisible();
   await page.screenshot({path:info.outputPath(`responsive-${size.name}-station.png`),fullPage:true});
   await page.goto('/races/9001/results');await page.getByLabel('Timing precision').selectOption('3');
-  await page.getByRole('button',{name:'View splits',exact:true}).first().click();await expect(page.getByText('split 00:16:40.234',{exact:true}).first()).toBeVisible();await layout(page,`${size.name} expanded results`);
+  await page.getByRole('button',{name:'View splits',exact:true}).first().click();await expect(page.getByText('split 00:16:40.234',{exact:true}).filter({visible:true})).toBeVisible();await layout(page,`${size.name} expanded results`);
   await page.screenshot({path:info.outputPath(`responsive-${size.name}-results.png`),fullPage:true});
   await page.getByRole('button',{name:'Large-screen display'}).click();await layout(page,`${size.name} display results`);await page.getByRole('button',{name:'Exit display mode'}).click();
   await page.goto('/users/9001/edit');await page.getByLabel('Role',{exact:true}).selectOption('athlete');await expect(page.getByLabel('Link athlete')).toBeVisible();await layout(page,`${size.name} athlete picker`);
