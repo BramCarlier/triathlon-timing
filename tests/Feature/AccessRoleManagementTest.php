@@ -50,12 +50,12 @@ class AccessRoleManagementTest extends TestCase
         $this->assertSame($role->id,$user->access_role_id);
         $this->assertSame([],$user->effectivePermissions());
         $this->put('/users/'.$user->id,['name'=>$user->name,'email'=>$user->email,'role'=>'organizer','is_active'=>true,'access_role_id'=>null])->assertSessionHasNoErrors();
-        $this->assertTrue($user->fresh()->hasPermission('races.create'));
+        $this->assertTrue($user->fresh()->hasPermission('timings.record'));
         $this->post('/admin/roles',['name'=>'Bad role','permissions'=>['users.manage']])->assertSessionHasErrors('permissions.0');
         $this->post('/admin/roles',['name'=>'Admin','permissions'=>[]])->assertSessionHasErrors('name');
-        $this->post('/admin/roles',['name'=>'Incomplete creator','permissions'=>['races.create']])->assertSessionHasErrors('permissions');
+        $this->post('/admin/roles',['name'=>'Old setup role','permissions'=>['races.create']])->assertSessionHasErrors('permissions.0');
         $this->put('/admin/roles/'.AccessRole::where('is_default',true)->value('id'),['name'=>'Official','permissions'=>[]])->assertSessionHasNoErrors();
-        $this->assertFalse($user->fresh()->hasPermission('races.create'));
+        $this->assertFalse($user->fresh()->hasPermission('timings.record'));
         $this->assertTrue($admin->hasPermission('races.create'));
     }
 }
