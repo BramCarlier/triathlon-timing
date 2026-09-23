@@ -32,6 +32,7 @@ class CheckpointController extends Controller
     public function update(Request $request, Race $race, Checkpoint $checkpoint): RedirectResponse
     {
         Gate::authorize('manage-race', $race); abort_unless($checkpoint->race_id === $race->id, 404);
+        abort_unless(request()->user()->isAdmin(), 403);
         $this->ensureSetupUnlocked($race);
         $checkpoint->update($this->validated($request, $race, $checkpoint));
         return back()->with('success', 'Checkpoint updated.');
