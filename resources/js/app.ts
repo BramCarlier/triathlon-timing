@@ -1,4 +1,5 @@
 import '../css/app.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import { createApp, h } from 'vue';
 import type { DefineComponent } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';

@@ -89,7 +89,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
 <template>
   <Head :title="race.name" />
   <AppLayout :title="race.name">
-    <RaceChecklist v-if="can('races.setup') && can('participants.manage') && can('timings.record')" :race="race"/><section v-if="race.started_at" class="panel-pad mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-bold">{{ race.finished_at?'Race completed':'Race in progress' }}</h2><p class="mt-1 muted">{{ race.finished_at?'Review the results, make any corrections, and share the leaderboard.':'Open your timing station or monitor the race from Race control.' }}</p></div><Link v-if="race.finished_at || can('timings.record')" :href="`/races/${race.id}/${race.finished_at?'results':'station'}`" class="btn-primary">{{ race.finished_at?'View results':'Open timing station' }}</Link></section><div class="grid gap-6 lg:grid-cols-2">
+    <RaceChecklist v-if="can('races.setup') && can('participants.manage') && can('timings.record')" :race="race"/><section v-if="race.started_at" class="panel-pad mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-bold">{{ race.finished_at?'Race completed':'Race in progress' }}</h2><p class="mt-1 muted">{{ race.finished_at?'Review the results, make any corrections, and share the leaderboard.':'Open your timing station or monitor the race from Race control.' }}</p></div><Link v-if="race.finished_at || can('timings.record')" :href="`/races/${race.id}/${race.finished_at?'results':'station'}`" class="btn-primary"><i :class="race.finished_at?'fa-solid fa-trophy':'fa-solid fa-stopwatch'" aria-hidden="true"></i>{{ race.finished_at?'View results':'Open timing station' }}</Link></section><div class="grid gap-6 lg:grid-cols-2">
       <form v-if="can('races.setup')" class="panel-pad" @submit.prevent="saveRace">
         <h2 class="mb-4 text-lg font-bold">Race settings</h2>
         <div class="space-y-4">
@@ -133,7 +133,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
           </div>
         </div>
         <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-error">{{ Object.values(raceForm.errors)[0] }}</p>
-        <button class="btn-primary mt-5" :disabled="raceForm.processing">Save settings</button>
+        <button class="btn-primary mt-5" :disabled="raceForm.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save settings</button>
       </form>
 
       <div id="checkpoints" class="panel-pad">
@@ -163,7 +163,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             </div>
             <div v-if="can('races.setup')" class="mt-3 flex flex-wrap gap-2">
               <button type="button" class="btn-secondary !px-3 !py-1.5 min-h-11 text-xs" @click="toggleCheckpoint(cp)">
-                {{ cp.is_active ? 'Disable' : 'Enable' }}
+                <i :class="cp.is_active?'fa-solid fa-toggle-on':'fa-solid fa-toggle-off'" aria-hidden="true"></i>{{ cp.is_active ? 'Disable' : 'Enable' }}
               </button>
               <button
                 v-if="cp.kind !== 'start'"
@@ -171,7 +171,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
                 class="btn-danger min-h-11 !px-3 text-xs"
                 @click="removeCheckpoint(cp)"
               >
-                Delete
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>Delete
               </button>
             </div>
           </div>
@@ -192,16 +192,16 @@ const removeCheckpoint = (cp: Checkpoint) => {
             <div><label class="flex gap-2"><input v-model="checkpoint.is_active" type="checkbox"> Available at timing stations</label><p class="mt-1 text-xs muted">Turn off to keep this checkpoint in the setup without allowing new taps there.</p></div>
           </div>
           <details class="mt-4"><summary class="cursor-pointer text-sm muted">Advanced: checkpoint code</summary><label for="checkpoint-code" class="label mt-3">Unique code (optional)</label><input id="checkpoint-code" v-model="checkpoint.code" class="field" placeholder="Generated automatically from the name" maxlength="48"><p class="mt-1 text-xs muted">A stable identifier for integrations. Normally leave this blank. If supplied, it must be unique within this race.</p></details>
-          <p v-if="Object.keys(checkpoint.errors).length" role="alert" class="mt-3 text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p><button class="btn-secondary mt-4" :disabled="checkpoint.processing">Add checkpoint</button>
+          <p v-if="Object.keys(checkpoint.errors).length" role="alert" class="mt-3 text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p><button class="btn-secondary mt-4" :disabled="checkpoint.processing"><i class="fa-solid fa-plus" aria-hidden="true"></i>Add checkpoint</button>
         </form>
       </div>
     </div>
-    <section v-if="can('races.setup')" class="panel-pad mt-6"><h2 class="text-lg font-bold">Public leaderboard</h2><p class="mt-2 muted">{{ race.results_published_at?'Published — anyone with the link can view results.':'Private — only authorized signed-in users can view results.' }}</p><p class="mt-2 text-sm muted">Publishing shares participant names, bibs, categories, relay member names and timings. Email addresses and organizer controls are never included. Share only when participants have been informed.</p><div v-if="race.results_published_at && race.public_results_token" class="mt-4"><a :href="`/live/${race.public_results_token}`" target="_blank" rel="noopener" class="font-semibold text-accent underline">Open public leaderboard ↗</a><p class="mt-2 text-sm muted">Copy the address from the opened page to share. Use Large-screen display there for spectators.</p></div><button class="btn-secondary mt-4" @click="publishing=true">{{ race.results_published_at?'Unpublish leaderboard':'Publish leaderboard' }}</button></section>
+    <section v-if="can('races.setup')" class="panel-pad mt-6"><h2 class="text-lg font-bold">Public leaderboard</h2><p class="mt-2 muted">{{ race.results_published_at?'Published — anyone with the link can view results.':'Private — only authorized signed-in users can view results.' }}</p><p class="mt-2 text-sm muted">Publishing shares participant names, bibs, categories, relay member names and timings. Email addresses and organizer controls are never included. Share only when participants have been informed.</p><div v-if="race.results_published_at && race.public_results_token" class="mt-4"><a :href="`/live/${race.public_results_token}`" target="_blank" rel="noopener" class="font-semibold text-accent underline">Open public leaderboard ↗</a><p class="mt-2 text-sm muted">Copy the address from the opened page to share. Use Large-screen display there for spectators.</p></div><button class="btn-secondary mt-4" @click="publishing=true"><i :class="race.results_published_at?'fa-solid fa-eye-slash':'fa-solid fa-globe'" aria-hidden="true"></i>{{ race.results_published_at?'Unpublish leaderboard':'Publish leaderboard' }}</button></section>
     <ConfirmDialog v-if="publishing" :title="race.results_published_at?'Unpublish leaderboard?':'Publish participant results?'" :message="race.results_published_at?'The existing public link will stop working.':'Anyone with the link will be able to view participant names and results without signing in.'" :confirm-label="race.results_published_at?'Unpublish':'Publish results'" :busy="publication.processing" @cancel="publishing=false" @confirm="publish"><p v-if="Object.keys(publication.errors).length" role="alert">{{ Object.values(publication.errors)[0] }}</p></ConfirmDialog>
     <section v-if="page.props.auth.user?.role==='admin'" class="panel-pad mt-6 border-red-500/30">
       <h2 class="font-bold">Delete race</h2>
       <p class="mt-2 muted">Remove this race from active lists. Participants, timings and organizer assignments are preserved. You can restore it from Deleted races.</p>
-      <button class="btn-danger mt-4" @click="deleting=true">Delete race</button>
+      <button class="btn-danger mt-4" @click="deleting=true"><i class="fa-solid fa-trash" aria-hidden="true"></i>Delete race</button>
     </section>
     <ConfirmDialog v-if="deleting" title="Delete race?" :message="`Move ${race.name} to Deleted races? It will no longer be available at timing stations until restored.`"
       confirm-label="Move to Deleted races" :busy="deleteForm.processing" @cancel="deleting=false" @confirm="deleteRace" />

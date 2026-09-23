@@ -68,6 +68,12 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fortawesome/fontawesome-free@npm:^7.3.1":
+  version: 7.3.1
+  resolution: "@fortawesome/fontawesome-free@npm:7.3.1"
+  languageName: node
+  linkType: hard
+
 "@inertiajs/core@npm:3.7.1":
   version: 3.7.1
   resolution: "@inertiajs/core@npm:3.7.1"
@@ -1567,6 +1573,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "triathlon-timing@workspace:."
   dependencies:
+    "@fortawesome/fontawesome-free": "npm:^7.3.1"
     "@inertiajs/vue3": "npm:^3.7.1"
     "@playwright/test": "npm:^1.63.0"
     "@tailwindcss/vite": "npm:^4.0.0"

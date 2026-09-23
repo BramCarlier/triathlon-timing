@@ -21,7 +21,7 @@ const submit = () => form.post('/reset-password');
         <div><label class="label" for="reset-password_confirmation">Confirm password</label><input id="reset-password_confirmation" v-model="form.password_confirmation" class="field" type="password" minlength="12" autocomplete="new-password" required></div>
       </div>
       <p v-if="Object.keys(form.errors).length" class="mt-3 text-sm text-error">{{ Object.values(form.errors)[0] }}</p>
-      <button class="btn-primary mt-5 w-full" :disabled="form.processing">Save password</button>
+      <button class="btn-primary mt-5 w-full" :disabled="form.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save password</button>
     </form>
   </main>
 </template>
