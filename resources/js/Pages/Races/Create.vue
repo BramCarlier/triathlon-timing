@@ -1,7 +1,68 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
-const form = useForm({ name: '', event_date: '', timezone: 'Europe/Brussels', swim_km: 1, bike_km: 35, run_km: 8 });
+
+const form = useForm({
+  name: '',
+  event_date: '',
+  timezone: 'Europe/Brussels',
+  swim_km: 1,
+  bike_km: 35,
+  run_km: 8,
+  auto_finish: true,
+});
 const submit = () => form.post('/races');
 </script>
-<template><Head title="Create race"/><AppLayout title="Create race"><form class="panel-pad max-w-2xl" @submit.prevent="submit"><div class="grid gap-4 sm:grid-cols-2"><div class="sm:col-span-2"><label for="races-create-field-1" class="label">Race name</label><input id="races-create-field-1" v-model="form.name" class="field" placeholder="Halle Triathlon 2027"><p class="text-sm text-error">{{ form.errors.name }}</p></div><div><label for="races-create-field-2" class="label">Event date</label><input id="races-create-field-2" v-model="form.event_date" type="date" class="field"></div><div><label for="races-create-field-3" class="label">Timezone</label><input id="races-create-field-3" v-model="form.timezone" class="field"></div><div><label for="races-create-field-4" class="label">Swim distance (km)</label><input id="races-create-field-4" v-model="form.swim_km" type="number" min="0" step="0.001" class="field"></div><div><label for="races-create-field-5" class="label">Bike distance (km)</label><input id="races-create-field-5" v-model="form.bike_km" type="number" min="0" step="0.001" class="field"></div><div><label for="races-create-field-6" class="label">Run distance (km)</label><input id="races-create-field-6" v-model="form.run_km" type="number" min="0" step="0.001" class="field"></div></div><p class="mt-5 muted text-sm">Checkpoint order: Swim Exit → T1 (Bike Start) → Bike Finish → T2 (Run Start) → Finish. Race control starts the shared clock; Finish completes each participant’s result. You can add extra checkpoints after creating the race.</p><button class="btn-primary mt-6" :disabled="form.processing"><i class="fa-solid fa-plus" aria-hidden="true"></i>Create race</button></form></AppLayout></template>
+
+<template>
+  <Head title="Create race"/>
+  <AppLayout title="Create race">
+    <form class="panel-pad max-w-2xl" @submit.prevent="submit">
+      <div class="mb-5 rounded-2xl bg-canvas p-4">
+        <div class="flex items-start gap-3">
+          <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-cyan-400 font-bold text-slate-950">1</span>
+          <div>
+            <h2 class="font-bold">Start with the essentials</h2>
+            <p class="mt-1 text-sm muted">After creating the race you stay in one workspace to review checkpoints, add participants and run race day.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label for="race-name" class="label">Race name</label>
+          <input id="race-name" v-model="form.name" class="field" placeholder="Halle Triathlon 2027" required autofocus>
+          <p class="text-sm text-error">{{ form.errors.name }}</p>
+        </div>
+        <div>
+          <label for="race-date" class="label">Race date</label>
+          <input id="race-date" v-model="form.event_date" type="date" class="field" required>
+          <p class="text-sm text-error">{{ form.errors.event_date }}</p>
+        </div>
+      </div>
+
+      <details class="mt-5 rounded-2xl border border-outline p-4">
+        <summary class="cursor-pointer font-semibold"><i class="fa-solid fa-sliders mr-2" aria-hidden="true"></i>Optional course settings</summary>
+        <p class="mt-2 text-sm muted">The defaults work for the current event format. Change them now or later before the race starts.</p>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label for="race-timezone" class="label">Timezone</label>
+            <input id="race-timezone" v-model="form.timezone" class="field" required>
+          </div>
+          <div><label for="swim-km" class="label">Swim distance (km)</label><input id="swim-km" v-model="form.swim_km" type="number" min="0" step="0.001" class="field"></div>
+          <div><label for="bike-km" class="label">Bike distance (km)</label><input id="bike-km" v-model="form.bike_km" type="number" min="0" step="0.001" class="field"></div>
+          <div><label for="run-km" class="label">Run distance (km)</label><input id="run-km" v-model="form.run_km" type="number" min="0" step="0.001" class="field"></div>
+          <label class="sm:col-span-2 flex gap-3 rounded-xl bg-canvas p-3">
+            <input v-model="form.auto_finish" type="checkbox">
+            <span><strong>Finish the race automatically</strong><span class="mt-1 block text-sm muted">When every active participant has crossed the finish, stop the shared race clock automatically. A manual Finish button remains available.</span></span>
+          </label>
+        </div>
+      </details>
+
+      <p v-if="Object.keys(form.errors).length" class="mt-4 text-sm text-error">{{ Object.values(form.errors)[0] }}</p>
+      <button class="btn-primary mt-6" :disabled="form.processing">
+        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>Create and continue
+      </button>
+    </form>
+  </AppLayout>
+</template>
