@@ -11,11 +11,19 @@ import { checkpointDistanceText } from '../../checkpointDistance';
 import { bibLabel, formatDuration, jsonRequest, uuid } from '../../lib';
 import type { Checkpoint, PageProps, Race, StationParticipant } from '../../types';
 
-interface Organizer {
+interface Official {
   id: number;
   name: string;
   email: string;
-  is_active?: boolean;
+}
+
+interface CheckpointAssignment {
+  id: number;
+  race_id: number;
+  checkpoint_id: number;
+  user_id: number;
+  user: Official;
+  checkpoint?: { id:number; name:string };
 }
 
 interface Timing {
@@ -28,9 +36,14 @@ interface Timing {
   operator?: { name:string };
 }
 
+type Step = 'prepare' | 'participants' | 'race-day' | 'finish';
+
 const props = defineProps<{
-  race: Race & { checkpoints: Checkpoint[]; organizers: Organizer[]; entries_count?: number };
-  organizers: Organizer[];
+  race: Race & { checkpoints: Checkpoint[]; entries_count?: number };
+  officials: Official[];
+  checkpointAssignments: CheckpointAssignment[];
+  allowedTimingCheckpointIds: number[];
+  mailConfigured: boolean;
   participants: StationParticipant[];
   recentTimings: Timing[];
   completedCount: number;
@@ -39,22 +52,43 @@ const props = defineProps<{
 
 const can = usePermissions();
 const page = usePage<PageProps>();
-const isAdmin = computed(() => page.props.auth.user?.role === 'admin');
+const account = computed(() => page.props.auth.user);
+const isAdmin = computed(() => account.value?.role === 'admin');
 
-useRaceRefresh(() => ['race', 'participants', 'recentTimings', 'completedCount', 'serverNow']);
+useRaceRefresh(() => ['race', 'participants', 'recentTimings', 'completedCount', 'serverNow', 'checkpointAssignments', 'allowedTimingCheckpointIds']);
 
 const orderedCheckpoints = computed(() => [...props.race.checkpoints].sort((a,b) => a.sequence-b.sequence));
-const activeTimingCheckpoints = computed(() => orderedCheckpoints.value.filter(cp => cp.is_active && cp.kind !== 'start'));
+const activeTimingCheckpoints = computed(() => orderedCheckpoints.value.filter(cp =>
+  cp.is_active
+  && cp.kind !== 'start'
+  && props.allowedTimingCheckpointIds.includes(cp.id)
+));
 const hasFinish = computed(() => orderedCheckpoints.value.some(cp => cp.is_active && cp.kind === 'finish'));
 const distancesReady = computed(() => ['swim_km','bike_km','run_km'].every(key => Number(props.race.settings?.[key] ?? 0) > 0));
 const setupReady = computed(() => hasFinish.value && distancesReady.value);
 const participantsReady = computed(() => (props.race.entries_count ?? 0) > 0);
+
+const initialStep = ():Step => {
+  if (props.race.finished_at) return 'finish';
+  if (props.race.started_at) return 'race-day';
+  if (!setupReady.value) return 'prepare';
+  if (!participantsReady.value) return 'participants';
+  return 'race-day';
+};
+const openStep = ref<Step|null>(initialStep());
+const toggleStep = (step:Step) => { openStep.value = openStep.value === step ? null : step; };
+watch([() => props.race.started_at, () => props.race.finished_at], ([started, finished], [oldStarted, oldFinished]) => {
+  if (finished && !oldFinished) openStep.value = 'finish';
+  else if (started && !oldStarted) openStep.value = 'race-day';
+});
+
 const workflowState = computed(() => {
-  if (props.race.finished_at) return { title:'Race finished', detail:'Review the results and only use correction tools if something needs fixing.', icon:'fa-solid fa-flag-checkered' };
-  if (props.race.started_at) return { title:'Race is live', detail:'Choose a checkpoint and record participants as they pass. The shared clock is running.', icon:'fa-solid fa-stopwatch' };
-  if (!setupReady.value) return { title:'Next: review the course', detail:'Check the race details and checkpoints below.', icon:'fa-solid fa-route' };
-  if (!participantsReady.value) return { title:'Next: add participants', detail:'Add athletes or relay teams before race day.', icon:'fa-solid fa-users' };
-  return { title:'Ready for race day', detail:'Everything essential is in place. Start the shared clock when the event begins.', icon:'fa-solid fa-play' };
+  if (props.race.finished_at) return { title:'Race finished', detail:'Review the results or correct a genuine timing mistake.', icon:'fa-solid fa-flag-checkered' };
+  if (props.race.started_at) return { title:'Race is live', detail:isAdmin.value ? 'Record timings here or switch checkpoints when needed.' : 'Record athletes at your assigned checkpoint.', icon:'fa-solid fa-stopwatch' };
+  if (!isAdmin.value) return { title:'Waiting for the race to start', detail:activeTimingCheckpoints.value.length ? `Your checkpoint: ${activeTimingCheckpoints.value[0].name}` : 'No checkpoint has been assigned to you yet.', icon:'fa-solid fa-location-dot' };
+  if (!setupReady.value) return { title:'Next: checkpoints & officials', detail:'Review the course and assign Officials to their checkpoints.', icon:'fa-solid fa-route' };
+  if (!participantsReady.value) return { title:'Next: add athletes', detail:'Add athletes or relay teams before starting the race.', icon:'fa-solid fa-users' };
+  return { title:'Ready to start', detail:'Setup is complete. Start the shared clock when the race begins.', icon:'fa-solid fa-play' };
 });
 
 const raceForm = useForm({
@@ -65,8 +99,6 @@ const raceForm = useForm({
   swim_km: Number(props.race.settings?.swim_km ?? 1),
   bike_km: Number(props.race.settings?.bike_km ?? 35),
   run_km: Number(props.race.settings?.run_km ?? 8),
-  auto_finish: Boolean(props.race.settings?.auto_finish ?? true),
-  organizer_ids: props.race.organizers.map(organizer => organizer.id),
 });
 const saveRace = () => raceForm.put(`/races/${props.race.id}`, { preserveScroll:true });
 
@@ -104,7 +136,7 @@ const beginAddCheckpoint = () => {
   checkpoint.is_active = true;
   checkpointFormOpen.value = true;
 };
-const beginEditCheckpoint = (cp: Checkpoint) => {
+const beginEditCheckpoint = (cp:Checkpoint) => {
   editingCheckpoint.value = cp;
   checkpoint.clearErrors();
   checkpoint.name = cp.name;
@@ -127,18 +159,8 @@ const saveCheckpoint = () => {
   if (editingCheckpoint.value) checkpoint.put(`/races/${props.race.id}/checkpoints/${editingCheckpoint.value.id}`, options);
   else checkpoint.post(`/races/${props.race.id}/checkpoints`, options);
 };
-const checkpointError = ref('');
 const removingCheckpoint = ref<Checkpoint|null>(null);
-const toggleCheckpoint = (cp: Checkpoint) => router.put(`/races/${props.race.id}/checkpoints/${cp.id}`, {
-  name: cp.name,
-  code: cp.code,
-  sequence: cp.sequence,
-  discipline: cp.discipline,
-  kind: cp.kind,
-  distance_km: cp.distance_km,
-  is_required: cp.is_required,
-  is_active: !cp.is_active,
-}, { preserveScroll:true, onError:errors => { checkpointError.value = String(Object.values(errors)[0] ?? 'Unable to update checkpoint'); } });
+const checkpointError = ref('');
 const confirmCheckpointRemoval = () => {
   if (!removingCheckpoint.value) return;
   router.delete(`/races/${props.race.id}/checkpoints/${removingCheckpoint.value.id}`, {
@@ -147,6 +169,35 @@ const confirmCheckpointRemoval = () => {
     onError:errors => { checkpointError.value = String(Object.values(errors)[0] ?? 'Unable to delete checkpoint'); },
   });
 };
+
+const assigningCheckpoint = ref<Checkpoint|null>(null);
+const officialForm = useForm({
+  checkpoint_id: null as number|null,
+  mode: 'existing' as 'existing'|'new',
+  user_id: null as number|null,
+  name: '',
+  email: '',
+  delivery: props.mailConfigured ? 'email' : 'manual',
+  password: '',
+});
+const assignmentsFor = (checkpointId:number) => props.checkpointAssignments.filter(item => item.checkpoint_id === checkpointId);
+const beginAssignOfficial = (cp:Checkpoint) => {
+  officialForm.reset();
+  officialForm.clearErrors();
+  officialForm.checkpoint_id = cp.id;
+  officialForm.mode = 'existing';
+  officialForm.delivery = props.mailConfigured ? 'email' : 'manual';
+  assigningCheckpoint.value = cp;
+};
+const closeOfficialForm = () => {
+  assigningCheckpoint.value = null;
+  officialForm.clearErrors();
+};
+const assignOfficial = () => officialForm.post(`/races/${props.race.id}/official-assignments`, {
+  preserveScroll:true,
+  onSuccess:closeOfficialForm,
+});
+const removeOfficial = (official:Official) => router.delete(`/races/${props.race.id}/official-assignments/${official.id}`, { preserveScroll:true });
 
 const participantForm = useForm({
   bib_number: '',
@@ -198,21 +249,21 @@ const showTimingFeedback = (type:'ok'|'error', message:string) => {
   window.setTimeout(() => { if (timingFeedback.value?.message === message) timingFeedback.value = null; }, 4500);
 };
 
-async function recordTiming(participant: StationParticipant, override = false, clientUuid = uuid()) {
+async function recordTiming(participant:StationParticipant, override=false, clientUuid=uuid()) {
   if (!selectedCheckpoint.value || timingSaving.value.has(participant.id)) return;
-  if (!props.race.started_at) { showTimingFeedback('error','Start the race before recording checkpoint times.'); return; }
-  if (props.race.finished_at) { showTimingFeedback('error','The race is finished. Use correction tools for changes.'); return; }
+  if (!props.race.started_at) { showTimingFeedback('error','Start the race before recording times.'); return; }
+  if (props.race.finished_at) { showTimingFeedback('error','The race is finished.'); return; }
   if (participant.status && participant.status !== 'registered') { showTimingFeedback('error',`${participant.name} is marked ${participant.status.toUpperCase()}.`); return; }
-  if (participantRecorded(participant)) { showTimingFeedback('error',`${participant.name} is already recorded at this checkpoint.`); return; }
+  if (participantRecorded(participant)) { showTimingFeedback('error',`${participant.name} is already recorded here.`); return; }
 
   timingSaving.value.add(participant.id);
   try {
     const {response,data} = await jsonRequest<{
-      timing?: Timing;
-      message?: string;
-      warning?: boolean;
-      missing_checkpoints?: string[];
-      auto_finished?: boolean;
+      timing?:Timing;
+      message?:string;
+      warning?:boolean;
+      missing_checkpoints?:string[];
+      auto_finished?:boolean;
     }>(`/races/${props.race.id}/timings`, {
       method:'POST',
       body:JSON.stringify({
@@ -231,8 +282,8 @@ async function recordTiming(participant: StationParticipant, override = false, c
       recent.value.unshift(data.timing);
       recent.value = recent.value.slice(0, 12);
       if (selectedCheckpoint.value.kind === 'finish') localCompletedCount.value += 1;
-      showTimingFeedback('ok', data.message ?? 'Time recorded.');
       timingSearch.value = '';
+      showTimingFeedback('ok', data.message ?? 'Time recorded.');
       if (data.auto_finished) router.reload({only:['race','serverNow','completedCount']});
       return;
     }
@@ -248,7 +299,7 @@ async function recordTiming(participant: StationParticipant, override = false, c
 
     showTimingFeedback('error', data.message ?? 'The time could not be recorded.');
   } catch {
-    showTimingFeedback('error','The time could not be saved from this page. Use Focused timing mode if the connection is unreliable.');
+    showTimingFeedback('error','The time could not be saved here. Open Focused timing if the connection is unreliable.');
   } finally {
     timingSaving.value.delete(participant.id);
   }
@@ -295,320 +346,269 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
             <p class="mt-1 muted">{{ workflowState.detail }}</p>
           </div>
         </div>
-        <Link href="/guide" class="btn-secondary self-start lg:self-auto"><i class="fa-solid fa-circle-question" aria-hidden="true"></i>How this works</Link>
+        <Link href="/guide" class="btn-secondary self-start lg:self-auto"><i class="fa-solid fa-circle-question" aria-hidden="true"></i>Guide</Link>
       </div>
-      <div class="mt-5 grid gap-2 sm:grid-cols-4" aria-label="Race workflow">
-        <a href="#prepare" class="rounded-xl border border-outline p-3 hover:bg-raised">
-          <span class="text-xs font-bold uppercase tracking-wider" :class="setupReady?'text-success':'text-warning'">{{ setupReady?'Ready':'Step 1' }}</span>
-          <strong class="mt-1 block">Prepare</strong>
-        </a>
-        <a href="#participants" class="rounded-xl border border-outline p-3 hover:bg-raised">
-          <span class="text-xs font-bold uppercase tracking-wider" :class="participantsReady?'text-success':'text-warning'">{{ participantsReady?'Ready':'Step 2' }}</span>
-          <strong class="mt-1 block">Participants</strong>
-        </a>
-        <a href="#race-day" class="rounded-xl border border-outline p-3 hover:bg-raised">
-          <span class="text-xs font-bold uppercase tracking-wider" :class="race.started_at?'text-success':'text-muted'">{{ race.started_at?'Started':'Step 3' }}</span>
-          <strong class="mt-1 block">Race day</strong>
-        </a>
-        <a href="#finish" class="rounded-xl border border-outline p-3 hover:bg-raised">
-          <span class="text-xs font-bold uppercase tracking-wider" :class="race.finished_at?'text-success':'text-muted'">{{ race.finished_at?'Finished':'Step 4' }}</span>
-          <strong class="mt-1 block">Finish</strong>
-        </a>
+
+      <div v-if="isAdmin && !race.started_at" class="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Race setup progress">
+        <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='prepare'">
+          <span class="text-xs font-bold uppercase tracking-wider" :class="setupReady?'text-success':'text-warning'">{{ setupReady?'Ready':'1' }}</span>
+          <strong class="mt-1 block">Checkpoints & officials</strong>
+        </button>
+        <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='participants'">
+          <span class="text-xs font-bold uppercase tracking-wider" :class="participantsReady?'text-success':'text-warning'">{{ participantsReady?'Ready':'2' }}</span>
+          <strong class="mt-1 block">Athletes</strong>
+        </button>
+        <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='race-day'">
+          <span class="text-xs font-bold uppercase tracking-wider text-muted">3</span>
+          <strong class="mt-1 block">Start race</strong>
+        </button>
       </div>
     </section>
 
-    <section id="prepare" class="mb-6 scroll-mt-32">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 1</p><h2 class="text-xl font-bold">Prepare the race</h2></div>
-        <span v-if="setupReady" class="badge">Ready</span>
-      </div>
+    <section v-if="isAdmin && !race.started_at" id="prepare" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
+      <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='prepare'" @click="toggleStep('prepare')">
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 1</p><h2 class="text-xl font-bold">Checkpoints & officials</h2><p class="mt-1 text-sm muted">Set the course, then put each Official where they will record athletes.</p></div>
+        <i :class="openStep==='prepare'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+      </button>
 
-      <div class="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
-        <form v-if="can('races.setup')" class="panel-pad" @submit.prevent="saveRace">
-          <h3 class="text-lg font-bold">Race details</h3>
-          <p class="mt-1 text-sm muted">Most races only need these fields. Less common options stay tucked away.</p>
-          <div class="mt-4 space-y-4">
-            <div><label for="race-name" class="label">Race name</label><input id="race-name" v-model="raceForm.name" class="field" required></div>
-            <div class="grid gap-4 sm:grid-cols-2">
-              <div><label for="race-date" class="label">Date</label><input id="race-date" v-model="raceForm.event_date" type="date" class="field" required></div>
-              <div><label for="race-timezone" class="label">Timezone</label><input id="race-timezone" v-model="raceForm.timezone" class="field" required></div>
-            </div>
-            <fieldset>
-              <legend class="label">Course distances</legend>
-              <div class="grid gap-3 sm:grid-cols-3">
-                <label class="label">Swim (km)<input v-model="raceForm.swim_km" class="field" type="number" min="0.001" step="0.001" :disabled="!!race.started_at" required></label>
-                <label class="label">Bike (km)<input v-model="raceForm.bike_km" class="field" type="number" min="0.001" step="0.001" :disabled="!!race.started_at" required></label>
-                <label class="label">Run (km)<input v-model="raceForm.run_km" class="field" type="number" min="0.001" step="0.001" :disabled="!!race.started_at" required></label>
-              </div>
-            </fieldset>
-            <label class="flex gap-3 rounded-xl bg-canvas p-3">
-              <input v-model="raceForm.auto_finish" type="checkbox">
-              <span><strong>Finish automatically</strong><span class="mt-1 block text-sm muted">When every active participant has a finish time, stop the shared clock automatically. You can still finish manually.</span></span>
-            </label>
-            <details v-if="organizers.length">
-              <summary class="cursor-pointer font-semibold">Officials assigned to this race</summary>
-              <div class="mt-3 grid gap-2 rounded-xl border border-outline p-3">
-                <label v-for="organizer in organizers" :key="organizer.id" class="flex gap-2">
-                  <input v-model="raceForm.organizer_ids" type="checkbox" :value="organizer.id">
-                  <span>{{ organizer.name }} <span class="muted">{{ organizer.email }}</span></span>
-                </label>
-              </div>
-            </details>
-          </div>
-          <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(raceForm.errors)[0] }}</p>
-          <button class="btn-primary mt-5" :disabled="raceForm.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save race details</button>
-        </form>
-
-        <section v-else class="panel-pad">
-          <h3 class="text-lg font-bold">Race details</h3>
-          <p class="mt-3">{{ race.event_date }} · {{ race.timezone }}</p>
-          <p class="mt-2 muted">Swim {{ race.settings?.swim_km }} km · Bike {{ race.settings?.bike_km }} km · Run {{ race.settings?.run_km }} km</p>
-        </section>
-
-        <section class="panel-pad">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 class="text-lg font-bold">Checkpoints</h3>
-              <p class="mt-1 text-sm muted">These are the places where an Official can record a participant.</p>
-            </div>
-            <button v-if="can('races.setup') && !race.started_at && !checkpointFormOpen" class="btn-primary" type="button" @click="beginAddCheckpoint">
-              <i class="fa-solid fa-plus" aria-hidden="true"></i>Add checkpoint
-            </button>
-          </div>
-
-          <p v-if="checkpointError" class="mt-3 text-sm text-error" role="alert">{{ checkpointError }}</p>
-          <div class="mt-4 space-y-2">
-            <article v-for="cp in orderedCheckpoints" :key="cp.id" class="rounded-xl border border-outline p-3">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div class="font-semibold" :data-discipline="cp.discipline">{{ cp.name }}</div>
-                  <div class="mt-1 text-sm muted">{{ checkpointDistanceText(race, cp) }}</div>
-                  <div class="mt-1 text-xs muted">{{ cp.kind==='finish'?'Race finish':cp.kind==='transition'?'Transition':cp.kind==='start'?'Race start':'Intermediate checkpoint' }}<span v-if="!cp.is_active"> · not in use</span></div>
+      <div v-show="openStep==='prepare'" class="border-t border-outline p-4">
+        <div class="grid gap-5 xl:grid-cols-[.8fr_1.2fr]">
+          <form class="rounded-2xl border border-outline p-4" @submit.prevent="saveRace">
+            <h3 class="font-bold">Race details</h3>
+            <div class="mt-4 space-y-4">
+              <label class="label">Race name<input v-model="raceForm.name" class="field" required></label>
+              <label class="label">Date<input v-model="raceForm.event_date" type="date" class="field" required></label>
+              <fieldset>
+                <legend class="label">Distances</legend>
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <label class="label">Swim (km)<input v-model="raceForm.swim_km" class="field" type="number" min="0.001" step="0.001" required></label>
+                  <label class="label">Bike (km)<input v-model="raceForm.bike_km" class="field" type="number" min="0.001" step="0.001" required></label>
+                  <label class="label">Run (km)<input v-model="raceForm.run_km" class="field" type="number" min="0.001" step="0.001" required></label>
                 </div>
-                <div v-if="can('races.setup') && !race.started_at && cp.kind!=='start'" class="flex flex-wrap gap-2">
-                  <button class="btn-secondary !px-3" type="button" @click="beginEditCheckpoint(cp)"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</button>
-                  <button class="btn-icon" type="button" :aria-label="cp.is_active?'Disable checkpoint':'Enable checkpoint'" :title="cp.is_active?'Disable checkpoint':'Enable checkpoint'" @click="toggleCheckpoint(cp)"><i :class="cp.is_active?'fa-solid fa-toggle-on':'fa-solid fa-toggle-off'" aria-hidden="true"></i></button>
-                  <button class="btn-icon text-error" type="button" aria-label="Delete checkpoint" title="Delete checkpoint" @click="removingCheckpoint=cp"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <form v-if="checkpointFormOpen" class="mt-5 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="saveCheckpoint">
-            <div class="flex items-center justify-between gap-3">
-              <h4 class="font-bold">{{ editingCheckpoint?'Edit checkpoint':'Add checkpoint' }}</h4>
-              <button type="button" class="btn-icon" aria-label="Close checkpoint form" title="Close" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+              </fieldset>
+              <details>
+                <summary class="cursor-pointer text-sm font-semibold">More race details</summary>
+                <label class="label mt-3">Timezone<input v-model="raceForm.timezone" class="field" required></label>
+              </details>
             </div>
-            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-              <div class="sm:col-span-2"><label for="workspace-checkpoint-name" class="label">Name</label><input id="workspace-checkpoint-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></div>
-              <div><label for="workspace-checkpoint-sport" class="label">Sport</label><select id="workspace-checkpoint-sport" v-model="checkpoint.discipline" class="field"><option value="">Race-wide</option><option value="swim">Swim</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
-              <div><label for="workspace-checkpoint-type" class="label">Checkpoint type</label><select id="workspace-checkpoint-type" v-model="checkpoint.kind" class="field"><option value="split">Intermediate checkpoint</option><option value="transition">Transition / leg boundary</option><option value="finish">Race finish</option></select></div>
-              <div><label for="workspace-checkpoint-distance" class="label">Distance into this sport (km, optional)</label><input id="workspace-checkpoint-distance" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001" placeholder="For example: 4"></div>
-            </div>
-            <details class="mt-4">
-              <summary class="cursor-pointer text-sm font-semibold">Optional checkpoint settings</summary>
-              <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                <div><label for="workspace-checkpoint-order" class="label">Order number</label><input id="workspace-checkpoint-order" v-model="checkpoint.sequence" class="field" type="number" min="1" max="65535" required><span class="mt-1 block text-xs muted">Only change this when the checkpoint appears in the wrong place.</span></div>
-                <div><label for="workspace-checkpoint-code" class="label">Internal code</label><input id="workspace-checkpoint-code" v-model="checkpoint.code" class="field" placeholder="Generated automatically for new checkpoints"></div>
-                <label class="flex gap-2 text-sm"><input v-model="checkpoint.is_required" type="checkbox">Expected for every participant</label>
-                <label class="flex gap-2 text-sm"><input v-model="checkpoint.is_active" type="checkbox">Available for timing</label>
-              </div>
-            </details>
-            <p v-if="Object.keys(checkpoint.errors).length" class="mt-3 text-sm text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p>
-            <div class="mt-4 flex gap-2">
-              <button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ editingCheckpoint?'Save checkpoint':'Add checkpoint' }}</button>
-              <button type="button" class="btn-secondary" @click="closeCheckpointForm">Cancel</button>
-            </div>
+            <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(raceForm.errors)[0] }}</p>
+            <button class="btn-secondary mt-4" :disabled="raceForm.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save details</button>
           </form>
-        </section>
-      </div>
-    </section>
 
-    <section id="participants" class="mb-6 scroll-mt-32">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Participants</h2></div>
-        <span class="badge">{{ race.entries_count ?? 0 }} total</span>
-      </div>
+          <section class="rounded-2xl border border-outline p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div><h3 class="font-bold">Checkpoints</h3><p class="mt-1 text-sm muted">Officials assigned here will be locked to that checkpoint on race day.</p></div>
+              <button v-if="!checkpointFormOpen" class="btn-primary" type="button" @click="beginAddCheckpoint"><i class="fa-solid fa-plus" aria-hidden="true"></i>Add checkpoint</button>
+            </div>
 
-      <div v-if="can('participants.manage') && !race.started_at" class="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
-        <form class="panel-pad" @submit.prevent="addParticipant">
-          <h3 class="text-lg font-bold">Add participant</h3>
-          <p class="mt-1 text-sm muted">Add one person or relay team here. File import is available under More tools below.</p>
-          <div class="mt-4 grid grid-cols-2 gap-3">
-            <label class="label">Bib number <span class="font-normal muted">(optional)</span><input v-model="participantForm.bib_number" class="field" maxlength="32" placeholder="101"></label>
-            <label class="label">Type<select v-model="participantForm.type" class="field"><option value="solo">Solo athlete</option><option value="relay">3-person relay</option></select></label>
-            <label v-if="participantForm.type==='relay'" class="label col-span-2">Team name<input v-model="participantForm.team_name" class="field" required></label>
-            <label class="label col-span-2">Category <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field" placeholder="Open, Masters, ..."></label>
-          </div>
-          <div class="mt-4 space-y-3">
-            <div v-for="member in participantForm.members" :key="member.discipline" class="rounded-xl border border-outline p-3">
-              <strong>{{ participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline) }}</strong>
-              <div class="mt-3 grid grid-cols-2 gap-2">
-                <label class="label">First name<input v-model="member.first_name" class="field" required></label>
-                <label class="label">Last name<input v-model="member.last_name" class="field" required></label>
-                <label class="label col-span-2">Email <span class="font-normal muted">(optional)</span><input v-model="member.email" class="field" type="email"></label>
+            <p v-if="checkpointError" class="mt-3 text-sm text-error" role="alert">{{ checkpointError }}</p>
+            <div class="mt-4 space-y-3">
+              <article v-for="cp in orderedCheckpoints" :key="cp.id" class="rounded-xl border border-outline p-3">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <strong class="block">{{ cp.name }}</strong>
+                    <span class="mt-1 block text-sm muted">{{ checkpointDistanceText(race, cp) }}</span>
+                  </div>
+                  <div v-if="cp.kind!=='start'" class="flex flex-wrap gap-2">
+                    <button class="btn-secondary !px-3" type="button" @click="beginEditCheckpoint(cp)"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</button>
+                    <button class="btn-secondary !px-3" type="button" @click="beginAssignOfficial(cp)"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Assign official</button>
+                    <button class="btn-icon text-error" type="button" aria-label="Delete checkpoint" title="Delete checkpoint" @click="removingCheckpoint=cp"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+                <div v-if="cp.kind!=='start'" class="mt-3 flex flex-wrap gap-2">
+                  <span v-if="!assignmentsFor(cp.id).length" class="text-sm muted">No Official assigned</span>
+                  <span v-for="assignment in assignmentsFor(cp.id)" :key="assignment.id" class="inline-flex items-center gap-2 rounded-full bg-canvas px-3 py-2 text-sm">
+                    <i class="fa-solid fa-user" aria-hidden="true"></i>{{ assignment.user.name }}
+                    <button type="button" class="text-error" :aria-label="`Remove ${assignment.user.name}`" @click="removeOfficial(assignment.user)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                  </span>
+                </div>
+              </article>
+            </div>
+
+            <form v-if="checkpointFormOpen" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="saveCheckpoint">
+              <div class="flex items-center justify-between gap-3"><h4 class="font-bold">{{ editingCheckpoint?'Edit checkpoint':'Add checkpoint' }}</h4><button type="button" class="btn-icon" aria-label="Close checkpoint form" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+              <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <label class="label sm:col-span-2">Name<input v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></label>
+                <label class="label">Sport<select v-model="checkpoint.discipline" class="field"><option value="">Race-wide</option><option value="swim">Swim</option><option value="bike">Bike</option><option value="run">Run</option></select></label>
+                <label class="label">What happens here?<select v-model="checkpoint.kind" class="field"><option value="split">Timing point</option><option value="transition">Transition</option><option value="finish">Finish</option></select></label>
+                <label class="label sm:col-span-2">Distance into this sport (km) <span class="font-normal muted">(optional)</span><input v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></label>
               </div>
-            </div>
-          </div>
-          <p v-if="Object.keys(participantForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(participantForm.errors)[0] }}</p>
-          <button class="btn-primary mt-4" :disabled="participantForm.processing"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add participant</button>
-        </form>
+              <p v-if="Object.keys(checkpoint.errors).length" class="mt-3 text-sm text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p>
+              <div class="mt-4 flex gap-2"><button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ editingCheckpoint?'Save checkpoint':'Add checkpoint' }}</button><button type="button" class="btn-secondary" @click="closeCheckpointForm">Cancel</button></div>
+            </form>
 
-        <section class="panel overflow-hidden">
-          <div class="border-b border-outline p-4">
-            <h3 class="font-bold">Participants already added</h3>
-            <p class="mt-1 text-sm muted">Use Edit only when registration information needs changing.</p>
-          </div>
-          <div v-if="participants.length" class="divide-y divide-outline">
-            <div v-for="participant in participants.slice(0,10)" :key="participant.id" class="flex items-center gap-3 p-4">
-              <span class="max-w-24 shrink-0 rounded-xl bg-raised px-3 py-2 font-mono font-bold">{{ bibLabel(participant.bib_number) }}</span>
-              <div class="min-w-0 flex-1"><strong class="block truncate">{{ participant.name }}</strong><span class="text-sm muted">{{ participant.type==='relay'?'Relay team':'Solo athlete' }}</span></div>
-              <Link :href="`/races/${race.id}/participants/${participant.id}/edit`" class="btn-secondary"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</Link>
-            </div>
-          </div>
-          <div v-else class="p-6 text-center muted">No participants yet.</div>
-          <div v-if="participants.length>10" class="border-t border-outline p-4 text-sm muted">Showing 10 of {{ participants.length }}. The full participant list is under More tools.</div>
-        </section>
-      </div>
-
-      <section v-else class="panel-pad">
-        <p class="font-semibold">{{ race.entries_count ?? 0 }} participants are registered.</p>
-        <p v-if="race.started_at" class="mt-1 text-sm muted">Participant setup is kept out of the way while the race is running. Use More tools only if a status or registration detail must be corrected.</p>
-      </section>
-    </section>
-
-    <section id="race-day" class="mb-6 scroll-mt-32">
-      <div class="mb-3"><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 3</p><h2 class="text-xl font-bold">Race day</h2></div>
-      <section class="panel-pad mb-5">
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div class="mb-1 text-xs font-bold uppercase tracking-[.18em] text-accent">Shared race clock</div>
-            <RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/>
-            <div class="mt-2"><LiveUpdatesStatus :race-id="race.id"/></div>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button v-if="!race.started_at && can('races.control')" class="btn-primary min-w-36" :disabled="!participantsReady || !setupReady" @click="pendingClockAction='start'">
-              <i class="fa-solid fa-play" aria-hidden="true"></i>Start race
-            </button>
-            <button v-else-if="race.started_at && !race.finished_at && can('races.control')" class="btn-danger" @click="pendingClockAction='finish'">
-              <i class="fa-solid fa-stop" aria-hidden="true"></i>Finish race
-            </button>
-            <span v-else-if="race.finished_at" class="badge">Race finished</span>
-          </div>
+            <form v-if="assigningCheckpoint" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
+              <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">Assign Official</h4><p class="mt-1 text-sm muted">{{ assigningCheckpoint.name }}</p></div><button type="button" class="btn-icon" aria-label="Close official form" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+              <div class="mt-4 grid grid-cols-2 gap-2">
+                <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='existing'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='existing'">Existing Official</button>
+                <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='new'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='new'">New Official</button>
+              </div>
+              <label v-if="officialForm.mode==='existing'" class="label mt-4">Official<select v-model="officialForm.user_id" class="field" required><option :value="null">Choose Official</option><option v-for="official in officials" :key="official.id" :value="official.id">{{ official.name }} · {{ official.email }}</option></select></label>
+              <div v-else class="mt-4 space-y-3">
+                <label class="label">Name<input v-model="officialForm.name" class="field" required></label>
+                <label class="label">Email<input v-model="officialForm.email" type="email" class="field" required></label>
+                <label class="label">Account setup<select v-model="officialForm.delivery" class="field"><option value="email" :disabled="!mailConfigured">Send password setup email</option><option value="manual">Use a temporary password</option></select></label>
+                <label v-if="officialForm.delivery==='manual'" class="label">Temporary password<input v-model="officialForm.password" type="password" minlength="12" class="field" required></label>
+              </div>
+              <p v-if="Object.keys(officialForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(officialForm.errors)[0] }}</p>
+              <button class="btn-primary mt-4" :disabled="officialForm.processing"><i class="fa-solid fa-user-check" aria-hidden="true"></i>Assign to checkpoint</button>
+            </form>
+          </section>
         </div>
-        <p v-if="!race.started_at && (!participantsReady || !setupReady)" class="mt-4 text-sm text-warning">
-          Before starting: {{ !setupReady?'finish the race setup':'' }}{{ !setupReady && !participantsReady?' and ':'' }}{{ !participantsReady?'add at least one participant':'' }}.
-        </p>
-        <p v-if="race.started_at && !race.finished_at" class="mt-4 text-sm muted">
-          {{ race.settings?.auto_finish===false ? 'Automatic finish is off. Use Finish race when the event is over.' : 'Automatic finish is on. The race will close when every active participant has a finish time; manual finish remains available.' }}
-        </p>
-      </section>
-
-      <div v-if="can('timings.record')" class="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
-        <section class="panel overflow-hidden">
-          <div class="border-b border-outline p-4">
-            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,.6fr)]">
-              <label class="label">Find athlete or team<input v-model="timingSearch" class="field min-h-14 text-lg" placeholder="Bib number or name"></label>
-              <label class="label">Checkpoint<select v-model="selectedCheckpointId" class="field min-h-14"><option v-for="cp in activeTimingCheckpoints" :key="cp.id" :value="cp.id">{{ cp.name }}</option></select></label>
-            </div>
-            <p class="mt-3 text-sm muted">Select where you are standing, then tap the participant once as they pass.</p>
-            <p v-if="timingFeedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="timingFeedback.type==='ok'?'bg-emerald-500/10 text-success':'bg-red-500/10 text-error'" role="status">{{ timingFeedback.message }}</p>
-          </div>
-
-          <div v-if="race.started_at && !race.finished_at && selectedCheckpoint" class="max-h-[58dvh] overflow-y-auto p-2">
-            <button
-              v-for="participant in filteredTimingParticipants"
-              :key="participant.id"
-              class="mb-2 grid min-h-20 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-4 text-left transition"
-              :class="participantRecorded(participant)?'border-emerald-500/30 bg-emerald-500/10 opacity-70':'border-outline bg-surface hover:border-cyan-400 hover:bg-raised active:scale-[.995]'"
-              :disabled="participantRecorded(participant) || timingSaving.has(participant.id) || (!!participant.status && participant.status!=='registered')"
-              @click="recordTiming(participant)"
-            >
-              <span class="max-w-24 rounded-xl bg-canvas px-3 py-2 font-mono text-xl font-black">{{ bibLabel(participant.bib_number) }}</span>
-              <span class="min-w-0"><strong class="block truncate text-lg">{{ participant.name }}</strong><span class="block truncate text-sm muted">{{ participant.type==='relay'?participant.members.map(member=>`${disciplineLabel(member.discipline)}: ${member.name}`).join(' · '):'Solo athlete' }}</span></span>
-              <span class="text-sm font-bold" :class="participantRecorded(participant)?'text-success':'text-accent'">{{ participant.status && participant.status!=='registered'?participant.status.toUpperCase():timingSaving.has(participant.id)?'SAVING':participantRecorded(participant)?'RECORDED':'TAP' }}</span>
-            </button>
-            <p v-if="!filteredTimingParticipants.length" class="p-8 text-center muted">No matching participant.</p>
-          </div>
-          <div v-else class="p-8 text-center">
-            <strong>{{ race.finished_at?'Timing is closed':'Timing opens when the race starts' }}</strong>
-            <p class="mt-2 muted">{{ race.finished_at?'Use corrections only for genuine timing fixes.':'Start the shared clock when the race begins.' }}</p>
-          </div>
-        </section>
-
-        <section class="panel overflow-hidden">
-          <div class="border-b border-outline p-4">
-            <div class="flex items-center justify-between gap-3"><h3 class="font-bold">Latest times</h3><span class="badge">{{ localCompletedCount }} finished</span></div>
-          </div>
-          <div v-if="recent.length" class="divide-y divide-outline">
-            <div v-for="timing in recent.slice(0,12)" :key="timing.id ?? timing.client_uuid" class="p-4">
-              <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0"><strong class="block truncate">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</strong><span class="text-sm muted">{{ timing.checkpoint?.name }}<span v-if="timing.operator?.name"> · {{ timing.operator.name }}</span></span></div>
-                <span class="shrink-0 font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="p-6 text-center muted">No checkpoint times yet.</div>
-        </section>
       </div>
-
-      <section v-else class="panel-pad">
-        <p class="font-semibold">Your role does not record checkpoint times.</p>
-        <p class="mt-1 text-sm muted">You can still see the race status and results if your account has access.</p>
-      </section>
     </section>
 
-    <section id="finish" class="mb-6 scroll-mt-32">
-      <div class="mb-3"><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 4</p><h2 class="text-xl font-bold">Finish and results</h2></div>
-      <section class="panel-pad">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 class="font-bold">{{ race.finished_at?'Race complete':'Results are updated as times are recorded' }}</h3>
-            <p class="mt-1 muted">{{ localCompletedCount }} of {{ race.entries_count ?? 0 }} participants have a finish time.</p>
+    <section v-if="isAdmin && !race.started_at" id="participants" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
+      <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='participants'" @click="toggleStep('participants')">
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Athletes</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
+        <i :class="openStep==='participants'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+      </button>
+      <div v-show="openStep==='participants'" class="border-t border-outline p-4">
+        <div class="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
+          <form class="rounded-2xl border border-outline p-4" @submit.prevent="addParticipant">
+            <h3 class="font-bold">Add athlete or relay</h3>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <label class="label">Bib number <span class="font-normal muted">(optional)</span><input v-model="participantForm.bib_number" class="field" maxlength="32"></label>
+              <label class="label">Type<select v-model="participantForm.type" class="field"><option value="solo">Solo athlete</option><option value="relay">3-person relay</option></select></label>
+              <label v-if="participantForm.type==='relay'" class="label col-span-2">Team name<input v-model="participantForm.team_name" class="field" required></label>
+              <label class="label col-span-2">Category <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field"></label>
+            </div>
+            <div class="mt-4 space-y-3">
+              <div v-for="member in participantForm.members" :key="member.discipline" class="rounded-xl border border-outline p-3">
+                <strong>{{ participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline) }}</strong>
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                  <label class="label">First name<input v-model="member.first_name" class="field" required></label>
+                  <label class="label">Last name<input v-model="member.last_name" class="field" required></label>
+                  <label class="label col-span-2">Email <span class="font-normal muted">(optional)</span><input v-model="member.email" class="field" type="email"></label>
+                </div>
+              </div>
+            </div>
+            <p v-if="Object.keys(participantForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(participantForm.errors)[0] }}</p>
+            <button class="btn-primary mt-4" :disabled="participantForm.processing"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add athlete</button>
+            <Link :href="`/races/${race.id}/participants/import`" class="btn-secondary mt-4 ml-2"><i class="fa-solid fa-file-import" aria-hidden="true"></i>Import file</Link>
+          </form>
+
+          <section class="rounded-2xl border border-outline overflow-hidden">
+            <div class="border-b border-outline p-4"><h3 class="font-bold">Added athletes</h3></div>
+            <div v-if="participants.length" class="divide-y divide-outline">
+              <div v-for="participant in participants.slice(0,10)" :key="participant.id" class="flex items-center gap-3 p-4">
+                <span class="max-w-24 shrink-0 rounded-xl bg-raised px-3 py-2 font-mono font-bold">{{ bibLabel(participant.bib_number) }}</span>
+                <div class="min-w-0 flex-1"><strong class="block truncate">{{ participant.name }}</strong><span class="text-sm muted">{{ participant.type==='relay'?'Relay team':'Solo athlete' }}</span></div>
+                <Link :href="`/races/${race.id}/participants/${participant.id}/edit`" class="btn-secondary"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</Link>
+              </div>
+            </div>
+            <div v-else class="p-6 text-center muted">No athletes yet.</div>
+            <div v-if="participants.length>10" class="border-t border-outline p-4"><Link :href="`/races/${race.id}/participants`" class="font-semibold text-accent underline">View all {{ participants.length }}</Link></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section id="race-day" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
+      <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='race-day'" @click="toggleStep('race-day')">
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.started_at?'Live':'Step 3' }}</p><h2 class="text-xl font-bold">{{ race.started_at?'Timing':'Start race & timing' }}</h2><p class="mt-1 text-sm muted">{{ isAdmin ? 'Organizer can switch checkpoints.' : (selectedCheckpoint ? `Your checkpoint: ${selectedCheckpoint.name}` : 'No checkpoint assigned') }}</p></div>
+        <i :class="openStep==='race-day'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+      </button>
+
+      <div v-show="openStep==='race-day'" class="border-t border-outline p-4">
+        <section class="mb-5 rounded-2xl bg-canvas p-4">
+          <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div><div class="mb-1 text-xs font-bold uppercase tracking-[.18em] text-accent">Race clock</div><RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/><div class="mt-2"><LiveUpdatesStatus :race-id="race.id"/></div></div>
+            <div v-if="isAdmin" class="flex flex-wrap gap-2">
+              <button v-if="!race.started_at" class="btn-primary min-w-36" :disabled="!participantsReady || !setupReady" @click="pendingClockAction='start'"><i class="fa-solid fa-play" aria-hidden="true"></i>Start race</button>
+              <button v-else-if="!race.finished_at" class="btn-danger" @click="pendingClockAction='finish'"><i class="fa-solid fa-stop" aria-hidden="true"></i>End race now</button>
+              <span v-else class="badge">Race finished</span>
+            </div>
           </div>
+          <p v-if="isAdmin && !race.started_at && (!participantsReady || !setupReady)" class="mt-4 text-sm text-warning">Finish the setup and add at least one athlete before starting.</p>
+          <p v-if="race.started_at && !race.finished_at" class="mt-4 text-sm muted">The race will end automatically when every active athlete has a finish time. The Organizer can end it manually if needed.</p>
+        </section>
+
+        <div v-if="can('timings.record')" class="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
+          <section class="panel overflow-hidden">
+            <div class="border-b border-outline p-4">
+              <div v-if="selectedCheckpoint" class="grid gap-3" :class="isAdmin?'sm:grid-cols-[minmax(0,1fr)_minmax(220px,.6fr)]':''">
+                <label class="label">Find athlete or team<input v-model="timingSearch" class="field min-h-14 text-lg" placeholder="Bib number or name"></label>
+                <label v-if="isAdmin" class="label">Checkpoint<select v-model="selectedCheckpointId" class="field min-h-14"><option v-for="cp in activeTimingCheckpoints" :key="cp.id" :value="cp.id">{{ cp.name }}</option></select></label>
+                <div v-else class="rounded-xl bg-canvas p-3"><span class="text-xs font-bold uppercase tracking-wider text-accent">Assigned checkpoint</span><strong class="mt-1 block">{{ selectedCheckpoint.name }}</strong></div>
+              </div>
+              <div v-else class="rounded-xl bg-amber-500/10 p-4 text-warning"><strong>No checkpoint assigned.</strong><span class="mt-1 block text-sm">Ask the Organizer to assign this account before race day.</span></div>
+              <p v-if="timingFeedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="timingFeedback.type==='ok'?'bg-emerald-500/10 text-success':'bg-red-500/10 text-error'" role="status">{{ timingFeedback.message }}</p>
+            </div>
+
+            <div v-if="race.started_at && !race.finished_at && selectedCheckpoint" class="max-h-[58dvh] overflow-y-auto p-2">
+              <button
+                v-for="participant in filteredTimingParticipants"
+                :key="participant.id"
+                class="mb-2 grid min-h-20 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-4 text-left transition"
+                :class="participantRecorded(participant)?'border-emerald-500/30 bg-emerald-500/10 opacity-70':'border-outline bg-surface hover:border-cyan-400 hover:bg-raised active:scale-[.995]'"
+                :disabled="participantRecorded(participant) || timingSaving.has(participant.id) || (!!participant.status && participant.status!=='registered')"
+                @click="recordTiming(participant)"
+              >
+                <span class="max-w-24 rounded-xl bg-canvas px-3 py-2 font-mono text-xl font-black">{{ bibLabel(participant.bib_number) }}</span>
+                <span class="min-w-0"><strong class="block truncate text-lg">{{ participant.name }}</strong><span class="block truncate text-sm muted">{{ participant.type==='relay'?participant.members.map(member=>`${disciplineLabel(member.discipline)}: ${member.name}`).join(' · '):'Solo athlete' }}</span></span>
+                <span class="text-sm font-bold" :class="participantRecorded(participant)?'text-success':'text-accent'">{{ participant.status && participant.status!=='registered'?participant.status.toUpperCase():timingSaving.has(participant.id)?'SAVING':participantRecorded(participant)?'RECORDED':'TAP' }}</span>
+              </button>
+              <p v-if="!filteredTimingParticipants.length" class="p-8 text-center muted">No matching athlete.</p>
+            </div>
+            <div v-else-if="selectedCheckpoint" class="p-8 text-center"><strong>{{ race.finished_at?'Timing is closed':'Timing opens when the race starts' }}</strong></div>
+          </section>
+
+          <section class="panel overflow-hidden">
+            <div class="border-b border-outline p-4"><div class="flex items-center justify-between gap-3"><h3 class="font-bold">Latest times</h3><span class="badge">{{ localCompletedCount }} finished</span></div></div>
+            <div v-if="recent.length" class="divide-y divide-outline">
+              <div v-for="timing in recent.slice(0,12)" :key="timing.id ?? timing.client_uuid" class="p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="min-w-0"><strong class="block truncate">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</strong><span class="text-sm muted">{{ timing.checkpoint?.name }}<span v-if="timing.operator?.name"> · {{ timing.operator.name }}</span></span></div>
+                  <span class="shrink-0 font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="p-6 text-center muted">No times yet.</div>
+          </section>
+        </div>
+
+        <section v-else class="panel-pad"><p class="font-semibold">Your account cannot record timings.</p></section>
+      </div>
+    </section>
+
+    <section id="finish" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
+      <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='finish'" @click="toggleStep('finish')">
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.finished_at?'Finished':'Step 4' }}</p><h2 class="text-xl font-bold">Results</h2><p class="mt-1 text-sm muted">{{ localCompletedCount }} of {{ race.entries_count ?? 0 }} have a finish time</p></div>
+        <i :class="openStep==='finish'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+      </button>
+      <div v-show="openStep==='finish'" class="border-t border-outline p-4">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><h3 class="font-bold">{{ race.finished_at?'Race complete':'Results update while the race is live' }}</h3><p class="mt-1 muted">Open the results table for places and split times.</p></div>
           <Link :href="`/races/${race.id}/results`" class="btn-primary"><i class="fa-solid fa-trophy" aria-hidden="true"></i>View results</Link>
         </div>
 
-        <div v-if="can('races.setup')" class="mt-5 border-t border-outline pt-5">
+        <div v-if="isAdmin && race.finished_at" class="mt-5 border-t border-outline pt-5">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div><h3 class="font-bold">Public results</h3><p class="mt-1 text-sm muted">{{ race.results_published_at?'Published — anyone with the link can view the leaderboard.':'Private — only authorized users can view these results.' }}</p></div>
+            <div><h3 class="font-bold">Public results</h3><p class="mt-1 text-sm muted">{{ race.results_published_at?'Published':'Private' }}</p></div>
             <button class="btn-secondary" @click="publishing=true"><i :class="race.results_published_at?'fa-solid fa-eye-slash':'fa-solid fa-globe'" aria-hidden="true"></i>{{ race.results_published_at?'Unpublish':'Publish results' }}</button>
           </div>
           <a v-if="race.results_published_at && race.public_results_token" :href="`/live/${race.public_results_token}`" target="_blank" rel="noopener" class="mt-3 inline-block font-semibold text-accent underline">Open public leaderboard ↗</a>
         </div>
-      </section>
+      </div>
     </section>
 
     <details class="panel-pad">
-      <summary class="cursor-pointer text-lg font-bold"><i class="fa-solid fa-toolbox mr-2" aria-hidden="true"></i>More tools</summary>
-      <p class="mt-2 text-sm muted">These are useful for imports, poor connectivity or exceptional corrections. They are not part of the normal race flow.</p>
-      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Link v-if="can('timings.record')" :href="`/races/${race.id}/station`" class="rounded-xl border border-outline p-4 hover:bg-raised">
-          <strong><i class="fa-solid fa-stopwatch mr-2" aria-hidden="true"></i>Focused timing mode</strong><p class="mt-2 text-sm muted">Full-screen checkpoint timing with offline queue support.</p>
-        </Link>
-        <Link v-if="can('participants.manage')" :href="`/races/${race.id}/participants`" class="rounded-xl border border-outline p-4 hover:bg-raised">
-          <strong><i class="fa-solid fa-users mr-2" aria-hidden="true"></i>Full participant list</strong><p class="mt-2 text-sm muted">Search all participants and open detailed edits.</p>
-        </Link>
-        <Link v-if="can('participants.manage') && !race.started_at" :href="`/races/${race.id}/participants/import`" class="rounded-xl border border-outline p-4 hover:bg-raised">
-          <strong><i class="fa-solid fa-file-import mr-2" aria-hidden="true"></i>Import participants</strong><p class="mt-2 text-sm muted">Load many athletes or relay teams from a file.</p>
-        </Link>
-        <Link v-if="can('races.control')" :href="`/races/${race.id}/control`" class="rounded-xl border border-outline p-4 hover:bg-raised">
-          <strong><i class="fa-solid fa-screwdriver-wrench mr-2" aria-hidden="true"></i>Corrections & monitoring</strong><p class="mt-2 text-sm muted">Fix missed times and inspect active timing stations.</p>
-        </Link>
+      <summary class="cursor-pointer font-bold"><i class="fa-solid fa-toolbox mr-2" aria-hidden="true"></i>More tools</summary>
+      <p class="mt-2 text-sm muted">Only use these when the normal race flow is not enough.</p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <Link v-if="can('timings.record')" :href="`/races/${race.id}/station`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-stopwatch mr-2" aria-hidden="true"></i>Focused timing</strong><p class="mt-2 text-sm muted">Full-screen timing with offline recovery.</p></Link>
+        <Link v-if="isAdmin && !race.started_at" :href="`/races/${race.id}/participants`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-users mr-2" aria-hidden="true"></i>Full athlete list</strong><p class="mt-2 text-sm muted">Search or edit registration details before the start.</p></Link>
+        <Link v-if="isAdmin && race.started_at" :href="`/races/${race.id}/control`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-screwdriver-wrench mr-2" aria-hidden="true"></i>Timing corrections</strong><p class="mt-2 text-sm muted">Correct a missed or incorrect recorded time.</p></Link>
       </div>
-
-      <div v-if="isAdmin" class="mt-5 border-t border-red-500/20 pt-5">
-        <h3 class="font-bold">Delete race</h3>
-        <p class="mt-1 text-sm muted">Moves the race to Deleted races. Participants and timing history are preserved.</p>
-        <button class="btn-danger mt-3" @click="deleting=true"><i class="fa-solid fa-trash" aria-hidden="true"></i>Delete race</button>
-      </div>
+      <div v-if="isAdmin && !race.started_at" class="mt-5 border-t border-red-500/20 pt-5"><button class="btn-danger" @click="deleting=true"><i class="fa-solid fa-trash" aria-hidden="true"></i>Delete race</button></div>
     </details>
 
     <ConfirmDialog
       v-if="pendingClockAction"
-      :title="pendingClockAction==='start'?'Start the race?':'Finish the race?'"
-      :message="pendingClockAction==='start'?'Start the shared clock now? All checkpoint times will be measured from this moment.':'Stop the shared race clock now? Use this when automatic finish is off or when the race must be closed manually.'"
-      :confirm-label="pendingClockAction==='start'?'Start race':'Finish race'"
+      :title="pendingClockAction==='start'?'Start the race?':'End the race now?'"
+      :message="pendingClockAction==='start'?'Start the shared clock now? Timing opens immediately for every checkpoint.':'Stop the race now? Normally it ends automatically when the last active athlete finishes.'"
+      :confirm-label="pendingClockAction==='start'?'Start race':'End race'"
       :busy="clockForm.processing"
       @cancel="pendingClockAction=null; clockForm.clearErrors()"
       @confirm="changeClock"
@@ -628,7 +628,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
     <ConfirmDialog
       v-if="removingCheckpoint"
       title="Delete checkpoint?"
-      :message="`Delete ${removingCheckpoint.name}? Checkpoints with timing history cannot be deleted.`"
+      :message="`Delete ${removingCheckpoint.name}?`"
       confirm-label="Delete checkpoint"
       @cancel="removingCheckpoint=null"
       @confirm="confirmCheckpointRemoval"
@@ -636,8 +636,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <ConfirmDialog
       v-if="publishing"
-      :title="race.results_published_at?'Unpublish results?':'Publish participant results?'"
-      :message="race.results_published_at?'The current public link will stop working.':'Anyone with the link will be able to view participant names and results.'"
+      :title="race.results_published_at?'Unpublish results?':'Publish results?'"
+      :message="race.results_published_at?'The public link will stop working.':'Anyone with the link will be able to view participant names and results.'"
       :confirm-label="race.results_published_at?'Unpublish':'Publish results'"
       :busy="publication.processing"
       @cancel="publishing=false"
@@ -647,8 +647,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
     <ConfirmDialog
       v-if="deleting"
       title="Delete race?"
-      :message="`Move ${race.name} to Deleted races? It can be restored later.`"
-      confirm-label="Move to Deleted races"
+      :message="`Move ${race.name} to Deleted races?`"
+      confirm-label="Delete race"
       :busy="deleteForm.processing"
       @cancel="deleting=false"
       @confirm="deleteRace"
