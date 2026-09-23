@@ -78,6 +78,6 @@ class InvitationsAndPublicResultsTest extends TestCase {
   $admin=$this->admin();$this->actingAs($admin)->post('/races',['name'=>'Distance','event_date'=>'2026-09-23','timezone'=>'Europe/Brussels','swim_km'=>1,'bike_km'=>35,'run_km'=>8]);$race=Race::firstOrFail();
   $data=['name'=>$race->name,'event_date'=>'2026-09-23','timezone'=>'Europe/Brussels','status'=>'draft','swim_km'=>1.5,'bike_km'=>40,'run_km'=>10];
   $this->put("/races/$race->id",$data)->assertSessionHasNoErrors();$this->assertEquals(40,$race->fresh()->settings['bike_km']);$this->assertEquals(40,$race->checkpoints()->where('code','BIKE_FINISH')->first()->distance_km);
-  $race->update(['started_at'=>now(),'status'=>'running']);$data['status']='running';$data['bike_km']=41;$this->put("/races/$race->id",$data)->assertSessionHasErrors('bike_km');$this->assertEquals(40,$race->fresh()->settings['bike_km']);
+  $race->update(['started_at'=>now(),'status'=>'running']);$data['status']='running';$data['bike_km']=41;$this->put("/races/$race->id",$data)->assertSessionHasErrors('race');$this->assertEquals(40,$race->fresh()->settings['bike_km']);
  }
 }
