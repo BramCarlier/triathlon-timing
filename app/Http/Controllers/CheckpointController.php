@@ -16,6 +16,7 @@ class CheckpointController extends Controller
     public function store(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
         $this->ensureSetupUnlocked($race);
         if (!$request->filled('code')) {
             $base = substr(strtoupper(\Illuminate\Support\Str::slug((string) $request->input('name'), '_')), 0, 36) ?: 'CHECKPOINT';
