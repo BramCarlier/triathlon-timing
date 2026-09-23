@@ -7,14 +7,16 @@ import AthletePicker from '../../Components/AthletePicker.vue';
 import RolePermissions from '../../Components/RolePermissions.vue';
 import type { UserRole } from '../../types';
 
+interface AccessRole { id:number; name:string; description:string|null; permissions:string[]; is_default:boolean }
 interface Athlete { id: number; first_name: string; last_name: string; email?: string }
 interface Race { id: number; name: string; event_date: string }
-interface Account { id: number; name: string; email: string; role: UserRole; is_active: boolean; force_password_change:boolean; invitation_sent_at?:string; athlete_id: number | null; races: Race[] }
-const props = defineProps<{ account: Account; linkedAthlete: Athlete|null; races: Race[]; mailConfigured:boolean }>();
+interface Account { id: number; name: string; email: string; role: UserRole; access_role_id:number|null; is_active: boolean; force_password_change:boolean; invitation_sent_at?:string; athlete_id: number | null; races: Race[] }
+const props = defineProps<{ accessRoles:AccessRole[];  account: Account; linkedAthlete: Athlete|null; races: Race[]; mailConfigured:boolean }>();
 const form = useForm({
   name: props.account.name,
   email: props.account.email,
   role: props.account.role,
+  access_role_id:props.account.access_role_id,
   is_active: props.account.is_active,
   athlete_id: props.account.athlete_id,
   race_ids: props.account.races.map(race => race.id),
@@ -22,7 +24,7 @@ const form = useForm({
 });
 watch(() => form.role, role => {
   if (role !== 'athlete') form.athlete_id = null;
-  if (role !== 'organizer') form.race_ids = [];
+  if (role !== 'organizer') { form.race_ids = []; form.access_role_id=null; }
 });
 const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true });
 </script>
@@ -41,11 +43,11 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
       </section>
       <section class="panel-pad space-y-4">
         <h2 class="text-lg font-bold">Role & permissions</h2>
-        <div><label for="user-role" class="label">Role</label><select id="user-role" v-model="form.role" class="field"><option value="admin">Administrator</option><option value="organizer">Organizer</option><option value="athlete">Athlete</option></select></div>
-        <RolePermissions :role="form.role" />
+        <div><label for="user-role" class="label">Role</label><select id="user-role" v-model="form.role" class="field"><option value="admin">Organizer (admin)</option><option value="organizer">Official</option><option value="athlete">Athlete</option></select></div>
+        <div v-if="form.role==='organizer'"><label for="access-role" class="label">Official role</label><select id="access-role" v-model="form.access_role_id" class="field"><option :value="null">Official (default)</option><option v-for="accessRole in accessRoles.filter(r=>!r.is_default)" :key="accessRole.id" :value="accessRole.id">{{ accessRole.name }}</option></select><p class="mt-2 text-sm muted">{{ (form.access_role_id?accessRoles.find(r=>r.id===form.access_role_id):accessRoles.find(r=>r.is_default))?.description }}</p><Link href="/admin/roles" class="mt-2 inline-block text-sm text-accent underline">Manage roles & permissions</Link></div><RolePermissions :role="form.role"/>
         <div v-if="form.role==='organizer'">
           <h3 class="label">Assigned races</h3>
-          <p class="mb-3 text-sm muted">Select the races this organizer can manage. Access changes when you save.</p>
+          <p class="mb-3 text-sm muted">Select the races this official can manage. Access changes when you save.</p>
           <div class="max-h-72 space-y-3 overflow-auto rounded-xl border border-outline p-3">
             <label v-for="race in races" :key="race.id" class="flex gap-3 text-sm"><input v-model="form.race_ids" type="checkbox" :value="race.id"><span>{{ race.name }} <span class="muted">· {{ formatDate(race.event_date) }}</span></span></label>
             <p v-if="!races.length" class="muted">No races available.</p>

@@ -40,43 +40,47 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:admin,organizer')->group(function () {
         Route::get('/races', [RaceController::class, 'index'])->name('races.index');
-        Route::get('/races/create', [RaceController::class, 'create'])->name('races.create');
-        Route::post('/races', [RaceController::class, 'store'])->name('races.store');
+        Route::get('/races/create', [RaceController::class, 'create'])->middleware('permission:races.create')->name('races.create');
+        Route::post('/races', [RaceController::class, 'store'])->middleware('permission:races.create')->name('races.store');
         Route::get('/races/{race}', [RaceController::class, 'show'])->name('races.show');
-        Route::post('/races/{race}/publication', [ResultController::class,'publish'])->name('results.publish');
-        Route::put('/races/{race}', [RaceController::class, 'update'])->name('races.update');
+        Route::post('/races/{race}/publication', [ResultController::class,'publish'])->middleware('permission:races.setup')->name('results.publish');
+        Route::put('/races/{race}', [RaceController::class, 'update'])->middleware('permission:races.setup')->name('races.update');
 
-        Route::post('/races/{race}/checkpoints', [CheckpointController::class, 'store'])->name('races.checkpoints.store');
-        Route::put('/races/{race}/checkpoints/{checkpoint}', [CheckpointController::class, 'update'])->name('races.checkpoints.update');
-        Route::delete('/races/{race}/checkpoints/{checkpoint}', [CheckpointController::class, 'destroy'])->name('races.checkpoints.destroy');
+        Route::post('/races/{race}/checkpoints', [CheckpointController::class, 'store'])->middleware('permission:races.setup')->name('races.checkpoints.store');
+        Route::put('/races/{race}/checkpoints/{checkpoint}', [CheckpointController::class, 'update'])->middleware('permission:races.setup')->name('races.checkpoints.update');
+        Route::delete('/races/{race}/checkpoints/{checkpoint}', [CheckpointController::class, 'destroy'])->middleware('permission:races.setup')->name('races.checkpoints.destroy');
 
-        Route::get('/races/{race}/participants', [EntryController::class, 'index'])->name('races.entries.index');
-        Route::post('/races/{race}/participants', [EntryController::class, 'store'])->name('races.entries.store');
-        Route::get('/races/{race}/participants/{entry}/edit', [EntryController::class, 'edit'])->name('races.entries.edit');
-        Route::put('/races/{race}/participants/{entry}', [EntryController::class, 'update'])->name('races.entries.update');
-        Route::delete('/races/{race}/participants/{entry}', [EntryController::class, 'destroy'])->name('races.entries.destroy');
-        Route::get('/races/{race}/participants/import', [ParticipantImportController::class, 'create'])->name('races.import.create');
-        Route::post('/races/{race}/participants/import/preview', [ParticipantImportController::class, 'preview'])->name('races.import.preview');
-        Route::post('/races/{race}/participants/import/{batch}/confirm', [ParticipantImportController::class, 'confirm'])->name('races.import.confirm');
-        Route::get('/participant-import-template.csv', [ParticipantImportController::class, 'template'])->name('races.import.template');
+        Route::get('/races/{race}/participants', [EntryController::class, 'index'])->middleware('permission:participants.manage')->name('races.entries.index');
+        Route::post('/races/{race}/participants', [EntryController::class, 'store'])->middleware('permission:participants.manage')->name('races.entries.store');
+        Route::get('/races/{race}/participants/{entry}/edit', [EntryController::class, 'edit'])->middleware('permission:participants.manage')->name('races.entries.edit');
+        Route::put('/races/{race}/participants/{entry}', [EntryController::class, 'update'])->middleware('permission:participants.manage')->name('races.entries.update');
+        Route::delete('/races/{race}/participants/{entry}', [EntryController::class, 'destroy'])->middleware('permission:participants.manage')->name('races.entries.destroy');
+        Route::get('/races/{race}/participants/import', [ParticipantImportController::class, 'create'])->middleware('permission:participants.manage')->name('races.import.create');
+        Route::post('/races/{race}/participants/import/preview', [ParticipantImportController::class, 'preview'])->middleware('permission:participants.manage')->name('races.import.preview');
+        Route::post('/races/{race}/participants/import/{batch}/confirm', [ParticipantImportController::class, 'confirm'])->middleware('permission:participants.manage')->name('races.import.confirm');
+        Route::get('/participant-import-template.csv', [ParticipantImportController::class, 'template'])->middleware('permission:participants.manage')->name('races.import.template');
 
-        Route::get('/races/{race}/control', [RaceControlController::class, 'show'])->name('races.control');
-        Route::post('/races/{race}/start', [RaceControlController::class, 'start'])->name('races.start');
-        Route::post('/races/{race}/finish', [RaceControlController::class, 'finish'])->name('races.finish');
+        Route::get('/races/{race}/control', [RaceControlController::class, 'show'])->middleware('permission:races.control')->name('races.control');
+        Route::post('/races/{race}/start', [RaceControlController::class, 'start'])->middleware('permission:races.control')->name('races.start');
+        Route::post('/races/{race}/finish', [RaceControlController::class, 'finish'])->middleware('permission:races.control')->name('races.finish');
 
-        Route::post('/races/{race}/checkpoint-selection', [TimingController::class, 'selectCheckpoint'])->name('races.station.select');
-        Route::get('/races/{race}/station', [TimingController::class, 'station'])->name('races.station');
-        Route::get('/races/{race}/station/search', [TimingController::class, 'search'])->name('races.station.search');
-        Route::post('/races/{race}/timings', [TimingController::class, 'record'])->name('races.timings.store');
-        Route::post('/races/{race}/corrections', [TimingController::class, 'correct'])->name('races.timings.correct');
-        Route::post('/races/{race}/timings/{timing}/void', [TimingController::class, 'void'])->name('races.timings.void');
-        Route::post('/races/{race}/presence', [PresenceController::class, 'ping'])->name('races.presence');
+        Route::post('/races/{race}/checkpoint-selection', [TimingController::class, 'selectCheckpoint'])->middleware('permission:timings.record')->name('races.station.select');
+        Route::get('/races/{race}/station', [TimingController::class, 'station'])->middleware('permission:timings.record')->name('races.station');
+        Route::get('/races/{race}/station/search', [TimingController::class, 'search'])->middleware('permission:timings.record')->name('races.station.search');
+        Route::post('/races/{race}/timings', [TimingController::class, 'record'])->middleware('permission:timings.record')->name('races.timings.store');
+        Route::post('/races/{race}/corrections', [TimingController::class, 'correct'])->middleware('permission:races.control')->name('races.timings.correct');
+        Route::post('/races/{race}/timings/{timing}/void', [TimingController::class, 'void'])->middleware('permission:timings.record,races.control')->name('races.timings.void');
+        Route::post('/races/{race}/presence', [PresenceController::class, 'ping'])->middleware('permission:timings.record')->name('races.presence');
 
-        Route::get('/races/{race}/results.csv', [ResultController::class, 'csv'])->name('races.results.csv');
-        Route::get('/races/{race}/results.xlsx', [ResultController::class, 'xlsx'])->name('races.results.xlsx');
+        Route::get('/races/{race}/results.csv', [ResultController::class, 'csv'])->middleware('permission:results.export')->name('races.results.csv');
+        Route::get('/races/{race}/results.xlsx', [ResultController::class, 'xlsx'])->middleware('permission:results.export')->name('races.results.xlsx');
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/roles', [\App\Http\Controllers\AccessRoleController::class,'index'])->name('roles.index');
+        Route::post('/admin/roles', [\App\Http\Controllers\AccessRoleController::class,'store'])->name('roles.store');
+        Route::put('/admin/roles/{accessRole}', [\App\Http\Controllers\AccessRoleController::class,'update'])->name('roles.update');
+        Route::delete('/admin/roles/{accessRole}', [\App\Http\Controllers\AccessRoleController::class,'destroy'])->name('roles.destroy');
         Route::get('/admin/health', \App\Http\Controllers\HealthController::class)->name('admin.health');
         Route::delete('/races/{race}', [RaceController::class, 'destroy'])->name('races.destroy');
         Route::post('/races/{race}/restore', [RaceController::class, 'restore'])->withTrashed()->name('races.restore');

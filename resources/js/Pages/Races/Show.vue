@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { usePermissions } from '../../Composables/usePermissions';
+const can=usePermissions();
 import { checkpointDistanceText } from '../../checkpointDistance';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import RaceChecklist from '../../Components/RaceChecklist.vue';
@@ -87,8 +89,8 @@ const removeCheckpoint = (cp: Checkpoint) => {
 <template>
   <Head :title="race.name" />
   <AppLayout :title="race.name">
-    <RaceChecklist :race="race"/><section v-if="race.started_at" class="panel-pad mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-bold">{{ race.finished_at?'Race completed':'Race in progress' }}</h2><p class="mt-1 muted">{{ race.finished_at?'Review the results, make any corrections, and share the leaderboard.':'Open your timing station or monitor the race from Race control.' }}</p></div><Link :href="`/races/${race.id}/${race.finished_at?'results':'station'}`" class="btn-primary">{{ race.finished_at?'View results':'Open timing station' }}</Link></section><div class="grid gap-6 lg:grid-cols-2">
-      <form class="panel-pad" @submit.prevent="saveRace">
+    <RaceChecklist v-if="can('races.setup') && can('participants.manage') && can('timings.record')" :race="race"/><section v-if="race.started_at" class="panel-pad mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-bold">{{ race.finished_at?'Race completed':'Race in progress' }}</h2><p class="mt-1 muted">{{ race.finished_at?'Review the results, make any corrections, and share the leaderboard.':'Open your timing station or monitor the race from Race control.' }}</p></div><Link v-if="race.finished_at || can('timings.record')" :href="`/races/${race.id}/${race.finished_at?'results':'station'}`" class="btn-primary">{{ race.finished_at?'View results':'Open timing station' }}</Link></section><div class="grid gap-6 lg:grid-cols-2">
+      <form v-if="can('races.setup')" class="panel-pad" @submit.prevent="saveRace">
         <h2 class="mb-4 text-lg font-bold">Race settings</h2>
         <div class="space-y-4">
           <div>
@@ -121,7 +123,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
             <p class="mt-1 text-xs muted">Running/finished status is controlled by the shared race clock.</p>
           </div>
           <fieldset id="course-distances"><legend class="label">Course distances (km)</legend><p class="mb-3 text-xs muted">Distances can be changed before the race starts. Standard leg-end checkpoints update with them.</p><div class="grid grid-cols-3 gap-3"><label class="label">Swim<input v-model="raceForm.swim_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Bike<input v-model="raceForm.bike_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label><label class="label">Run<input v-model="raceForm.run_km" type="number" min="0.001" step="0.001" class="field" :disabled="!!race.started_at" required></label></div></fieldset><div id="organizers" v-if="organizers.length">
-            <label class="label">Organizers</label>
+            <label class="label">Officials</label>
             <div class="grid gap-2 rounded-xl border border-outline p-3">
               <label v-for="organizer in organizers" :key="organizer.id" class="flex gap-2">
                 <input v-model="raceForm.organizer_ids" type="checkbox" :value="organizer.id">
@@ -159,7 +161,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
               </div>
               <span class="badge">{{ cp.is_active ? 'active' : 'off' }}</span>
             </div>
-            <div class="mt-3 flex flex-wrap gap-2">
+            <div v-if="can('races.setup')" class="mt-3 flex flex-wrap gap-2">
               <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="toggleCheckpoint(cp)">
                 {{ cp.is_active ? 'Disable' : 'Enable' }}
               </button>
@@ -175,18 +177,18 @@ const removeCheckpoint = (cp: Checkpoint) => {
           </div>
         </div>
 
-        <form class="mt-5 border-t border-outline pt-5" @submit.prevent="addCheckpoint">
+        <form v-if="can('races.setup')" class="mt-5 border-t border-outline pt-5" @submit.prevent="addCheckpoint">
           <h3 class="mb-2 font-semibold">Add checkpoint</h3>
-          <p class="mb-4 text-sm muted">Add a place where an organizer records each participant passing. For example, “Run 4 km” is an intermediate timing point between T2 (Run Start) and Finish.</p>
+          <p class="mb-4 text-sm muted">Add a place where an official records each participant passing. For example, “Run 4 km” is an intermediate timing point between T2 (Run Start) and Finish.</p>
           <div class="grid gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2"><label for="checkpoint-name" class="label">Checkpoint name</label><input id="checkpoint-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" maxlength="255" required><p class="mt-1 text-xs muted">Shown to organizers at the timing station and in results.</p></div>
+            <div class="sm:col-span-2"><label for="checkpoint-name" class="label">Checkpoint name</label><input id="checkpoint-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" maxlength="255" required><p class="mt-1 text-xs muted">Shown to officials at the timing station and in results.</p></div>
             <div><label for="checkpoint-sequence" class="label">Order in the race</label><input id="checkpoint-sequence" v-model="checkpoint.sequence" type="number" min="1" max="65535" step="1" class="field" required aria-describedby="checkpoint-order-help"><p id="checkpoint-order-help" class="mt-1 text-xs muted">Smaller numbers come first. Use 45 between T2 (40) and Finish (50) in a new race. Each number must be unique.</p><p class="mt-2 text-sm text-accent" aria-live="polite">{{ checkpointPosition }}</p></div>
             <div><label for="checkpoint-discipline" class="label">Sport / leg</label><select id="checkpoint-discipline" v-model="checkpoint.discipline" class="field"><option value="">Race-wide (no specific sport)</option><option value="swim">Swim</option><option value="run">Run</option><option value="bike">Bike</option></select><p class="mt-1 text-xs muted">For a transition exit, choose the sport starting there. Relay timings are linked to that sport’s athlete.</p></div>
             <div><label for="checkpoint-kind" class="label">What happens here?</label><select id="checkpoint-kind" v-model="checkpoint.kind" class="field"><option value="split">Intermediate timing point</option><option value="transition">Leg boundary / transition</option><option value="finish">Overall race finish</option></select><p class="mt-1 text-xs muted">Intermediate: partway through a leg. Boundary: a leg ends or the next begins. Overall finish: completes the participant’s result; use only at the end of the whole race.</p></div>
             <div><label for="checkpoint-distance" class="label">Distance into this leg (km, optional)</label><input id="checkpoint-distance" v-model="checkpoint.distance_km" type="number" step="0.001" min="0" class="field" placeholder="For example: 4"><p class="mt-1 text-xs muted">Use 0 at a leg’s start, or leave blank if unknown. The total race distance shown at this checkpoint adds the preceding sports’ configured distances.</p></div>
           </div>
           <div class="mt-4 space-y-3 text-sm">
-            <div><label class="flex gap-2"><input v-model="checkpoint.is_required" type="checkbox"> Expected for every participant</label><p class="mt-1 text-xs muted">Warn organizers at later checkpoints if this timing is missing. They can explicitly record anyway.</p></div>
+            <div><label class="flex gap-2"><input v-model="checkpoint.is_required" type="checkbox"> Expected for every participant</label><p class="mt-1 text-xs muted">Warn officials at later checkpoints if this timing is missing. They can explicitly record anyway.</p></div>
             <div><label class="flex gap-2"><input v-model="checkpoint.is_active" type="checkbox"> Available at timing stations</label><p class="mt-1 text-xs muted">Turn off to keep this checkpoint in the setup without allowing new taps there.</p></div>
           </div>
           <details class="mt-4"><summary class="cursor-pointer text-sm muted">Advanced: checkpoint code</summary><label for="checkpoint-code" class="label mt-3">Unique code (optional)</label><input id="checkpoint-code" v-model="checkpoint.code" class="field" placeholder="Generated automatically from the name" maxlength="48"><p class="mt-1 text-xs muted">A stable identifier for integrations. Normally leave this blank. If supplied, it must be unique within this race.</p></details>
@@ -194,7 +196,7 @@ const removeCheckpoint = (cp: Checkpoint) => {
         </form>
       </div>
     </div>
-    <section class="panel-pad mt-6"><h2 class="text-lg font-bold">Public leaderboard</h2><p class="mt-2 muted">{{ race.results_published_at?'Published — anyone with the link can view results.':'Private — only authorized signed-in users can view results.' }}</p><p class="mt-2 text-sm muted">Publishing shares participant names, bibs, categories, relay member names and timings. Email addresses and organizer controls are never included. Share only when participants have been informed.</p><div v-if="race.results_published_at && race.public_results_token" class="mt-4"><a :href="`/live/${race.public_results_token}`" target="_blank" rel="noopener" class="font-semibold text-accent underline">Open public leaderboard ↗</a><p class="mt-2 text-sm muted">Copy the address from the opened page to share. Use Large-screen display there for spectators.</p></div><button class="btn-secondary mt-4" @click="publishing=true">{{ race.results_published_at?'Unpublish leaderboard':'Publish leaderboard' }}</button></section>
+    <section v-if="can('races.setup')" class="panel-pad mt-6"><h2 class="text-lg font-bold">Public leaderboard</h2><p class="mt-2 muted">{{ race.results_published_at?'Published — anyone with the link can view results.':'Private — only authorized signed-in users can view results.' }}</p><p class="mt-2 text-sm muted">Publishing shares participant names, bibs, categories, relay member names and timings. Email addresses and organizer controls are never included. Share only when participants have been informed.</p><div v-if="race.results_published_at && race.public_results_token" class="mt-4"><a :href="`/live/${race.public_results_token}`" target="_blank" rel="noopener" class="font-semibold text-accent underline">Open public leaderboard ↗</a><p class="mt-2 text-sm muted">Copy the address from the opened page to share. Use Large-screen display there for spectators.</p></div><button class="btn-secondary mt-4" @click="publishing=true">{{ race.results_published_at?'Unpublish leaderboard':'Publish leaderboard' }}</button></section>
     <ConfirmDialog v-if="publishing" :title="race.results_published_at?'Unpublish leaderboard?':'Publish participant results?'" :message="race.results_published_at?'The existing public link will stop working.':'Anyone with the link will be able to view participant names and results without signing in.'" :confirm-label="race.results_published_at?'Unpublish':'Publish results'" :busy="publication.processing" @cancel="publishing=false" @confirm="publish"><p v-if="Object.keys(publication.errors).length" role="alert">{{ Object.values(publication.errors)[0] }}</p></ConfirmDialog>
     <section v-if="page.props.auth.user?.role==='admin'" class="panel-pad mt-6 border-red-500/30">
       <h2 class="font-bold">Delete race</h2>
