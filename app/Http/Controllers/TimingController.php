@@ -43,7 +43,7 @@ class TimingController extends Controller
         } else {
             $assignment = $race->checkpointAssignments()->where('user_id', $request->user()->id)->first();
             $checkpoint = $assignment
-                ? $race->checkpoints()->whereKey($assignment->checkpoint_id)->where('is_active', true)->first()
+                ? $race->checkpoints()->whereKey($assignment->checkpoint_id)->where('is_active', true)->where('kind', '!=', CheckpointKind::Start->value)->first()
                 : null;
             $checkpoints = $checkpoint ? collect([$checkpoint]) : collect();
         }
