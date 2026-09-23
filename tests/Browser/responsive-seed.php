@@ -1,6 +1,6 @@
 <?php
 // Included only by the guarded, isolated browser-test seeder.
-use App\Models\{User,Race,Athlete,Entry,TimingRecord,AccessRole};
+use App\Models\{User,Race,Athlete,Entry,TimingRecord,AccessRole,CheckpointAssignment};
 use Illuminate\Support\Str;
 $admin=User::where('email','admin@example.test')->firstOrFail();
 $athlete=Athlete::forceCreate(['id'=>9001,'first_name'=>str_repeat('Alexandria',7),'last_name'=>'Van der Championship','email'=>str_repeat('long',20).'@example.test']);
@@ -14,6 +14,7 @@ foreach ([9001=>'running',9002=>'draft',9003=>'finished'] as $id=>$status) {
     $race->checkpoints()->create(['name'=>'Race Start','code'=>'START','sequence'=>0,'kind'=>'start','is_active'=>true]);
     $cp=$race->checkpoints()->create(['name'=>'Swim Exit '.str_repeat('Checkpoint',6),'code'=>'SWIM','sequence'=>10,'kind'=>'transition','discipline'=>'swim','distance_km'=>1,'is_active'=>true]);
     $finish=$race->checkpoints()->create(['name'=>'Finish','code'=>'FINISH','sequence'=>50,'kind'=>'finish','discipline'=>'run','distance_km'=>8,'is_active'=>true]);
+    CheckpointAssignment::create(['race_id'=>$race->id,'checkpoint_id'=>$cp->id,'user_id'=>9001]);
     if($id!==9001)continue;
     $entry=Entry::forceCreate(['id'=>9001,'race_id'=>$id,'bib_number'=>str_repeat('12345678',4),'type'=>'solo','category'=>str_repeat('Category',10)]);
     foreach(['swim','bike','run'] as $sport)$entry->members()->create(['athlete_id'=>$athlete->id,'discipline'=>$sport]);
