@@ -8,6 +8,7 @@ use App\Models\Entry;
 use App\Models\EntryChange;
 use Illuminate\Validation\ValidationException;
 use App\Models\Race;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,59 @@ class EntryController extends Controller
         return Inertia::render('Participants/Index', ['race' => $race, 'entries' => $entries, 'search' => $search]);
     }
 
+    public function athleteSearch(Request $request, Race $race): JsonResponse
+    {
+        Gate::authorize('manage-race', $race);
+        abort_unless($request->user()->isAdmin(), 403);
+
+        $search = trim((string) $request->query('q'));
+        if (mb_strlen($search) < 2) return response()->json(['athletes' => []]);
+
+        $tokens = preg_split('/\\s+/', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $athletes = Athlete::query()
+            ->with(['memberships.entry.race:id,name,event_date'])
+            ->where(function ($query) use ($tokens) {
+                foreach ($tokens as $token) {
+                    $query->where(function ($part) use ($token) {
+                        $like = '%'.$token.'%';
+                        $part->whereRaw('LOWER(first_name) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(last_name) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(COALESCE(email, \'\')) LIKE ?', [$like]);
+                    });
+                }
+            })
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->limit(20)
+            ->get()
+            ->map(function (Athlete $athlete) use ($race) {
+                $races = $athlete->memberships
+                    ->pluck('entry.race')
+                    ->filter()
+                    ->unique('id')
+                    ->sortByDesc('event_date')
+                    ->values();
+
+                return [
+                    'id' => $athlete->id,
+                    'full_name' => $athlete->full_name,
+                    'first_name' => $athlete->first_name,
+                    'last_name' => $athlete->last_name,
+                    'email' => $athlete->email,
+                    'club' => $athlete->club,
+                    'race_count' => $races->count(),
+                    'already_in_race' => $races->contains('id', $race->id),
+                    'races' => $races->take(3)->map(fn ($item) => [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'event_date' => $item->event_date?->toDateString() ?? (string) $item->event_date,
+                    ])->all(),
+                ];
+            });
+
+        return response()->json(['athletes' => $athletes]);
+    }
+
     public function store(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
@@ -45,6 +99,7 @@ class EntryController extends Controller
             'category' => ['nullable','string','max:100'],
             'members' => ['required','array','min:1'],
             'members.*.discipline' => ['required', Rule::enum(Discipline::class)],
+            'members.*.athlete_id' => ['nullable','integer',Rule::exists('athletes','id')],
             'members.*.first_name' => ['required','string','max:100'],
             'members.*.last_name' => ['required','string','max:100'],
             'members.*.email' => ['nullable','email','max:255'],
@@ -56,13 +111,13 @@ class EntryController extends Controller
             $members = collect($data['members']);
             if ($data['type'] === EntryType::Solo->value) {
                 $person = $members->first();
-                $athlete = $this->athlete($person);
+                $athlete = $this->athlete($person, $race);
                 foreach ([Discipline::Swim, Discipline::Bike, Discipline::Run] as $index => $discipline) $entry->members()->create(['athlete_id' => $athlete->id, 'discipline' => $discipline, 'position' => $index + 1]);
             } else {
                 foreach ([Discipline::Swim, Discipline::Bike, Discipline::Run] as $index => $discipline) {
                     $person = $members->firstWhere('discipline', $discipline->value);
                     abort_unless($person, 422, "Relay needs a {$discipline->value} athlete.");
-                    $entry->members()->create(['athlete_id' => $this->athlete($person)->id, 'discipline' => $discipline, 'position' => $index + 1]);
+                    $entry->members()->create(['athlete_id' => $this->athlete($person, $race)->id, 'discipline' => $discipline, 'position' => $index + 1]);
                 }
             }
         });
@@ -167,10 +222,34 @@ class EntryController extends Controller
         }
     }
 
-    private function athlete(array $data): Athlete
+    private function athlete(array $data, Race $race): Athlete
     {
-        $email = !empty($data['email']) ? strtolower($data['email']) : null;
-        if ($email && ($existing = Athlete::where('email', $email)->first())) return $existing;
-        return Athlete::create(['first_name' => $data['first_name'], 'last_name' => $data['last_name'], 'email' => $email, 'club' => $data['club'] ?? null]);
+        $athlete = !empty($data['athlete_id'])
+            ? Athlete::findOrFail((int) $data['athlete_id'])
+            : null;
+
+        $email = !empty($data['email']) ? strtolower(trim((string) $data['email'])) : null;
+        if (!$athlete && $email) $athlete = Athlete::where('email', $email)->first();
+
+        if ($athlete) {
+            $alreadyRegistered = $athlete->memberships()
+                ->whereHas('entry', fn ($query) => $query->where('race_id', $race->id))
+                ->exists();
+
+            if ($alreadyRegistered) {
+                throw ValidationException::withMessages([
+                    'members' => "{$athlete->full_name} is already registered in this race. Reuse is intended for a different race.",
+                ]);
+            }
+
+            return $athlete;
+        }
+
+        return Athlete::create([
+            'first_name' => trim((string) $data['first_name']),
+            'last_name' => trim((string) $data['last_name']),
+            'email' => $email,
+            'club' => $data['club'] ?? null,
+        ]);
     }
 }
