@@ -70,8 +70,9 @@ const participantsReady = computed(() => (props.race.entries_count ?? 0) > 0);
 
 const initialStep = ():Step => {
   if (props.race.finished_at) return 'finish';
+  if (!isAdmin.value) return 'race-day';
   if (props.race.started_at) return 'race-day';
-  if (!setupReady.value) return 'prepare';
+  if (!setupReady.value || props.checkpointAssignments.length === 0) return 'prepare';
   if (!participantsReady.value) return 'participants';
   return 'race-day';
 };
