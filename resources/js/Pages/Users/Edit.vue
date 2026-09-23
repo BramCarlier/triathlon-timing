@@ -57,7 +57,7 @@ const save = () => form.put(`/users/${props.account.id}`, { preserveScroll: true
       </section>
       <div class="lg:col-span-2">
         <ul v-if="Object.keys(form.errors).length" role="alert" class="mb-4 list-disc rounded-xl border border-red-500/30 bg-red-500/10 p-4 pl-8 text-error"><li v-for="(error, field) in form.errors" :key="field">{{ error }}</li></ul>
-        <div class="flex gap-3"><button class="btn-primary" :disabled="form.processing">Save user</button><Link href="/users" class="btn-secondary">Cancel</Link></div>
+        <div class="flex flex-wrap gap-3"><button class="btn-primary" :disabled="form.processing">Save user</button><Link href="/users" class="btn-secondary">Cancel</Link></div>
       </div>
     </form>
   </AppLayout>

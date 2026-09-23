@@ -54,10 +54,16 @@ jobs:
       - run: corepack enable
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: yarn install --immutable
-      - run: yarn playwright install --with-deps chromium
+      - run: yarn playwright install --with-deps chromium webkit
       - run: cp .env.example .env && php artisan key:generate && touch /tmp/triathlon-browser.sqlite && php artisan migrate --force && php tests/Browser/seed.php
       - run: yarn build
       - run: yarn playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: responsive-layout-screenshots
+          path: test-results/**/responsive-*.png
+          retention-days: 7
       - name: Browser failure context
         if: failure()
         run: find test-results -name error-context.md -exec cat {} \;
