@@ -92,7 +92,7 @@ class EntryController extends Controller
             $before=$snapshot();
             $ids=$entry->members()->pluck('athlete_id')->unique()->sort()->values()->all();
             $provided=collect($data['athletes'])->pluck('id')->map(fn($id)=>(int)$id)->sort()->values()->all();
-            if($ids!==$provided)throw ValidationException::withMessages(['athletes'=>'Edit the existing athletes; changing relay membership requires organizer review.']);
+            if($ids!==$provided)throw ValidationException::withMessages(['athletes'=>'Edit the existing athletes; changing relay membership requires official review.']);
             if($data['status']==='dns'&&$entry->timings()->exists())throw ValidationException::withMessages(['status'=>'This participant has timing history. Use DNF or disqualification instead of DNS.']);
             foreach($data['athletes'] as $person){
                 $email=empty($person['email'])?null:strtolower($person['email']);
@@ -100,7 +100,7 @@ class EntryController extends Controller
                 $athlete=Athlete::lockForUpdate()->findOrFail($person['id']);
                 $athlete->fill(['first_name'=>$person['first_name'],'last_name'=>$person['last_name'],'email'=>$email,'club'=>$person['club']??null]);
                 if($athlete->isDirty()&&!$request->user()->isAdmin()&&$athlete->memberships()->whereHas('entry.race',fn($query)=>$query->whereDoesntHave('organizers',fn($users)=>$users->whereKey($request->user()->id)))->exists()) {
-                    throw ValidationException::withMessages(['athletes'=>'This athlete also belongs to another organizer’s race. Ask an administrator to change their shared profile. You can still edit this entry’s bib, category and status.']);
+                    throw ValidationException::withMessages(['athletes'=>'This athlete also belongs to another official’s race. Ask an organizer (admin) to change their shared profile. You can still edit this entry’s bib, category and status.']);
                 }
                 $athlete->save();
             }

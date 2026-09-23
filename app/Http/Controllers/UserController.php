@@ -75,7 +75,7 @@ class UserController extends Controller
             $account = User::lockForUpdate()->findOrFail($user->id);
             if ($account->isAdmin() && $account->is_active && ($data['role'] !== UserRole::Admin->value || !$data['is_active'])
                 && !$admins->contains(fn ($admin) => $admin->id !== $account->id && $admin->is_active)) {
-                throw ValidationException::withMessages(['role' => 'Keep at least one active administrator. Create or enable another administrator before changing this account.']);
+                throw ValidationException::withMessages(['role' => 'Keep at least one active organizer (admin). Create or enable another organizer (admin) before changing this account.']);
             }
             $account->fill(collect($data)->except(['race_ids','password'])->all());
             $account->access_role_id = $data['role']==='organizer'?($data['access_role_id']??null):null;
