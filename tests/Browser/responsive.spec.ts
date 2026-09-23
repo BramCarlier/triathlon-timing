@@ -43,7 +43,7 @@ test('every reachable page fits portrait and landscape with long names, dialogs 
   }
  }
  await page.setViewportSize(sizes[5]);await login(page,'admin@example.test');
- const paths=['/races','/races/create','/guide','/races/9001','/races/9002','/races/9003','/races/9001/participants','/races/9001/participants/9001/edit','/races/9001/participants/import','/races/9001/control','/races/9002/control','/races/9003/control','/races/9001/results','/users','/users/9001/edit','/admin/roles','/admin/health','/account/password'];
+ const paths=['/races','/races/create','/guide','/races/9001','/races/9002','/races/9003','/races/9001/participants','/races/9001/participants/9001/edit','/races/9002/participants/import','/races/9001/control','/races/9002/control','/races/9003/control','/races/9001/results','/users','/users/9001/edit','/admin/roles','/admin/health','/account/password'];
  for(const size of sizes) {
   await page.setViewportSize(size);
   await page.emulateMedia({colorScheme:size.name.includes('portrait')?'light':'dark'});
@@ -60,7 +60,7 @@ test('every reachable page fits portrait and landscape with long names, dialogs 
   expect(box!.height).toBeLessThanOrEqual(size.height-16);expect(box!.width).toBeLessThanOrEqual(size.width-16);
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);
   await page.goto('/races/9001/station');
-  if(await page.getByRole('button',{name:'Start checkpoint mode'}).isVisible())await page.getByRole('button',{name:'Start checkpoint mode'}).click();
+  if(await page.getByRole('button',{name:'Open checkpoint'}).isVisible())await page.getByRole('button',{name:'Open checkpoint'}).click();
   await expect(page.getByLabel('Find participant')).toBeVisible();await layout(page,`${size.name} selected station`);
   await page.getByLabel('Find participant').fill('TheLongestRelay');await expect(page.getByRole('button',{name:/TheLongestRelay.*TAP/})).toBeVisible();
   await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:info.outputPath(`responsive-${size.name}-station.png`),fullPage:true});
