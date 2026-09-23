@@ -57,7 +57,8 @@ class InvitationsAndPublicResultsTest extends TestCase {
   $admin=$this->admin();$race=Race::create(['name'=>'Public race','slug'=>'public-race','event_date'=>'2026-09-23','created_by'=>$admin->id]);
   $organizer=User::factory()->create(['role'=>'organizer']);
   $this->actingAs($organizer)->post("/races/$race->id/publication",['published'=>true])->assertForbidden();
-  $organizer->races()->attach($race);$this->post("/races/$race->id/publication",['published'=>true])->assertSessionHasNoErrors();
+  $organizer->races()->attach($race);$this->post("/races/$race->id/publication",['published'=>true])->assertForbidden();
+  $this->actingAs($admin)->post("/races/$race->id/publication",['published'=>true])->assertSessionHasNoErrors();
   $token=$race->fresh()->public_results_token;$this->assertNotNull($token);
   $this->post('/logout');$this->get("/live/$token")->assertOk()->assertHeader('X-Robots-Tag','noindex, nofollow')->assertInertia(fn(Assert $page)=>$page->component('Results/Index')->where('publicMode',true)->missing('race.created_by')->missing('race.organizers')->missing('race.public_results_token')->where('auth.user',null));
   $this->get("/races/$race->id/results.csv")->assertRedirect('/login');
