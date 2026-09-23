@@ -9,7 +9,6 @@ const form = useForm({
   swim_km: 1,
   bike_km: 35,
   run_km: 8,
-  auto_finish: true,
 });
 const submit = () => form.post('/races');
 </script>
@@ -52,10 +51,6 @@ const submit = () => form.post('/races');
           <div><label for="swim-km" class="label">Swim distance (km)</label><input id="swim-km" v-model="form.swim_km" type="number" min="0" step="0.001" class="field"></div>
           <div><label for="bike-km" class="label">Bike distance (km)</label><input id="bike-km" v-model="form.bike_km" type="number" min="0" step="0.001" class="field"></div>
           <div><label for="run-km" class="label">Run distance (km)</label><input id="run-km" v-model="form.run_km" type="number" min="0" step="0.001" class="field"></div>
-          <label class="sm:col-span-2 flex gap-3 rounded-xl bg-canvas p-3">
-            <input v-model="form.auto_finish" type="checkbox">
-            <span><strong>Finish the race automatically</strong><span class="mt-1 block text-sm muted">When every active participant has crossed the finish, stop the shared race clock automatically. A manual Finish button remains available.</span></span>
-          </label>
         </div>
       </details>
 
