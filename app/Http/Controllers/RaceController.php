@@ -33,7 +33,7 @@ class RaceController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'swim_km' => ['nullable', 'numeric', 'min:0'], 'bike_km' => ['nullable', 'numeric', 'min:0'], 'run_km' => ['nullable', 'numeric', 'min:0'], 'auto_finish' => ['nullable', 'boolean']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'swim_km' => ['nullable', 'numeric', 'min:0'], 'bike_km' => ['nullable', 'numeric', 'min:0'], 'run_km' => ['nullable', 'numeric', 'min:0']]);
         $race = DB::transaction(function () use ($request, $data) {
             $race = Race::create([
                 'name' => $data['name'],
@@ -41,7 +41,7 @@ class RaceController extends Controller
                 'event_date' => $data['event_date'],
                 'timezone' => $data['timezone'],
                 'status' => RaceStatus::Draft,
-                'settings' => ['swim_km' => $data['swim_km'] ?? 1, 'bike_km' => $data['bike_km'] ?? 35, 'run_km' => $data['run_km'] ?? 8, 'auto_finish' => $data['auto_finish'] ?? true],
+                'settings' => ['swim_km' => $data['swim_km'] ?? 1, 'bike_km' => $data['bike_km'] ?? 35, 'run_km' => $data['run_km'] ?? 8],
                 'created_by' => $request->user()->id,
             ]);
             $race->organizers()->syncWithoutDetaching([$request->user()->id]);
@@ -61,8 +61,17 @@ class RaceController extends Controller
     public function show(Request $request, Race $race): Response
     {
         Gate::authorize('manage-race', $race);
-        $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence'), 'organizers:id,name,email,is_active'])->loadCount('entries');
-        $organizers = $request->user()->isAdmin() ? User::whereIn('role', ['admin', 'organizer'])->where('is_active', true)->orderBy('name')->get(['id','name','email']) : [];
+        $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence')])->loadCount('entries');
+        $officials = $request->user()->isAdmin()
+            ? User::where('role', 'organizer')->where('is_active', true)->orderBy('name')->get(['id','name','email'])
+            : collect();
+        $assignments = $race->checkpointAssignments()
+            ->with(['user:id,name,email', 'checkpoint:id,name'])
+            ->orderBy('checkpoint_id')
+            ->get();
+        $allowedTimingCheckpointIds = $request->user()->isAdmin()
+            ? $race->checkpoints->where('is_active', true)->where('kind', '!=', CheckpointKind::Start)->pluck('id')->values()
+            : $assignments->where('user_id', $request->user()->id)->pluck('checkpoint_id')->values();
 
         $participants = $race->entries()
             ->with([
@@ -83,6 +92,7 @@ class RaceController extends Controller
 
         $recentTimings = $race->timings()
             ->where('status', TimingStatus::Recorded->value)
+            ->when(!$request->user()->isAdmin(), fn ($query) => $query->whereIn('checkpoint_id', $allowedTimingCheckpointIds))
             ->with(['entry.members.athlete', 'checkpoint:id,name', 'operator:id,name'])
             ->latest('recorded_at')
             ->limit(12)
@@ -96,7 +106,10 @@ class RaceController extends Controller
 
         return Inertia::render('Races/Show', [
             'race' => $race,
-            'organizers' => $organizers,
+            'officials' => $officials,
+            'checkpointAssignments' => $assignments,
+            'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
+            'mailConfigured' => app(\App\Services\AccountInvitationService::class)->configured(),
             'participants' => $participants,
             'recentTimings' => $recentTimings,
             'completedCount' => $completedCount,
@@ -114,18 +127,16 @@ class RaceController extends Controller
         }
 
         $allowedStatuses = [RaceStatus::Draft->value, RaceStatus::Ready->value];
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'status' => ['required', Rule::in($allowedStatuses)], 'swim_km'=>['sometimes','numeric','min:0.001'],'bike_km'=>['sometimes','numeric','min:0.001'],'run_km'=>['sometimes','numeric','min:0.001'],'auto_finish' => ['sometimes','boolean'], 'organizer_ids' => ['nullable', 'array'], 'organizer_ids.*' => ['integer', Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', ['admin', 'organizer'])->where('is_active', true))]]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'status' => ['required', Rule::in($allowedStatuses)], 'swim_km'=>['sometimes','numeric','min:0.001'],'bike_km'=>['sometimes','numeric','min:0.001'],'run_km'=>['sometimes','numeric','min:0.001']]);
         $settings=$race->settings??[];
         foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code){
             if(!array_key_exists($key,$data))continue;
             $settings[$key]=$data[$key];
         }
-        if(array_key_exists('auto_finish',$data))$settings['auto_finish']=(bool)$data['auto_finish'];
         DB::transaction(function()use($race,$data,$settings){
-            $race->update([...collect($data)->except(['organizer_ids','swim_km','bike_km','run_km','auto_finish'])->all(),'settings'=>$settings]);
+            $race->update([...collect($data)->except(['swim_km','bike_km','run_km'])->all(),'settings'=>$settings]);
             foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code)if(array_key_exists($key,$data))$race->checkpoints()->where('code',$code)->update(['distance_km'=>$data[$key]]);
         });
-        if ($request->user()->isAdmin() && array_key_exists('organizer_ids', $data)) $race->organizers()->sync($data['organizer_ids'] ?: [$request->user()->id]);
         return back()->with('success', 'Race settings updated.');
     }
 
