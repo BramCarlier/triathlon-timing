@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 test.beforeAll(()=>{execFileSync('php',['tests/Browser/reset-cache.php']);});
+test.afterAll(()=>{execFileSync('php',['tests/Browser/reset-cache.php']);});
 const sizes=[
  {name:'small-phone',width:320,height:568},
  {name:'phone-portrait',width:390,height:844},
