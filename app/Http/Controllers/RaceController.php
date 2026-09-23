@@ -64,7 +64,7 @@ class RaceController extends Controller
         Gate::authorize('manage-race', $race);
         $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence')])->loadCount('entries');
         $officials = $request->user()->isAdmin()
-            ? User::where('role', 'organizer')->where('is_active', true)->orderBy('name')->get(['id','name','email'])
+            ? User::whereIn('role', ['admin', 'organizer'])->where('is_active', true)->orderBy('name')->get(['id','name','email','role'])
             : collect();
         $assignments = $race->checkpointAssignments()
             ->when(!$request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
