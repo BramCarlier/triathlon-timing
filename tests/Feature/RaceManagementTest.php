@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\Athlete;
 use App\Models\Race;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,5 +73,72 @@ class RaceManagementTest extends TestCase
             'user_id' => $official->id,
         ]);
         $this->assertTrue($official->fresh()->races->contains($race));
+
+        $this->post("/races/{$race->id}/official-assignments", [
+            'checkpoint_id' => $checkpoint->id,
+            'mode' => 'existing',
+            'user_id' => $admin->id,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('checkpoint_assignments', [
+            'race_id' => $race->id,
+            'checkpoint_id' => $checkpoint->id,
+            'user_id' => $admin->id,
+        ]);
+    }
+
+    public function test_existing_athlete_can_be_reused_in_different_races_but_not_twice_in_one_race(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $athlete = Athlete::create([
+            'first_name' => 'Repeat',
+            'last_name' => 'Racer',
+            'email' => 'repeat@example.test',
+            'club' => 'Tri Club',
+        ]);
+        $raceOne = Race::create(['name' => 'Race One', 'slug' => 'race-one', 'event_date' => '2026-09-20', 'created_by' => $admin->id]);
+        $raceTwo = Race::create(['name' => 'Race Two', 'slug' => 'race-two', 'event_date' => '2026-09-27', 'created_by' => $admin->id]);
+        $raceOne->organizers()->attach($admin);
+        $raceTwo->organizers()->attach($admin);
+
+        $payload = [
+            'bib_number' => null,
+            'type' => 'solo',
+            'team_name' => null,
+            'category' => 'Open',
+            'members' => [[
+                'discipline' => 'swim',
+                'athlete_id' => $athlete->id,
+                'first_name' => $athlete->first_name,
+                'last_name' => $athlete->last_name,
+                'email' => $athlete->email,
+                'club' => $athlete->club,
+            ]],
+        ];
+
+        $this->actingAs($admin)->post("/races/{$raceOne->id}/participants", $payload)->assertSessionHasNoErrors();
+        $this->post("/races/{$raceTwo->id}/participants", $payload)->assertSessionHasNoErrors();
+
+        $this->assertSame(2, $athlete->fresh()->memberships()->whereHas('entry', fn ($query) => $query->whereIn('race_id', [$raceOne->id, $raceTwo->id]))->distinct('entry_id')->count('entry_id'));
+
+        $this->post("/races/{$raceTwo->id}/participants", $payload)->assertSessionHasErrors('members');
+
+        $this->getJson("/races/{$raceTwo->id}/athletes/search?q=Repeat")
+            ->assertOk()
+            ->assertJsonPath('athletes.0.id', $athlete->id)
+            ->assertJsonPath('athletes.0.already_in_race', true)
+            ->assertJsonPath('athletes.0.race_count', 2);
+
+        $athleteUser = User::factory()->create([
+            'role' => UserRole::Athlete,
+            'athlete_id' => $athlete->id,
+        ]);
+
+        $this->actingAs($athleteUser)->get('/athlete')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('entries', 2));
+
+        $this->get("/races/{$raceOne->id}/results")->assertOk();
+        $this->get("/races/{$raceTwo->id}/results")->assertOk();
     }
 }

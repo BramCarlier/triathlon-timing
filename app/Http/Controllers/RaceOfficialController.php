@@ -31,7 +31,7 @@ class RaceOfficialController extends Controller
                 'required_if:mode,existing',
                 'integer',
                 Rule::exists('users', 'id')->where(fn ($query) => $query
-                    ->where('role', UserRole::Organizer->value)
+                    ->whereIn('role', [UserRole::Admin->value, UserRole::Organizer->value])
                     ->where('is_active', true)),
             ],
             'name' => ['nullable', 'required_if:mode,new', 'string', 'max:255'],
@@ -49,7 +49,7 @@ class RaceOfficialController extends Controller
 
         $official = DB::transaction(function () use ($data, $race, $emailInvite) {
             if ($data['mode'] === 'existing') {
-                $official = User::where('role', UserRole::Organizer->value)
+                $official = User::whereIn('role', [UserRole::Admin->value, UserRole::Organizer->value])
                     ->where('is_active', true)
                     ->findOrFail($data['user_id']);
             } else {
@@ -84,12 +84,15 @@ class RaceOfficialController extends Controller
     {
         abort_unless($request->user()->isAdmin(), 403);
         $this->ensureSetupUnlocked($race);
-        abort_unless($official->role === UserRole::Organizer, 404);
+        abort_unless(in_array($official->role, [UserRole::Admin, UserRole::Organizer], true), 404);
 
         CheckpointAssignment::where('race_id', $race->id)
             ->where('user_id', $official->id)
             ->delete();
-        $official->races()->detach($race->id);
+
+        if (!$official->isAdmin()) {
+            $official->races()->detach($race->id);
+        }
 
         return back()->with('success', 'Official removed from this race.');
     }

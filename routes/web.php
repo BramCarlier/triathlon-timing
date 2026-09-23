@@ -56,6 +56,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/races/{race}/checkpoints/{checkpoint}', [CheckpointController::class, 'destroy'])->middleware('permission:races.setup')->name('races.checkpoints.destroy');
 
         Route::get('/races/{race}/participants', [EntryController::class, 'index'])->middleware('permission:participants.manage')->name('races.entries.index');
+        Route::get('/races/{race}/athletes/search', [EntryController::class, 'athleteSearch'])->middleware('permission:participants.manage')->name('races.athletes.search');
         Route::post('/races/{race}/participants', [EntryController::class, 'store'])->middleware('permission:participants.manage')->name('races.entries.store');
         Route::get('/races/{race}/participants/{entry}/edit', [EntryController::class, 'edit'])->middleware('permission:participants.manage')->name('races.entries.edit');
         Route::put('/races/{race}/participants/{entry}', [EntryController::class, 'update'])->middleware('permission:participants.manage')->name('races.entries.update');
