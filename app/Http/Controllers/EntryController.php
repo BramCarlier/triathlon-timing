@@ -21,6 +21,7 @@ class EntryController extends Controller
     public function index(Request $request, Race $race): Response
     {
         Gate::authorize('manage-race', $race);
+        abort_unless($request->user()->isAdmin(), 403);
         $search = trim((string) $request->query('search'));
         $entries = $race->entries()->with('members.athlete')->when($search, function ($q) use ($search) {
             $q->where(function ($query) use ($search) {
@@ -35,6 +36,7 @@ class EntryController extends Controller
     public function store(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless($request->user()->isAdmin(), 403);
         $this->ensureRegistrationOpen($race);
         $data = $request->validate([
             'bib_number' => ['nullable','string','max:32', Rule::unique('entries')->where('race_id', $race->id)],
@@ -69,14 +71,14 @@ class EntryController extends Controller
 
     public function edit(Race $race, Entry $entry): Response
     {
-        Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);
+        Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);abort_unless(request()->user()->isAdmin(),403);
         return Inertia::render('Participants/Edit',['race'=>$race,'entry'=>$entry->load('members.athlete'),
             'changes'=>EntryChange::where('entry_id',$entry->id)->with('user:id,name')->latest('id')->limit(50)->get()]);
     }
 
     public function update(Request $request,Race $race,Entry $entry): RedirectResponse
     {
-        Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);
+        Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);abort_unless($request->user()->isAdmin(),403);
         if ($race->started_at) return $this->updateResultStatus($request, $race, $entry);
         $data=$request->validate([
             'bib_number'=>['nullable','string','max:32',Rule::unique('entries')->where('race_id',$race->id)->ignore($entry->id)],
@@ -114,7 +116,7 @@ class EntryController extends Controller
 
     public function destroy(Race $race, Entry $entry): RedirectResponse
     {
-        Gate::authorize('manage-race', $race); abort_unless($entry->race_id === $race->id, 404);
+        Gate::authorize('manage-race', $race); abort_unless($entry->race_id === $race->id, 404); abort_unless(request()->user()->isAdmin(),403);
         $this->ensureRegistrationOpen($race);
         if($entry->timings()->exists())throw ValidationException::withMessages(['entry'=>'Entries with timings cannot be deleted. Use a result status to retain their history.']);
         $entry->delete();
