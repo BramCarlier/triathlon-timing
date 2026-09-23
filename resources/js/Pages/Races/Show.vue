@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
 import RaceClock from '../../Components/RaceClock.vue';
 import LiveUpdatesStatus from '../../Components/LiveUpdatesStatus.vue';
+import RaceAthletePicker from '../../Components/RaceAthletePicker.vue';
 import { usePermissions } from '../../Composables/usePermissions';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import { checkpointDistanceText } from '../../checkpointDistance';
@@ -15,6 +16,7 @@ interface Official {
   id: number;
   name: string;
   email: string;
+  role?: 'admin'|'organizer';
 }
 
 interface CheckpointAssignment {
@@ -139,6 +141,8 @@ const beginAddCheckpoint = () => {
   checkpointFormOpen.value = true;
 };
 const beginEditCheckpoint = (cp:Checkpoint) => {
+  assigningCheckpoint.value = null;
+  officialForm.clearErrors();
   editingCheckpoint.value = cp;
   checkpoint.clearErrors();
   checkpoint.name = cp.name;
@@ -184,6 +188,7 @@ const officialForm = useForm({
 });
 const assignmentsFor = (checkpointId:number) => props.checkpointAssignments.filter(item => item.checkpoint_id === checkpointId);
 const beginAssignOfficial = (cp:Checkpoint) => {
+  closeCheckpointForm();
   officialForm.reset();
   officialForm.clearErrors();
   officialForm.checkpoint_id = cp.id;
@@ -206,12 +211,12 @@ const participantForm = useForm({
   type: 'solo' as 'solo'|'relay',
   team_name: '',
   category: '',
-  members: [{ discipline:'swim', first_name:'', last_name:'', email:'', club:'' }],
+  members: [{ discipline:'swim', athlete_id:null as number|null, first_name:'', last_name:'', email:'', club:'' }],
 });
 watch(() => participantForm.type, type => {
   participantForm.members = type === 'solo'
-    ? [{ discipline:'swim', first_name:'', last_name:'', email:'', club:'' }]
-    : ['swim','bike','run'].map(discipline => ({ discipline, first_name:'', last_name:'', email:'', club:'' }));
+    ? [{ discipline:'swim', athlete_id:null, first_name:'', last_name:'', email:'', club:'' }]
+    : ['swim','bike','run'].map(discipline => ({ discipline, athlete_id:null as number|null, first_name:'', last_name:'', email:'', club:'' }));
 });
 const addParticipant = () => participantForm.post(`/races/${props.race.id}/participants`, {
   preserveScroll:true,
@@ -411,49 +416,69 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                     <strong class="block">{{ cp.name }}</strong>
                     <span class="mt-1 block text-sm muted">{{ checkpointDistanceText(race, cp) }}</span>
                   </div>
-                  <div v-if="cp.kind!=='start'" class="flex flex-wrap gap-2">
-                    <button class="btn-secondary !px-3" type="button" @click="beginEditCheckpoint(cp)"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</button>
-                    <button class="btn-secondary !px-3" type="button" @click="beginAssignOfficial(cp)"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Assign official</button>
+                  <div class="flex flex-wrap gap-2">
+                    <button class="btn-secondary !px-3" type="button" :aria-expanded="checkpointFormOpen && editingCheckpoint?.id===cp.id" @click="beginEditCheckpoint(cp)"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</button>
+                    <button class="btn-secondary !px-3" type="button" :aria-expanded="assigningCheckpoint?.id===cp.id" @click="beginAssignOfficial(cp)"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Assign official</button>
                     <button class="btn-icon text-error" type="button" aria-label="Delete checkpoint" title="Delete checkpoint" @click="removingCheckpoint=cp"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                   </div>
                 </div>
-                <div v-if="cp.kind!=='start'" class="mt-3 flex flex-wrap gap-2">
+
+                <div class="mt-3 flex flex-wrap gap-2">
                   <span v-if="!assignmentsFor(cp.id).length" class="text-sm muted">No Official assigned</span>
                   <span v-for="assignment in assignmentsFor(cp.id)" :key="assignment.id" class="inline-flex items-center gap-2 rounded-full bg-canvas px-3 py-2 text-sm">
                     <i class="fa-solid fa-user" aria-hidden="true"></i>{{ assignment.user.name }}
                     <button type="button" class="text-error" :aria-label="`Remove ${assignment.user.name}`" @click="removeOfficial(assignment.user)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                   </span>
                 </div>
+
+                <form v-if="checkpointFormOpen && editingCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="saveCheckpoint">
+                  <div class="flex items-center justify-between gap-3"><h4 class="font-bold">Edit checkpoint</h4><button type="button" class="btn-icon" aria-label="Close checkpoint form" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+                  <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2"><label class="label" :for="`checkpoint-name-${cp.id}`">Name</label><input :id="`checkpoint-name-${cp.id}`" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></div>
+                    <div><label class="label" :for="`checkpoint-sport-${cp.id}`">Sport</label><select :id="`checkpoint-sport-${cp.id}`" v-model="checkpoint.discipline" class="field"><option value="">Race-wide</option><option value="swim">Swim</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
+                    <div><label class="label" :for="`checkpoint-kind-${cp.id}`">What happens here?</label><select :id="`checkpoint-kind-${cp.id}`" v-model="checkpoint.kind" class="field"><option value="split">Timing point</option><option value="transition">Transition</option><option value="finish">Finish</option></select></div>
+                    <div class="sm:col-span-2"><label class="label" :for="`checkpoint-distance-${cp.id}`">Distance into this sport (km) <span class="font-normal muted">(optional)</span></label><input :id="`checkpoint-distance-${cp.id}`" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></div>
+                  </div>
+                  <p v-if="Object.keys(checkpoint.errors).length" class="mt-3 text-sm text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p>
+                  <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save checkpoint</button><button type="button" class="btn-secondary" @click="closeCheckpointForm">Cancel</button></div>
+                </form>
+
+                <form v-if="assigningCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
+                  <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">Assign Official</h4><p class="mt-1 text-sm muted">{{ cp.name }}</p></div><button type="button" class="btn-icon" aria-label="Close official form" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+                  <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='existing'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='existing'">Existing Official</button>
+                    <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='new'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='new'">New Official</button>
+                  </div>
+                  <div v-if="officialForm.mode==='existing'" class="mt-4">
+                    <label class="label" :for="`official-user-${cp.id}`">Official</label>
+                    <select :id="`official-user-${cp.id}`" v-model="officialForm.user_id" class="field" required>
+                      <option :value="null">Choose Official</option>
+                      <option v-for="official in officials" :key="official.id" :value="official.id">{{ official.name }} · {{ official.email }}{{ official.role==='admin'?' · Organizer (admin)':'' }}</option>
+                    </select>
+                    <p class="mt-2 text-xs muted">Organizers (admin) can also be assigned to a checkpoint as an Official.</p>
+                  </div>
+                  <div v-else class="mt-4 space-y-3">
+                    <label class="label">Name<input v-model="officialForm.name" class="field" required></label>
+                    <label class="label">Email<input v-model="officialForm.email" type="email" class="field" required></label>
+                    <label class="label">Account setup<select v-model="officialForm.delivery" class="field"><option value="email" :disabled="!mailConfigured">Send password setup email</option><option value="manual">Use a temporary password</option></select></label>
+                    <label v-if="officialForm.delivery==='manual'" class="label">Temporary password<input v-model="officialForm.password" type="password" minlength="12" class="field" required></label>
+                  </div>
+                  <p v-if="Object.keys(officialForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(officialForm.errors)[0] }}</p>
+                  <button class="btn-primary mt-4" :disabled="officialForm.processing"><i class="fa-solid fa-user-check" aria-hidden="true"></i>Assign to checkpoint</button>
+                </form>
               </article>
             </div>
 
-            <form v-if="checkpointFormOpen" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="saveCheckpoint">
-              <div class="flex items-center justify-between gap-3"><h4 class="font-bold">{{ editingCheckpoint?'Edit checkpoint':'Add checkpoint' }}</h4><button type="button" class="btn-icon" aria-label="Close checkpoint form" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+            <form v-if="checkpointFormOpen && !editingCheckpoint" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="saveCheckpoint">
+              <div class="flex items-center justify-between gap-3"><h4 class="font-bold">Add checkpoint</h4><button type="button" class="btn-icon" aria-label="Close checkpoint form" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
               <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <label class="label sm:col-span-2" for="checkpoint-name">Name</label><input id="checkpoint-name" v-model="checkpoint.name" class="field sm:col-span-2" placeholder="For example: Run 4 km" required>
-                <div><label class="label" for="checkpoint-sport">Sport</label><select id="checkpoint-sport" v-model="checkpoint.discipline" class="field"><option value="">Race-wide</option><option value="swim">Swim</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
-                <div><label class="label" for="checkpoint-kind">What happens here?</label><select id="checkpoint-kind" v-model="checkpoint.kind" class="field"><option value="split">Timing point</option><option value="transition">Transition</option><option value="finish">Finish</option></select></div>
-                <div class="sm:col-span-2"><label class="label" for="checkpoint-distance">Distance into this sport (km) <span class="font-normal muted">(optional)</span></label><input id="checkpoint-distance" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></div>
+                <div class="sm:col-span-2"><label class="label" for="checkpoint-add-name">Name</label><input id="checkpoint-add-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></div>
+                <div><label class="label" for="checkpoint-add-sport">Sport</label><select id="checkpoint-add-sport" v-model="checkpoint.discipline" class="field"><option value="">Race-wide</option><option value="swim">Swim</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
+                <div><label class="label" for="checkpoint-add-kind">What happens here?</label><select id="checkpoint-add-kind" v-model="checkpoint.kind" class="field"><option value="split">Timing point</option><option value="transition">Transition</option><option value="finish">Finish</option></select></div>
+                <div class="sm:col-span-2"><label class="label" for="checkpoint-add-distance">Distance into this sport (km) <span class="font-normal muted">(optional)</span></label><input id="checkpoint-add-distance" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></div>
               </div>
               <p v-if="Object.keys(checkpoint.errors).length" class="mt-3 text-sm text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p>
-              <div class="mt-4 flex gap-2"><button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ editingCheckpoint?'Save checkpoint':'Add checkpoint' }}</button><button type="button" class="btn-secondary" @click="closeCheckpointForm">Cancel</button></div>
-            </form>
-
-            <form v-if="assigningCheckpoint" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
-              <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">Assign Official</h4><p class="mt-1 text-sm muted">{{ assigningCheckpoint.name }}</p></div><button type="button" class="btn-icon" aria-label="Close official form" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
-              <div class="mt-4 grid grid-cols-2 gap-2">
-                <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='existing'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='existing'">Existing Official</button>
-                <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='new'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='new'">New Official</button>
-              </div>
-              <div v-if="officialForm.mode==='existing'" class="mt-4"><label class="label" for="official-user">Official</label><select id="official-user" v-model="officialForm.user_id" class="field" required><option :value="null">Choose Official</option><option v-for="official in officials" :key="official.id" :value="official.id">{{ official.name }} · {{ official.email }}</option></select></div>
-              <div v-else class="mt-4 space-y-3">
-                <label class="label">Name<input v-model="officialForm.name" class="field" required></label>
-                <label class="label">Email<input v-model="officialForm.email" type="email" class="field" required></label>
-                <label class="label">Account setup<select v-model="officialForm.delivery" class="field"><option value="email" :disabled="!mailConfigured">Send password setup email</option><option value="manual">Use a temporary password</option></select></label>
-                <label v-if="officialForm.delivery==='manual'" class="label">Temporary password<input v-model="officialForm.password" type="password" minlength="12" class="field" required></label>
-              </div>
-              <p v-if="Object.keys(officialForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(officialForm.errors)[0] }}</p>
-              <button class="btn-primary mt-4" :disabled="officialForm.processing"><i class="fa-solid fa-user-check" aria-hidden="true"></i>Assign to checkpoint</button>
+              <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-plus" aria-hidden="true"></i>Add checkpoint</button><button type="button" class="btn-secondary" @click="closeCheckpointForm">Cancel</button></div>
             </form>
           </section>
         </div>
@@ -476,14 +501,13 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               <label class="label sm:col-span-2">Category <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field"></label>
             </div>
             <div class="mt-4 space-y-3">
-              <div v-for="member in participantForm.members" :key="member.discipline" class="rounded-xl border border-outline p-3">
-                <strong>{{ participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline) }}</strong>
-                <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                  <label class="label">First name<input v-model="member.first_name" class="field" required></label>
-                  <label class="label">Last name<input v-model="member.last_name" class="field" required></label>
-                  <label class="label sm:col-span-2">Email <span class="font-normal muted">(optional)</span><input v-model="member.email" class="field" type="email"></label>
-                </div>
-              </div>
+              <RaceAthletePicker
+                v-for="(member,index) in participantForm.members"
+                :key="member.discipline"
+                v-model="participantForm.members[index]"
+                :race-id="race.id"
+                :title="participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline)"
+              />
             </div>
             <p v-if="Object.keys(participantForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(participantForm.errors)[0] }}</p>
             <button class="btn-primary mt-4" :disabled="participantForm.processing"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add athlete</button>
