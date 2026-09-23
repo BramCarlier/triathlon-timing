@@ -9,20 +9,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ParticipantImportController extends Controller
 {
-    public function create(Race $race): Response
+    public function create(Race $race): Response|RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        if ($race->started_at) {
+            return redirect()->route('races.show', $race)->with('error', 'Participant registration is locked after the race starts.');
+        }
         return Inertia::render('Participants/Import', ['race' => $race]);
     }
 
     public function preview(Request $request, Race $race, ParticipantImportService $importer): Response
     {
         Gate::authorize('manage-race', $race);
+        $this->ensureRegistrationOpen($race);
         $request->validate(['file' => ['required','file','max:10240','mimes:csv,txt,json,xlsx,xls,ods']]);
         $file = $request->file('file');
         $token = (string) Str::uuid();
@@ -36,12 +41,23 @@ class ParticipantImportController extends Controller
     public function confirm(Request $request, Race $race, ImportBatch $batch, ParticipantImportService $importer): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        $this->ensureRegistrationOpen($race);
         abort_unless($batch->race_id === $race->id && $batch->user_id === $request->user()->id && $batch->status === 'preview' && (!$batch->expires_at || $batch->expires_at->isFuture()), 404);
         $rows = $importer->parse(Storage::disk('local')->path($batch->stored_path), $batch->original_name);
         $result = $importer->import($race, $rows);
         $batch->update(['status' => 'imported']);
         Storage::disk('local')->delete($batch->stored_path);
         return redirect()->route('races.entries.index', $race)->with('success', "Imported {$result['entries']} entries and {$result['athletes']} new athletes.");
+    }
+
+
+    private function ensureRegistrationOpen(Race $race): void
+    {
+        if ($race->started_at) {
+            throw ValidationException::withMessages([
+                'race' => 'Participant registration is locked after the race starts.',
+            ]);
+        }
     }
 
     public function template()
