@@ -37,7 +37,7 @@ class RaceOfficialController extends Controller
             'name' => ['nullable', 'required_if:mode,new', 'string', 'max:255'],
             'email' => ['nullable', 'required_if:mode,new', 'email', 'max:255', Rule::unique('users', 'email')],
             'delivery' => ['nullable', 'required_if:mode,new', Rule::in(['email', 'manual'])],
-            'password' => ['nullable', 'required_if:delivery,manual', 'string', 'min:12'],
+            'password' => ['nullable', Rule::requiredIf(fn () => $request->input('mode') === 'new' && $request->input('delivery') === 'manual'), 'string', 'min:12'],
         ]);
 
         $emailInvite = ($data['mode'] === 'new' && ($data['delivery'] ?? 'email') === 'email');
