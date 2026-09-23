@@ -29,10 +29,11 @@ class RaceController extends Controller
         ]);
     }
 
-    public function create(): Response { return Inertia::render('Races/Create'); }
+    public function create(): Response { abort_unless(request()->user()->isAdmin(), 403); return Inertia::render('Races/Create'); }
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->isAdmin(), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'swim_km' => ['nullable', 'numeric', 'min:0'], 'bike_km' => ['nullable', 'numeric', 'min:0'], 'run_km' => ['nullable', 'numeric', 'min:0']]);
         $race = DB::transaction(function () use ($request, $data) {
             $race = Race::create([
@@ -66,6 +67,7 @@ class RaceController extends Controller
             ? User::where('role', 'organizer')->where('is_active', true)->orderBy('name')->get(['id','name','email'])
             : collect();
         $assignments = $race->checkpointAssignments()
+            ->when(!$request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
             ->with(['user:id,name,email', 'checkpoint:id,name'])
             ->orderBy('checkpoint_id')
             ->get();
@@ -120,6 +122,7 @@ class RaceController extends Controller
     public function update(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless($request->user()->isAdmin(), 403);
         if ($race->started_at) {
             throw ValidationException::withMessages([
                 'race' => 'Race setup is locked after the race starts.',
