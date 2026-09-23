@@ -24,7 +24,7 @@ class RaceOfficialController extends Controller
 
         $request->merge(['email' => strtolower((string) $request->input('email'))]);
         $data = $request->validate([
-            'checkpoint_id' => ['required', Rule::exists('checkpoints', 'id')->where('race_id', $race->id)],
+            'checkpoint_id' => ['required', Rule::exists('checkpoints', 'id')->where(fn ($query) => $query->where('race_id', $race->id)->where('kind', '!=', 'start')->where('is_active', true))],
             'mode' => ['required', Rule::in(['existing', 'new'])],
             'user_id' => [
                 'nullable',
