@@ -51,7 +51,7 @@ const statusLabel=(race:Race)=>{
     </div>
 
     <section v-if="!races.length" class="panel-pad text-center">
-      <h2 class="text-xl font-bold">No races yet</h2>
+      <h2 class="text-xl font-bold">Your first race starts here</h2>
       <p class="mx-auto mt-3 max-w-lg muted">Create a race to get one guided workspace for setup and race day.</p>
       <Link v-if="can('races.create')" href="/races/create" class="btn-primary mt-5">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>Create your first race
