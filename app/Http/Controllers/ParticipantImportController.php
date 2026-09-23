@@ -18,6 +18,7 @@ class ParticipantImportController extends Controller
     public function create(Race $race): Response|RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
         if ($race->started_at) {
             return redirect()->route('races.show', $race)->with('error', 'Participant registration is locked after the race starts.');
         }
@@ -27,6 +28,7 @@ class ParticipantImportController extends Controller
     public function preview(Request $request, Race $race, ParticipantImportService $importer): Response
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
         $this->ensureRegistrationOpen($race);
         $request->validate(['file' => ['required','file','max:10240','mimes:csv,txt,json,xlsx,xls,ods']]);
         $file = $request->file('file');
@@ -41,6 +43,7 @@ class ParticipantImportController extends Controller
     public function confirm(Request $request, Race $race, ImportBatch $batch, ParticipantImportService $importer): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
         $this->ensureRegistrationOpen($race);
         abort_unless($batch->race_id === $race->id && $batch->user_id === $request->user()->id && $batch->status === 'preview' && (!$batch->expires_at || $batch->expires_at->isFuture()), 404);
         $rows = $importer->parse(Storage::disk('local')->path($batch->stored_path), $batch->original_name);
