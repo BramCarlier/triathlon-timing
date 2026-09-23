@@ -22,6 +22,7 @@ const logout = () => router.post('/logout');
         <nav v-if="user && !publicView" id="main-navigation" aria-label="Main navigation" class="order-last w-full flex-wrap items-center gap-1 sm:order-none sm:ml-auto sm:flex sm:w-auto sm:justify-end sm:gap-2" :class="menuOpen?'flex':'hidden'">
           <Link v-if="user.role !== 'athlete'" href="/races" class="rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised">Races</Link>
           <Link v-if="user.role === 'admin'" href="/users" class="rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised">Users</Link>
+          <Link v-if="user.role === 'admin'" href="/admin/roles" class="rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised">Roles & permissions</Link>
           <Link v-if="user.role === 'admin'" href="/admin/health" class="rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised">Health</Link>
           <Link v-if="user.role === 'athlete'" href="/athlete" class="rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised">My race</Link>
           <Link href="/account/password" class="rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised">Account</Link>

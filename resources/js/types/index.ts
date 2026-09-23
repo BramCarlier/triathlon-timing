@@ -1,5 +1,5 @@
 export type UserRole = 'admin' | 'organizer' | 'athlete';
-export interface AuthUser { id: number; name: string; email: string; role: UserRole; athlete_id?: number | null }
+export interface AuthUser { id: number; name: string; email: string; role: UserRole; permissions?:string[]; athlete_id?: number | null }
 export interface PageProps extends Record<string, unknown> { auth: { user: AuthUser | null }; flash: { success?: string; error?: string } }
 export interface Race { id: number; name: string; slug: string; event_date: string; timezone: string; status: string; started_at?: string | null; finished_at?: string | null; settings?: Record<string, unknown>; entries_count?: number; public_results_token?:string|null; results_published_at?:string|null }
 export interface Checkpoint { id: number; race_id: number; name: string; code: string; sequence: number; discipline?: 'swim'|'bike'|'run'|null; kind: 'start'|'split'|'transition'|'finish'; distance_km?: string|null; is_required: boolean; is_active: boolean }

@@ -13,7 +13,7 @@ const submit = () => form.post('/forgot-password');
       <div class="mb-6">
         <div class="text-xs font-bold uppercase tracking-[.2em] text-accent">Triathlon Timing</div>
         <h1 class="mt-2 text-2xl font-black">Reset your password</h1>
-        <p class="mt-2 text-sm muted">Enter the email address connected to your athlete or organizer account.</p>
+        <p class="mt-2 text-sm muted">Enter the email address connected to your athlete or official account.</p>
       </div>
       <label class="label">Email</label>
       <input v-model="form.email" class="field" type="email" autocomplete="email" required>

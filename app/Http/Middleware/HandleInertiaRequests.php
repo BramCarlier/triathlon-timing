@@ -25,6 +25,7 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role->value,
+                    'permissions' => $user->effectivePermissions(),
                     'athlete_id' => $user->athlete_id,
                 ] : null,
             ],

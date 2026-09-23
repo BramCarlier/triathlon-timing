@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
+import { usePermissions } from '../Composables/usePermissions';
 import { computed } from 'vue';
 import type { Race } from '../types';
 const props = defineProps<{ race: Race }>();
 const page = usePage();
+const can=usePermissions();
 const links = computed(() => [
   { label: 'Overview & setup', href: `/races/${props.race.id}` },
-  { label: 'Participants', href: `/races/${props.race.id}/participants` },
-  { label: 'Timing station', href: `/races/${props.race.id}/station` },
-  { label: 'Race control', href: `/races/${props.race.id}/control` },
+  { permission:'participants.manage', label: 'Participants', href: `/races/${props.race.id}/participants` },
+  { permission:'timings.record', label: 'Timing station', href: `/races/${props.race.id}/station` },
+  { permission:'races.control', label: 'Race control', href: `/races/${props.race.id}/control` },
   { label: 'Results', href: `/races/${props.race.id}/results` },
-]);
+].filter(link=>!link.permission || can(link.permission)));
 const active = (href: string) => page.url.split('?')[0] === href || (href.endsWith('/participants') && page.url.startsWith(`${href}/`));
 </script>
 <template>

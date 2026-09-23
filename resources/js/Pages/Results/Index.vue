@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { usePermissions } from '../../Composables/usePermissions';
+const can=usePermissions();
 import { checkpointDistanceText } from '../../checkpointDistance';
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
@@ -16,7 +18,7 @@ const display=ref(false), rotate=ref(true), pageNumber=ref(0);
 const filters=ref({type:props.filters.type??'',category:props.filters.category??'',status:props.filters.status??''});
 watch(filters,()=>router.get(page.url.split('?')[0],filters.value,{preserveState:true,preserveScroll:true,replace:true}),{deep:true});
 const exportQuery=computed(()=>new URLSearchParams(filters.value).toString());
-const canExport=computed(()=>!props.publicMode&&page.props.auth.user?.role!=='athlete');
+const canExport=computed(()=>!props.publicMode&&can('results.export'));
 const checkpoints=computed(()=>props.race.checkpoints.filter(cp=>cp.kind!=='start'));
 const pages=computed(()=>Math.max(1,Math.ceil(props.results.length/10)));
 const visibleRows=computed(()=>display.value?props.results.slice((pageNumber.value%pages.value)*10,(pageNumber.value%pages.value)*10+10):props.results);
@@ -31,7 +33,7 @@ useRaceRefresh(()=>['race','results','categories']);
 </script>
 <template>
 <Head :title="`${race.name} results`"/><AppLayout :title="`${race.name} · Results`" :public-view="publicMode" :display-mode="display">
-  <div class="mb-5 flex flex-wrap items-center justify-between gap-3"><div><span class="badge" :data-status="race.status">{{ race.finished_at?'Race closed':race.started_at?'Live results':'Awaiting start' }}</span><p class="mt-2 text-sm muted">{{ formatDate(race.event_date) }} · Updates automatically every 5 seconds. {{ race.finished_at?'Organizer corrections may still change results.':'' }}</p></div><div class="flex flex-wrap gap-2"><a v-if="canExport" :href="`/races/${race.id}/results.csv?${exportQuery}`" class="btn-secondary">Export CSV</a><a v-if="canExport" :href="`/races/${race.id}/results.xlsx?${exportQuery}`" class="btn-secondary">Export XLSX</a><button class="btn-primary" @click="toggleDisplay">{{ display?'Exit display mode':'Large-screen display' }}</button><button v-if="display" class="btn-secondary" @click="fullscreen">Toggle fullscreen</button></div></div>
+  <div class="mb-5 flex flex-wrap items-center justify-between gap-3"><div><span class="badge" :data-status="race.status">{{ race.finished_at?'Race closed':race.started_at?'Live results':'Awaiting start' }}</span><p class="mt-2 text-sm muted">{{ formatDate(race.event_date) }} · Updates automatically every 5 seconds. {{ race.finished_at?'Official corrections may still change results.':'' }}</p></div><div class="flex flex-wrap gap-2"><a v-if="canExport" :href="`/races/${race.id}/results.csv?${exportQuery}`" class="btn-secondary">Export CSV</a><a v-if="canExport" :href="`/races/${race.id}/results.xlsx?${exportQuery}`" class="btn-secondary">Export XLSX</a><button class="btn-primary" @click="toggleDisplay">{{ display?'Exit display mode':'Large-screen display' }}</button><button v-if="display" class="btn-secondary" @click="fullscreen">Toggle fullscreen</button></div></div>
   <p v-if="screenError" role="status" class="mb-4 text-warning">{{ screenError }}</p>
   <section v-show="!display" class="panel-pad mb-4 grid gap-3 sm:grid-cols-3" aria-label="Result filters"><label class="label">Entry type<select v-model="filters.type" class="field"><option value="">All types</option><option value="solo">Solo</option><option value="relay">Relay</option></select></label><label class="label">Category<select v-model="filters.category" class="field"><option value="">All categories</option><option v-for="category in categories" :key="category">{{ category }}</option></select></label><label class="label">Result status<select v-model="filters.status" class="field"><option value="">All statuses</option><option>FINISHED</option><option>IN PROGRESS</option><option>DNS</option><option>DNF</option><option>DSQ</option></select></label><p class="muted text-xs sm:col-span-3">Places and gaps apply to the selected group. Equal total milliseconds share a place (1, 1, 3). DNS, DNF and DSQ keep their timings but receive no place.</p></section>
   <div class="mb-4 flex flex-wrap items-center gap-3"><label class="label">Timing precision<select v-model="precision" class="field mt-1"><option :value="2">Hundredths (0.01 s)</option><option :value="3">Milliseconds (0.001 s)</option></select></label><p class="muted text-sm">Places use full millisecond precision. Use milliseconds for finishes less than 0.01 seconds apart.</p><label v-if="display" class="ml-auto flex items-center gap-2"><input v-model="rotate" type="checkbox">Rotate pages every 15 seconds</label></div>

@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
 <Head :title="`${race.name} timing station`"/><AppLayout :title="`${race.name} · Timing station`">
   <div v-if="feedback" role="status" aria-live="polite" class="fixed inset-x-3 top-20 z-50 mx-auto max-w-xl rounded-2xl border p-4 text-center text-lg font-bold shadow-2xl" :class="feedback.type==='ok'?'border-emerald-400 bg-emerald-700 text-white':feedback.type==='offline'?'border-amber-300 bg-amber-500 text-slate-950':'border-red-400 bg-red-700 text-white'">{{ feedback.message }}</div>
 
-  <section v-if="!checkpoint" class="mx-auto max-w-2xl panel-pad"><h2 class="text-xl font-bold">Choose this organizer's checkpoint</h2><p class="mt-2 muted">This selection belongs to this logged-in browser session. Every participant tap will be recorded at this checkpoint until you change it.</p><form class="mt-5" @submit.prevent="selectCheckpoint"><label class="label" for="choose-checkpoint">Checkpoint</label><select id="choose-checkpoint" v-model="selectForm.checkpoint_id" class="field"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ cp.sequence }} · {{ cp.name }} · {{ checkpointDistanceText(race, cp) }}</option></select><button class="btn-primary mt-4 w-full">Start checkpoint mode</button></form></section>
+  <section v-if="!checkpoint" class="mx-auto max-w-2xl panel-pad"><h2 class="text-xl font-bold">Choose this official’s checkpoint</h2><p class="mt-2 muted">This selection belongs to this logged-in browser session. Every participant tap will be recorded at this checkpoint until you change it.</p><form class="mt-5" @submit.prevent="selectCheckpoint"><label class="label" for="choose-checkpoint">Checkpoint</label><select id="choose-checkpoint" v-model="selectForm.checkpoint_id" class="field"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ cp.sequence }} · {{ cp.name }} · {{ checkpointDistanceText(race, cp) }}</option></select><button class="btn-primary mt-4 w-full">Start checkpoint mode</button></form></section>
 
   <template v-else>
 
@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
     <section class="panel-pad mb-4" aria-label="Device timing recovery">
       <p v-if="storageError" role="alert" class="text-error">{{ storageError }}</p>
       <p v-if="foreignCount" class="text-warning">{{ foreignCount }} pending timings belong to another account. Sign in with that account to synchronize them.</p>
-      <p v-if="legacy.length" class="text-warning">{{ legacy.length }} older timings have no recorded account owner. They will not upload automatically. An administrator can export them and review them in Race control.</p>
+      <p v-if="legacy.length" class="text-warning">{{ legacy.length }} older timings have no recorded account owner. They will not upload automatically. An organizer (admin) can export them and review them in Race control.</p>
       <p class="mb-3 font-semibold" role="status">{{ pending ? `${pending} timings waiting to upload` : 'All timings saved' }}</p><div class="flex flex-wrap items-center gap-3">
         <button class="btn-secondary" :disabled="flushing || !online || !pending" @click="syncPending">{{ flushing ? 'Uploading…' : 'Upload now' }}</button>
         <button v-if="pending || (account.role==='admin' && legacy.length)" class="btn-secondary" @click="exportPending">Export pending backup</button>
