@@ -18,7 +18,7 @@ const submit = () => form.post('/forgot-password');
       <label for="forgot-email" class="label">Email</label>
       <input id="forgot-email" v-model="form.email" class="field" type="email" autocomplete="email" required>
       <p v-if="form.errors.email" class="mt-2 text-sm text-error">{{ form.errors.email }}</p>
-      <button class="btn-primary mt-5 w-full" :disabled="form.processing">Send reset link</button>
+      <button class="btn-primary mt-5 w-full" :disabled="form.processing"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>Send reset link</button>
       <Link href="/login" class="mt-4 block text-center text-sm text-accent hover:text-accent">Back to sign in</Link>
     </form>
   </main>
