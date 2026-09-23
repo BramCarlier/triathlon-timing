@@ -69,7 +69,17 @@ const clearSelection = () => {
   emit('update:modelValue', { athlete_id:null, first_name:'', last_name:'', email:'', club:'' });
 };
 
+const updateField = (field:'first_name'|'last_name'|'email'|'club', event:Event) => {
+  const target = event.target as HTMLInputElement;
+  emit('update:modelValue', { ...props.modelValue, [field]:target.value });
+};
+
+watch(() => props.modelValue.athlete_id, athleteId => {
+  if (!athleteId) selected.value = null;
+});
+
 watch(query, value => {
+  requestNumber += 1;
   clearTimeout(searchTimer);
   const term = value.trim();
   if (mode.value !== 'existing' || term.length < 2) {
@@ -78,7 +88,7 @@ watch(query, value => {
     error.value = '';
     return;
   }
-  const currentRequest = ++requestNumber;
+  const currentRequest = requestNumber;
   loading.value = true;
   error.value = '';
   searchTimer = window.setTimeout(async () => {
@@ -118,10 +128,10 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
     </div>
 
     <div v-if="mode==='new'" class="mt-4 grid grid-cols-2 gap-2">
-      <label class="label">First name<input :value="modelValue.first_name" class="field" placeholder="First name" required @input="emit('update:modelValue',{...modelValue,first_name:($event.target as HTMLInputElement).value})"></label>
-      <label class="label">Last name<input :value="modelValue.last_name" class="field" placeholder="Last name" required @input="emit('update:modelValue',{...modelValue,last_name:($event.target as HTMLInputElement).value})"></label>
-      <label class="label col-span-2">Email (optional)<input :value="modelValue.email" class="field" type="email" placeholder="Email (optional)" @input="emit('update:modelValue',{...modelValue,email:($event.target as HTMLInputElement).value})"></label>
-      <label class="label col-span-2">Club (optional)<input :value="modelValue.club" class="field" placeholder="Club (optional)" @input="emit('update:modelValue',{...modelValue,club:($event.target as HTMLInputElement).value})"></label>
+      <label class="label">First name<input :value="modelValue.first_name" class="field" placeholder="First name" required @input="updateField('first_name',$event)"></label>
+      <label class="label">Last name<input :value="modelValue.last_name" class="field" placeholder="Last name" required @input="updateField('last_name',$event)"></label>
+      <label class="label col-span-2">Email (optional)<input :value="modelValue.email" class="field" type="email" placeholder="Email (optional)" @input="updateField('email',$event)"></label>
+      <label class="label col-span-2">Club (optional)<input :value="modelValue.club" class="field" placeholder="Club (optional)" @input="updateField('club',$event)"></label>
       <p class="col-span-2 text-xs muted">If this email already belongs to an athlete, the existing profile is reused automatically.</p>
     </div>
 
