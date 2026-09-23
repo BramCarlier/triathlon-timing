@@ -4,11 +4,11 @@ test('admin creates, edits and deletes a permission role',async({page})=>{
  await page.getByRole('link',{name:'Access',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Organizer (admin)',exact:true})).toBeVisible();
  await page.getByLabel('Role name',{exact:true}).fill('Browser checkpoint official');
- await page.getByRole('checkbox',{name:/Timing station/}).check();
+ await page.getByRole('checkbox',{name:/Record checkpoint times/}).check();
  await page.getByRole('button',{name:'Create role',exact:true}).click();
  await expect(page.getByText('Role created.',{exact:false})).toBeVisible();
  await page.getByRole('button',{name:'Edit Browser checkpoint official',exact:true}).click();
- await expect(page.getByRole('checkbox',{name:/Timing station/})).toBeChecked();
+ await expect(page.getByRole('checkbox',{name:/Record checkpoint times/})).toBeChecked();
  await page.getByRole('checkbox',{name:/Export results/}).check();await page.getByRole('button',{name:'Save role',exact:true}).click();
  await expect(page.getByText('Role updated.',{exact:false})).toBeVisible();
  await page.getByRole('button',{name:'Delete Browser checkpoint official',exact:true}).click();
