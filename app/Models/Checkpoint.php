@@ -48,4 +48,9 @@ class Checkpoint extends Model
     {
         return $this->hasMany(TimingRecord::class);
     }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(CheckpointAssignment::class);
+    }
 }
