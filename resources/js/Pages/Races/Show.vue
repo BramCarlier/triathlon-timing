@@ -521,7 +521,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               :key="participant.id"
               class="mb-2 grid min-h-20 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-4 text-left transition"
               :class="participantRecorded(participant)?'border-emerald-500/30 bg-emerald-500/10 opacity-70':'border-outline bg-surface hover:border-cyan-400 hover:bg-raised active:scale-[.995]'"
-              :disabled="participantRecorded(participant) || timingSaving.has(participant.id) || (participant.status && participant.status!=='registered')"
+              :disabled="participantRecorded(participant) || timingSaving.has(participant.id) || (!!participant.status && participant.status!=='registered')"
               @click="recordTiming(participant)"
             >
               <span class="max-w-24 rounded-xl bg-canvas px-3 py-2 font-mono text-xl font-black">{{ bibLabel(participant.bib_number) }}</span>
