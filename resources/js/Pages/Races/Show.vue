@@ -400,16 +400,16 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               <button type="button" class="btn-icon" aria-label="Close checkpoint form" title="Close" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             </div>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
-              <div class="sm:col-span-2"><label class="label">Name</label><input v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></div>
-              <label class="label">Sport<select v-model="checkpoint.discipline" class="field"><option value="">Race-wide</option><option value="swim">Swim</option><option value="bike">Bike</option><option value="run">Run</option></select></label>
-              <label class="label">Checkpoint type<select v-model="checkpoint.kind" class="field"><option value="split">Intermediate checkpoint</option><option value="transition">Transition / leg boundary</option><option value="finish">Race finish</option></select></label>
-              <label class="label">Distance into this sport (km, optional)<input v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001" placeholder="For example: 4"></label>
+              <div class="sm:col-span-2"><label for="workspace-checkpoint-name" class="label">Name</label><input id="workspace-checkpoint-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></div>
+              <div><label for="workspace-checkpoint-sport" class="label">Sport</label><select id="workspace-checkpoint-sport" v-model="checkpoint.discipline" class="field"><option value="">Race-wide</option><option value="swim">Swim</option><option value="bike">Bike</option><option value="run">Run</option></select></div>
+              <div><label for="workspace-checkpoint-type" class="label">Checkpoint type</label><select id="workspace-checkpoint-type" v-model="checkpoint.kind" class="field"><option value="split">Intermediate checkpoint</option><option value="transition">Transition / leg boundary</option><option value="finish">Race finish</option></select></div>
+              <div><label for="workspace-checkpoint-distance" class="label">Distance into this sport (km, optional)</label><input id="workspace-checkpoint-distance" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001" placeholder="For example: 4"></div>
             </div>
             <details class="mt-4">
               <summary class="cursor-pointer text-sm font-semibold">Optional checkpoint settings</summary>
               <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                <label class="label">Order number<input v-model="checkpoint.sequence" class="field" type="number" min="1" max="65535" required><span class="mt-1 block text-xs muted">Only change this when the checkpoint appears in the wrong place.</span></label>
-                <label class="label">Internal code<input v-model="checkpoint.code" class="field" placeholder="Generated automatically for new checkpoints"></label>
+                <div><label for="workspace-checkpoint-order" class="label">Order number</label><input id="workspace-checkpoint-order" v-model="checkpoint.sequence" class="field" type="number" min="1" max="65535" required><span class="mt-1 block text-xs muted">Only change this when the checkpoint appears in the wrong place.</span></div>
+                <div><label for="workspace-checkpoint-code" class="label">Internal code</label><input id="workspace-checkpoint-code" v-model="checkpoint.code" class="field" placeholder="Generated automatically for new checkpoints"></div>
                 <label class="flex gap-2 text-sm"><input v-model="checkpoint.is_required" type="checkbox">Expected for every participant</label>
                 <label class="flex gap-2 text-sm"><input v-model="checkpoint.is_active" type="checkbox">Available for timing</label>
               </div>
