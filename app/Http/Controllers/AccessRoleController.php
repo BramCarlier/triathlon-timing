@@ -14,7 +14,7 @@ class AccessRoleController extends Controller
             'roles'=>AccessRole::withCount('users')->orderByDesc('is_default')->orderBy('name')->get()->map(function($role) {
                 if ($role->is_default) $role->users_count += \App\Models\User::where('role','organizer')->whereNull('access_role_id')->count();
                 return $role;
-            }), 'permissions'=>Permissions::catalogue(),
+            }), 'permissions'=>Permissions::officialCatalogue(),
         ]);
     }
     private function data(Request $request, ?AccessRole $role=null): array {
@@ -23,7 +23,7 @@ class AccessRoleController extends Controller
         $data=$request->validate([
             'name'=>['required','string','max:100',Rule::unique('access_roles')->ignore($role?->id),Rule::notIn(['Organizer (admin)','Administrator','Admin','Athlete'])],
             'description'=>['nullable','string','max:500'],
-            'permissions'=>['present','array'], 'permissions.*'=>['string','distinct',Rule::in(Permissions::all())],
+            'permissions'=>['present','array'], 'permissions.*'=>['string','distinct',Rule::in(Permissions::official())],
         ]);
         if ($role?->is_default) $data['name']='Official';
         return $data;
