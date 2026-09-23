@@ -469,19 +469,19 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
         <div class="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
           <form class="rounded-2xl border border-outline p-4" @submit.prevent="addParticipant">
             <h3 class="font-bold">Add athlete or relay</h3>
-            <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <label class="label">Bib number <span class="font-normal muted">(optional)</span><input v-model="participantForm.bib_number" class="field" maxlength="32"></label>
               <label class="label">Type<select v-model="participantForm.type" class="field"><option value="solo">Solo athlete</option><option value="relay">3-person relay</option></select></label>
-              <label v-if="participantForm.type==='relay'" class="label col-span-2">Team name<input v-model="participantForm.team_name" class="field" required></label>
-              <label class="label col-span-2">Category <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field"></label>
+              <label v-if="participantForm.type==='relay'" class="label sm:col-span-2">Team name<input v-model="participantForm.team_name" class="field" required></label>
+              <label class="label sm:col-span-2">Category <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field"></label>
             </div>
             <div class="mt-4 space-y-3">
               <div v-for="member in participantForm.members" :key="member.discipline" class="rounded-xl border border-outline p-3">
                 <strong>{{ participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline) }}</strong>
-                <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
                   <label class="label">First name<input v-model="member.first_name" class="field" required></label>
                   <label class="label">Last name<input v-model="member.last_name" class="field" required></label>
-                  <label class="label col-span-2">Email <span class="font-normal muted">(optional)</span><input v-model="member.email" class="field" type="email"></label>
+                  <label class="label sm:col-span-2">Email <span class="font-normal muted">(optional)</span><input v-model="member.email" class="field" type="email"></label>
                 </div>
               </div>
             </div>
