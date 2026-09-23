@@ -371,7 +371,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               <h3 class="text-lg font-bold">Checkpoints</h3>
               <p class="mt-1 text-sm muted">These are the places where an Official can record a participant.</p>
             </div>
-            <button v-if="can('races.setup') && !race.started_at" class="btn-primary" type="button" @click="beginAddCheckpoint">
+            <button v-if="can('races.setup') && !race.started_at && !checkpointFormOpen" class="btn-primary" type="button" @click="beginAddCheckpoint">
               <i class="fa-solid fa-plus" aria-hidden="true"></i>Add checkpoint
             </button>
           </div>
