@@ -128,5 +128,17 @@ class RaceManagementTest extends TestCase
             ->assertJsonPath('athletes.0.id', $athlete->id)
             ->assertJsonPath('athletes.0.already_in_race', true)
             ->assertJsonPath('athletes.0.race_count', 2);
+
+        $athleteUser = User::factory()->create([
+            'role' => UserRole::Athlete,
+            'athlete_id' => $athlete->id,
+        ]);
+
+        $this->actingAs($athleteUser)->get('/athlete')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('entries', 2));
+
+        $this->get("/races/{$raceOne->id}/results")->assertOk();
+        $this->get("/races/{$raceTwo->id}/results")->assertOk();
     }
 }
