@@ -51,7 +51,7 @@ test('every reachable page fits portrait and landscape with long names, dialogs 
    if([320,844,1440].includes(size.width)&&['/races/9001/participants','/races/9001/control','/admin/roles'].includes(path)){await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:info.outputPath(`responsive-${size.name}-${path.split('/').pop()}.png`),fullPage:true});}
   }
   await menu(page);await expect(page.getByRole('link',{name:'Roles & permissions',exact:true})).toBeVisible();await layout(page,`${size.name} open menu`);
-  await page.getByRole('link',{name:'Roles & permissions',exact:true}).click();
+  await page.getByRole('link',{name:'Roles & permissions',exact:true}).click();await expect(page).toHaveURL(/\/admin\/roles$/);await expect(page.getByRole('heading',{name:'Roles & permissions',exact:true})).toBeVisible();
   if(size.width<1280)await expect(page.getByRole('button',{name:'Menu',exact:true})).toHaveAttribute('aria-expanded','false');
   // Native dialog remains within the short landscape viewport; both actions are reachable.
   await page.goto('/races/9001');await page.getByRole('button',{name:'Delete race',exact:true}).click();
@@ -70,13 +70,13 @@ test('every reachable page fits portrait and landscape with long names, dialogs 
   await page.goto('/users/9001/edit');await page.getByLabel('Role',{exact:true}).selectOption('athlete');await expect(page.getByLabel('Link athlete')).toBeVisible();await layout(page,`${size.name} athlete picker`);
   await page.goto('/races/9001/participants/import');await page.getByLabel('Participant file').setInputFiles({name:'long-participant-import-preview.csv',mimeType:'text/csv',buffer:Buffer.from('type,first_name,last_name\nsolo,'+'LongName'.repeat(10)+',Runner\n')});await page.getByRole('button',{name:'Preview file',exact:true}).click();await expect(page.getByRole('button',{name:'Confirm import'})).toBeVisible();await layout(page,`${size.name} import preview`);
  }
- await page.setViewportSize(sizes[5]);await page.goto('/races');await page.getByRole('button',{name:'Log out',exact:true}).click();
+ await page.setViewportSize(sizes[5]);await page.goto('/races');await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page).toHaveURL(/\/login$/);
  await login(page,'responsive-official@example.test');
  for(const size of sizes){await page.setViewportSize(size);for(const path of ['/races','/races/9001','/races/9001/station','/races/9001/results']){await page.goto(path);await layout(page,`${size.name} official ${path}`);}await expect(page.getByRole('link',{name:'Race control',exact:true})).toHaveCount(0);await expect(page.getByRole('link',{name:'Export CSV',exact:true})).toHaveCount(0);}
- await page.setViewportSize(sizes[5]);await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();
+ await page.setViewportSize(sizes[5]);await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page).toHaveURL(/\/login$/);
  await login(page,'responsive-athlete@example.test');
  for(const size of sizes){await page.setViewportSize(size);await page.goto('/athlete');await expect(page.locator('h1')).toContainText('Welcome');await layout(page,`${size.name} athlete dashboard`);await page.goto('/races/9001/results');await layout(page,`${size.name} athlete results`);}
- await page.setViewportSize(sizes[5]);await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();
+ await page.setViewportSize(sizes[5]);await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page).toHaveURL(/\/login$/);
  for(const size of sizes){await page.setViewportSize(size);await page.goto('/live/responsive-public');await expect(page.locator('h1')).toContainText('Results');await layout(page,`${size.name} public results`);}
  expect(errors).toEqual([]);
 });
