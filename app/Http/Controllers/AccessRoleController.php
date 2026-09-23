@@ -26,8 +26,6 @@ class AccessRoleController extends Controller
             'permissions'=>['present','array'], 'permissions.*'=>['string','distinct',Rule::in(Permissions::all())],
         ]);
         if ($role?->is_default) $data['name']='Official';
-        if (in_array('races.create',$data['permissions'],true) && !in_array('races.setup',$data['permissions'],true))
-            throw ValidationException::withMessages(['permissions'=>'Creating races also requires Race setup & publication.']);
         return $data;
     }
     public function store(Request $request) {
