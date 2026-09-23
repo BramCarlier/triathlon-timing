@@ -15,6 +15,7 @@ interface AthleteChoice {
 }
 
 export interface AthleteMemberValue {
+  discipline?: string;
   athlete_id: number | null;
   first_name: string;
   last_name: string;
@@ -56,6 +57,7 @@ const selectAthlete = (athlete:AthleteChoice) => {
   if (athlete.already_in_race) return;
   selected.value = athlete;
   emit('update:modelValue', {
+    ...props.modelValue,
     athlete_id: athlete.id,
     first_name: athlete.first_name,
     last_name: athlete.last_name,
@@ -66,7 +68,7 @@ const selectAthlete = (athlete:AthleteChoice) => {
 
 const clearSelection = () => {
   selected.value = null;
-  emit('update:modelValue', { athlete_id:null, first_name:'', last_name:'', email:'', club:'' });
+  emit('update:modelValue', { ...props.modelValue, athlete_id:null, first_name:'', last_name:'', email:'', club:'' });
 };
 
 const updateField = (field:'first_name'|'last_name'|'email'|'club', event:Event) => {
