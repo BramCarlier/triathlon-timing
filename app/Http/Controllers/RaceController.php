@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -106,20 +107,23 @@ class RaceController extends Controller
     public function update(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
-        $allowedStatuses = $race->started_at
-            ? ($race->finished_at ? [RaceStatus::Finished->value, RaceStatus::Archived->value] : [RaceStatus::Running->value])
-            : [RaceStatus::Draft->value, RaceStatus::Ready->value];
+        if ($race->started_at) {
+            throw ValidationException::withMessages([
+                'race' => 'Race setup is locked after the race starts.',
+            ]);
+        }
+
+        $allowedStatuses = [RaceStatus::Draft->value, RaceStatus::Ready->value];
         $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'status' => ['required', Rule::in($allowedStatuses)], 'swim_km'=>['sometimes','numeric','min:0.001'],'bike_km'=>['sometimes','numeric','min:0.001'],'run_km'=>['sometimes','numeric','min:0.001'],'auto_finish' => ['sometimes','boolean'], 'organizer_ids' => ['nullable', 'array'], 'organizer_ids.*' => ['integer', Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', ['admin', 'organizer'])->where('is_active', true))]]);
         $settings=$race->settings??[];
         foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code){
             if(!array_key_exists($key,$data))continue;
-            if($race->started_at && (float)($settings[$key]??0)!==(float)$data[$key])throw \Illuminate\Validation\ValidationException::withMessages([$key=>'Course distances cannot change after the race starts.']);
             $settings[$key]=$data[$key];
         }
         if(array_key_exists('auto_finish',$data))$settings['auto_finish']=(bool)$data['auto_finish'];
         DB::transaction(function()use($race,$data,$settings){
             $race->update([...collect($data)->except(['organizer_ids','swim_km','bike_km','run_km','auto_finish'])->all(),'settings'=>$settings]);
-            if(!$race->started_at)foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code)if(array_key_exists($key,$data))$race->checkpoints()->where('code',$code)->update(['distance_km'=>$data[$key]]);
+            foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code)if(array_key_exists($key,$data))$race->checkpoints()->where('code',$code)->update(['distance_km'=>$data[$key]]);
         });
         if ($request->user()->isAdmin() && array_key_exists('organizer_ids', $data)) $race->organizers()->sync($data['organizer_ids'] ?: [$request->user()->id]);
         return back()->with('success', 'Race settings updated.');
