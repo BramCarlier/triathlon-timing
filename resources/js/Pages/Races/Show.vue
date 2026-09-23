@@ -128,6 +128,8 @@ const checkpoint = useForm({
   is_active: true,
 });
 const beginAddCheckpoint = () => {
+  assigningCheckpoint.value = null;
+  officialForm.clearErrors();
   editingCheckpoint.value = null;
   checkpoint.clearErrors();
   checkpoint.name = '';
