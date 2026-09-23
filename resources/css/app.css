@@ -63,11 +63,11 @@ input[type="checkbox"] { accent-color: var(--app-accent); }
 @layer components {
   .panel { @apply rounded-2xl border border-outline bg-surface/80 shadow-xl shadow-black/10; }
   .panel-pad { @apply rounded-2xl border border-outline bg-surface/80 p-4 shadow-xl shadow-black/10 sm:p-6; }
-  .btn { @apply inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2.5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-primary { @apply inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex min-h-11 items-center justify-center rounded-xl border border-outline-strong bg-raised px-4 py-2.5 font-semibold text-foreground transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-danger { @apply inline-flex min-h-11 items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50; }
-  .field { @apply w-full rounded-xl border border-outline-strong bg-canvas px-3 py-2.5 text-foreground outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25; }
+  .btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-strong bg-raised px-4 py-2.5 font-semibold text-foreground transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-danger { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-icon { @apply inline-flex size-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-outline-strong bg-raised text-foreground transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50; }\n  .field { @apply w-full rounded-xl border border-outline-strong bg-canvas px-3 py-2.5 text-foreground outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25; }
   .label { @apply mb-1.5 block text-sm font-semibold text-secondary; }
   .muted { @apply text-muted; }
   .badge { @apply inline-flex items-center rounded-full border border-outline-strong bg-raised px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-secondary; }
