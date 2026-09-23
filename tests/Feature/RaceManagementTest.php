@@ -62,6 +62,8 @@ class RaceManagementTest extends TestCase
             'checkpoint_id' => $checkpoint->id,
             'mode' => 'existing',
             'user_id' => $official->id,
+            'delivery' => 'manual',
+            'password' => '',
         ])->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('checkpoint_assignments', [
