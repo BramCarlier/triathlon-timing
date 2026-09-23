@@ -35,6 +35,7 @@ class EntryController extends Controller
     public function store(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        $this->ensureRegistrationOpen($race);
         $data = $request->validate([
             'bib_number' => ['nullable','string','max:32', Rule::unique('entries')->where('race_id', $race->id)],
             'type' => ['required', Rule::enum(EntryType::class)],
@@ -76,6 +77,7 @@ class EntryController extends Controller
     public function update(Request $request,Race $race,Entry $entry): RedirectResponse
     {
         Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);
+        if ($race->started_at) return $this->updateResultStatus($request, $race, $entry);
         $data=$request->validate([
             'bib_number'=>['nullable','string','max:32',Rule::unique('entries')->where('race_id',$race->id)->ignore($entry->id)],
             'team_name'=>[$entry->type===EntryType::Relay?'required':'nullable','string','max:255'],
@@ -113,9 +115,54 @@ class EntryController extends Controller
     public function destroy(Race $race, Entry $entry): RedirectResponse
     {
         Gate::authorize('manage-race', $race); abort_unless($entry->race_id === $race->id, 404);
+        $this->ensureRegistrationOpen($race);
         if($entry->timings()->exists())throw ValidationException::withMessages(['entry'=>'Entries with timings cannot be deleted. Use a result status to retain their history.']);
         $entry->delete();
         return back()->with('success', 'Participant removed.');
+    }
+
+
+    private function updateResultStatus(Request $request, Race $race, Entry $entry): RedirectResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['registered','dns','dnf','dsq'])],
+            'reason' => ['required','string','min:3','max:1000'],
+        ]);
+
+        DB::transaction(function () use ($request, $entry, $data) {
+            $entry = Entry::lockForUpdate()->findOrFail($entry->id);
+            $snapshot = fn () => [
+                'entry' => $entry->only(['bib_number','team_name','category','status']),
+                'athletes' => $entry->members()->with('athlete')->get()->pluck('athlete')->unique('id')->values()->map->only(['id','first_name','last_name','email','club'])->all(),
+            ];
+            $before = $snapshot();
+
+            if ($data['status'] === 'dns' && $entry->timings()->exists()) {
+                throw ValidationException::withMessages([
+                    'status' => 'This participant has timing history. Use DNF or disqualification instead of DNS.',
+                ]);
+            }
+
+            $entry->update(['status' => $data['status']]);
+            EntryChange::create([
+                'entry_id' => $entry->id,
+                'user_id' => $request->user()->id,
+                'before' => $before,
+                'after' => $snapshot(),
+                'reason' => $data['reason'],
+            ]);
+        });
+
+        return back()->with('success', 'Participant result status updated. The reason is saved in the audit history.');
+    }
+
+    private function ensureRegistrationOpen(Race $race): void
+    {
+        if ($race->started_at) {
+            throw ValidationException::withMessages([
+                'race' => 'Participant registration is locked after the race starts.',
+            ]);
+        }
     }
 
     private function athlete(array $data): Athlete
