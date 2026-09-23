@@ -58,6 +58,7 @@ const isAdmin = computed(() => account.value?.role === 'admin');
 useRaceRefresh(() => ['race', 'participants', 'recentTimings', 'completedCount', 'serverNow', 'checkpointAssignments', 'allowedTimingCheckpointIds']);
 
 const orderedCheckpoints = computed(() => [...props.race.checkpoints].sort((a,b) => a.sequence-b.sequence));
+const setupCheckpoints = computed(() => orderedCheckpoints.value.filter(cp => cp.kind !== 'start'));
 const activeTimingCheckpoints = computed(() => orderedCheckpoints.value.filter(cp =>
   cp.is_active
   && cp.kind !== 'start'
@@ -87,7 +88,7 @@ const workflowState = computed(() => {
   if (props.race.finished_at) return { title:'Race finished', detail:'Review the results or correct a genuine timing mistake.', icon:'fa-solid fa-flag-checkered' };
   if (props.race.started_at) return { title:'Race is live', detail:isAdmin.value ? 'Record timings here or switch checkpoints when needed.' : 'Record athletes at your assigned checkpoint.', icon:'fa-solid fa-stopwatch' };
   if (!isAdmin.value) return { title:'Waiting for the race to start', detail:activeTimingCheckpoints.value.length ? `Your checkpoint: ${activeTimingCheckpoints.value[0].name}` : 'No checkpoint has been assigned to you yet.', icon:'fa-solid fa-location-dot' };
-  if (!setupReady.value) return { title:'Next: checkpoints & officials', detail:'Review the course and assign Officials to their checkpoints.', icon:'fa-solid fa-route' };
+  if (!setupReady.value || props.checkpointAssignments.length === 0) return { title:'Next: checkpoints & officials', detail:'Review the course and assign Officials to their checkpoints.', icon:'fa-solid fa-route' };
   if (!participantsReady.value) return { title:'Next: add athletes', detail:'Add athletes or relay teams before starting the race.', icon:'fa-solid fa-users' };
   return { title:'Ready to start', detail:'Setup is complete. Start the shared clock when the race begins.', icon:'fa-solid fa-play' };
 });
@@ -352,7 +353,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
       <div v-if="isAdmin && !race.started_at" class="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Race setup progress">
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='prepare'">
-          <span class="text-xs font-bold uppercase tracking-wider" :class="setupReady?'text-success':'text-warning'">{{ setupReady?'Ready':'1' }}</span>
+          <span class="text-xs font-bold uppercase tracking-wider" :class="setupReady && checkpointAssignments.length?'text-success':'text-warning'">{{ setupReady && checkpointAssignments.length?'Ready':'1' }}</span>
           <strong class="mt-1 block">Checkpoints & officials</strong>
         </button>
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='participants'">
@@ -404,7 +405,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
             <p v-if="checkpointError" class="mt-3 text-sm text-error" role="alert">{{ checkpointError }}</p>
             <div class="mt-4 space-y-3">
-              <article v-for="cp in orderedCheckpoints" :key="cp.id" class="rounded-xl border border-outline p-3">
+              <article v-for="cp in setupCheckpoints" :key="cp.id" class="rounded-xl border border-outline p-3">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
                     <strong class="block">{{ cp.name }}</strong>
