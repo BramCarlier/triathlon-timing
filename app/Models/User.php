@@ -23,7 +23,7 @@ class User extends Authenticatable
         if ($this->isAdmin()) return \App\Support\Permissions::all();
         if (!$this->isOrganizer()) return [];
         $role = $this->access_role_id ? $this->accessRole : AccessRole::where('is_default',true)->first();
-        return array_values(array_intersect($role?->permissions ?? [], \App\Support\Permissions::all()));
+        return array_values(array_intersect($role?->permissions ?? [], \App\Support\Permissions::official()));
     }
     public function hasPermission(string $permission): bool { return $this->isAdmin() || in_array($permission,$this->effectivePermissions(),true); }
     public function athlete(): BelongsTo { return $this->belongsTo(Athlete::class); }
