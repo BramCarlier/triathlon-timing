@@ -9,12 +9,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CheckpointController extends Controller
 {
     public function store(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
+        $this->ensureSetupUnlocked($race);
         if (!$request->filled('code')) {
             $base = substr(strtoupper(\Illuminate\Support\Str::slug((string) $request->input('name'), '_')), 0, 36) ?: 'CHECKPOINT';
             $code = $base;
@@ -29,6 +32,8 @@ class CheckpointController extends Controller
     public function update(Request $request, Race $race, Checkpoint $checkpoint): RedirectResponse
     {
         Gate::authorize('manage-race', $race); abort_unless($checkpoint->race_id === $race->id, 404);
+        abort_unless(request()->user()->isAdmin(), 403);
+        $this->ensureSetupUnlocked($race);
         $checkpoint->update($this->validated($request, $race, $checkpoint));
         return back()->with('success', 'Checkpoint updated.');
     }
@@ -36,10 +41,21 @@ class CheckpointController extends Controller
     public function destroy(Race $race, Checkpoint $checkpoint): RedirectResponse
     {
         Gate::authorize('manage-race', $race); abort_unless($checkpoint->race_id === $race->id, 404);
+        abort_unless(request()->user()->isAdmin(), 403);
+        $this->ensureSetupUnlocked($race);
         if($checkpoint->kind===CheckpointKind::Start)throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>'The race start checkpoint cannot be deleted.']);
         if($checkpoint->timings()->exists())throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>'A checkpoint with timings cannot be deleted. Disable it instead.']);
         $checkpoint->delete();
         return back()->with('success', 'Checkpoint deleted.');
+    }
+
+    private function ensureSetupUnlocked(Race $race): void
+    {
+        if ($race->started_at) {
+            throw ValidationException::withMessages([
+                'race' => 'Checkpoints are locked after the race starts.',
+            ]);
+        }
     }
 
     private function validated(Request $request, Race $race, ?Checkpoint $checkpoint = null): array

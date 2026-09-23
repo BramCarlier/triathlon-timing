@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
-import type { PageProps, UserRole } from '../types';
+import type { UserRole } from '../types';
 
 const props = defineProps<{ role: UserRole }>();
-const page = usePage<PageProps>();
-const permissions = computed(() => page.props.auth.user?.permissions ?? []);
-const can = (permission: string) => props.role === 'admin' || permissions.value.includes(permission);
 const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : props.role === 'organizer' ? 'Official' : 'Athlete');
 </script>
 
@@ -20,10 +17,10 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
           <i class="fa-solid fa-compass" aria-hidden="true"></i>
         </span>
         <div>
-          <h2 class="text-xl font-bold">What you need to know</h2>
-          <p v-if="role==='admin'" class="mt-2 muted">You prepare races, assign officials, run race day and handle exceptions. The normal workflow now lives on one race page.</p>
-          <p v-else-if="role==='organizer'" class="mt-2 muted">You only need the parts of an assigned race your permissions allow. On race day, the important job is usually choosing your checkpoint and recording athletes as they pass.</p>
-          <p v-else class="mt-2 muted">Use My race to see your event information, progress and available results. Administrative race controls are intentionally hidden from athlete accounts.</p>
+          <h2 class="text-xl font-bold">The simple race flow</h2>
+          <p v-if="role==='admin'" class="mt-2 muted">Everything important happens from the Race workspace. Complete the setup from top to bottom, then the page switches into race-day mode.</p>
+          <p v-else-if="role==='organizer'" class="mt-2 muted">Your Organizer assigns you to one checkpoint. On race day you only need to record athletes at that checkpoint.</p>
+          <p v-else class="mt-2 muted">Your account is for viewing your race and results. You do not operate checkpoints or race controls.</p>
         </div>
       </div>
     </section>
@@ -31,35 +28,42 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
     <template v-if="role==='admin'">
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">Create and prepare the race</h2></div>
-          <p class="muted">Open <strong>Races</strong>, create the event, then stay on its Race workspace. Confirm the course, checkpoints and participants there.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">Create the race</h2></div>
+          <p class="muted">Enter the race name and date. The app creates the normal triathlon checkpoints so you can adjust them instead of building everything from scratch.</p>
           <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>Open races</Link>
         </article>
+
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Prepare the people</h2></div>
-          <p class="muted">Add participants manually or import them. Assign Officials to the race before race day so their assigned events appear automatically.</p>
-          <Link href="/users" class="btn-secondary mt-4"><i class="fa-solid fa-users" aria-hidden="true"></i>Manage people</Link>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Checkpoints & Officials</h2></div>
+          <p class="muted">Add or edit checkpoints, then assign an Official to each location. Choose an existing Official or create a new account directly from the checkpoint.</p>
         </article>
+
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Run race day</h2></div>
-          <p class="muted">Start the shared clock from the Race workspace. Choose a checkpoint, find an athlete or team, and tap them when they cross. Every official sees the same race clock.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Add athletes</h2></div>
+          <p class="muted">Add solo athletes or relay teams manually, or import a file. Registration is locked as soon as the race starts.</p>
         </article>
+
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">4</span><h2 class="text-lg font-bold">Finish and review</h2></div>
-          <p class="muted">By default the race finishes automatically when every active participant has a finish time. You can turn that off and finish manually when needed. Results and corrections remain available afterwards.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">4</span><h2 class="text-lg font-bold">Start and record</h2></div>
+          <p class="muted">Start the shared race clock. You can switch between all checkpoints when recording times. Each Official only sees the checkpoint assigned to their account and cannot switch it.</p>
+        </article>
+
+        <article class="panel-pad lg:col-span-2">
+          <div class="mb-3 flex items-center gap-3"><span class="badge">5</span><h2 class="text-lg font-bold">End the race</h2></div>
+          <p class="muted">There is no automatic-finish setting to configure. The backend closes the race when the last active athlete receives a finish time. If the event needs to end earlier, use <strong>End race now</strong>.</p>
         </article>
       </section>
 
       <details class="panel-pad mt-5">
-        <summary class="cursor-pointer font-bold">Occasional admin tasks</summary>
+        <summary class="cursor-pointer font-bold">Occasional admin tools</summary>
         <div class="mt-4 grid gap-3 sm:grid-cols-2">
           <Link href="/admin/roles" class="rounded-xl border border-outline p-4 hover:bg-raised">
             <strong><i class="fa-solid fa-key mr-2" aria-hidden="true"></i>Access & permissions</strong>
-            <p class="mt-2 text-sm muted">Decide what an Official is allowed to set up, record or export.</p>
+            <p class="mt-2 text-sm muted">Manage account roles when you need something beyond the standard Organizer, Official and Athlete workflow.</p>
           </Link>
           <Link href="/admin/health" class="rounded-xl border border-outline p-4 hover:bg-raised">
             <strong><i class="fa-solid fa-heart-pulse mr-2" aria-hidden="true"></i>System health</strong>
-            <p class="mt-2 text-sm muted">Technical checks for troubleshooting. You normally do not need this during a race.</p>
+            <p class="mt-2 text-sm muted">Troubleshooting information. You normally do not need this during a race.</p>
           </Link>
         </div>
       </details>
@@ -68,53 +72,39 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
     <template v-else-if="role==='organizer'">
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">Open your assigned race</h2></div>
-          <p class="muted">Go to Races and open the event. The Race workspace only shows actions your account is allowed to use.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">Open your race</h2></div>
+          <p class="muted">Open the race assigned to your account. Your checkpoint assignment follows your account, so you do not have to choose a station yourself.</p>
           <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>Open my races</Link>
         </article>
-        <article v-if="can('timings.record')" class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Record your checkpoint</h2></div>
-          <p class="muted">Choose the checkpoint you are standing at. Search by bib, athlete or team. Tap once as the participant passes; a recorded participant is clearly marked so you do not tap twice.</p>
-        </article>
-        <article v-if="can('races.control')" class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Shared clock controls</h2></div>
-          <p class="muted">Your role allows starting and finishing the race. Confirm with the race director before using these controls because they affect every timing station.</p>
-        </article>
-        <article class="panel-pad">
-          <h2 class="text-lg font-bold">If the connection is unreliable</h2>
-          <p class="mt-2 muted">Use the focused Timing mode from the Race workspace. It can queue times on the device and upload them again when the connection returns.</p>
-        </article>
-      </section>
 
-      <section class="panel-pad mt-5">
-        <h2 class="font-bold">What your account can do</h2>
-        <div class="mt-3 flex flex-wrap gap-2 text-sm">
-          <span v-if="can('races.setup')" class="badge">Edit race setup</span>
-          <span v-if="can('participants.manage')" class="badge">Manage participants</span>
-          <span v-if="can('timings.record')" class="badge">Record times</span>
-          <span v-if="can('races.control')" class="badge">Start / finish race</span>
-          <span v-if="can('results.export')" class="badge">Export results</span>
-        </div>
-        <p class="mt-3 text-sm muted">If something you expect is missing, ask an Organizer (admin) to review your access.</p>
+        <article class="panel-pad">
+          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Wait for the start</h2></div>
+          <p class="muted">The Organizer starts the shared race clock. Timing buttons remain unavailable until that happens.</p>
+        </article>
+
+        <article class="panel-pad">
+          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Tap athletes as they pass</h2></div>
+          <p class="muted">Search by bib or name and tap the athlete once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.</p>
+        </article>
+
+        <article class="panel-pad">
+          <h2 class="text-lg font-bold">Poor connection?</h2>
+          <p class="mt-2 muted">Open Focused timing before moving to the checkpoint. It can keep unsent timings on the device and synchronize them when the connection returns.</p>
+        </article>
       </section>
     </template>
 
     <template v-else>
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">Before and during the race</h2>
+          <h2 class="text-lg font-bold">Your race</h2>
           <p class="mt-2 muted">Open My race to see the event linked to your account. You do not need to choose checkpoints or operate the race clock.</p>
           <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>Open my race</Link>
         </article>
         <article class="panel-pad">
           <h2 class="text-lg font-bold">Results</h2>
-          <p class="mt-2 muted">When results are available, your race page shows your recorded progress and result information. Public result links may also be shared by the organizers.</p>
+          <p class="mt-2 muted">Your race page shows recorded progress and results when they become available.</p>
         </article>
-      </section>
-      <section class="panel-pad mt-5">
-        <h2 class="font-bold">Need account help?</h2>
-        <p class="mt-2 muted">Use Account to change your password. For incorrect race or athlete information, contact an event Organizer or Official.</p>
-        <Link href="/account/password" class="btn-secondary mt-4"><i class="fa-solid fa-lock" aria-hidden="true"></i>Account settings</Link>
       </section>
     </template>
   </AppLayout>

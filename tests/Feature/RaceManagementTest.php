@@ -43,12 +43,34 @@ class RaceManagementTest extends TestCase
         $this->post("/races/{$race->id}/restore")->assertForbidden();
     }
 
-    public function test_athletes_cannot_be_assigned_organizer_permissions_from_race_settings(): void
+    public function test_only_official_accounts_can_be_assigned_to_checkpoints(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $athlete = User::factory()->create(['role' => UserRole::Athlete]);
+        $official = User::factory()->create(['role' => UserRole::Organizer]);
         $race = Race::create(['name' => 'Test', 'slug' => 'test', 'event_date' => '2026-09-21', 'created_by' => $admin->id]);
-        $this->actingAs($admin)->put("/races/{$race->id}", ['name' => 'Test', 'event_date' => '2026-09-21', 'timezone' => 'Europe/Brussels', 'status' => 'ready', 'organizer_ids' => [$athlete->id]])->assertSessionHasErrors('organizer_ids.0');
-        $this->assertSame(0, $race->organizers()->count());
+        $race->organizers()->attach($admin);
+        $checkpoint = $race->checkpoints()->create(['name'=>'Finish','code'=>'FINISH','sequence'=>50,'kind'=>'finish','is_active'=>true,'is_required'=>true]);
+
+        $this->actingAs($admin)->post("/races/{$race->id}/official-assignments", [
+            'checkpoint_id' => $checkpoint->id,
+            'mode' => 'existing',
+            'user_id' => $athlete->id,
+        ])->assertSessionHasErrors('user_id');
+
+        $this->post("/races/{$race->id}/official-assignments", [
+            'checkpoint_id' => $checkpoint->id,
+            'mode' => 'existing',
+            'user_id' => $official->id,
+            'delivery' => 'manual',
+            'password' => '',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('checkpoint_assignments', [
+            'race_id' => $race->id,
+            'checkpoint_id' => $checkpoint->id,
+            'user_id' => $official->id,
+        ]);
+        $this->assertTrue($official->fresh()->races->contains($race));
     }
 }

@@ -24,6 +24,7 @@ class TimingController extends Controller
     public function selectCheckpoint(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless($request->user()->isAdmin(), 403, 'Only the Organizer can switch checkpoints.');
         $data = $request->validate(['checkpoint_id' => ['required', Rule::exists('checkpoints', 'id')->where('race_id', $race->id)]]);
         $checkpoint = Checkpoint::findOrFail($data['checkpoint_id']);
         abort_if(!$checkpoint->is_active, 422, 'This checkpoint is inactive.');
@@ -35,9 +36,17 @@ class TimingController extends Controller
     public function station(Request $request, Race $race): Response
     {
         Gate::authorize('manage-race', $race);
-        $selectedId = $request->session()->get("checkpoint.{$race->id}");
-        $checkpoint = $selectedId ? $race->checkpoints()->whereKey($selectedId)->where('is_active', true)->first() : null;
-        $checkpoints = $race->checkpoints()->where('is_active', true)->where('kind', '!=', CheckpointKind::Start->value)->orderBy('sequence')->get();
+        if ($request->user()->isAdmin()) {
+            $selectedId = $request->session()->get("checkpoint.{$race->id}");
+            $checkpoint = $selectedId ? $race->checkpoints()->whereKey($selectedId)->where('is_active', true)->first() : null;
+            $checkpoints = $race->checkpoints()->where('is_active', true)->where('kind', '!=', CheckpointKind::Start->value)->orderBy('sequence')->get();
+        } else {
+            $assignment = $race->checkpointAssignments()->where('user_id', $request->user()->id)->first();
+            $checkpoint = $assignment
+                ? $race->checkpoints()->whereKey($assignment->checkpoint_id)->where('is_active', true)->where('kind', '!=', CheckpointKind::Start->value)->first()
+                : null;
+            $checkpoints = $checkpoint ? collect([$checkpoint]) : collect();
+        }
         $recent = $checkpoint ? TimingRecord::where('checkpoint_id', $checkpoint->id)->where('operator_id', $request->user()->id)->where('status', TimingStatus::Recorded->value)->with('entry.members.athlete')->latest('recorded_at')->limit(10)->get() : [];
         $participants = $race->entries()->with(['members.athlete', 'timings' => fn ($q) => $q->where('status', TimingStatus::Recorded->value)->select('id', 'entry_id', 'checkpoint_id')])->get()->map(fn ($entry) => [
             'id' => $entry->id, 'status' => $entry->status,
@@ -64,8 +73,12 @@ class TimingController extends Controller
     {
         Gate::authorize('manage-race', $race);
         $data = $request->validate(['operator_id'=>['required_if:source,offline','integer',Rule::in([$request->user()->id])], 'entry_id' => ['required', Rule::exists('entries','id')->where('race_id', $race->id)], 'checkpoint_id' => ['required', Rule::exists('checkpoints','id')->where('race_id', $race->id)], 'client_uuid' => ['required','uuid'], 'observed_at' => ['nullable','date'], 'source' => ['required', Rule::in(['online','offline'])], 'workspace' => ['nullable','boolean'], 'override_warning' => ['nullable','boolean'], 'notes' => ['nullable','string','max:1000']]);
-        $selectedId = (int) $request->session()->get("checkpoint.{$race->id}");
-        abort_unless($request->user()->isAdmin() || !empty($data['workspace']) || ($selectedId === (int) $data['checkpoint_id'] || $data['source'] === 'offline'), 403, 'Your active checkpoint does not match this timing request.');
+        if (!$request->user()->isAdmin()) {
+            $assignedCheckpointId = $race->checkpointAssignments()
+                ->where('user_id', $request->user()->id)
+                ->value('checkpoint_id');
+            abort_unless((int) $assignedCheckpointId === (int) $data['checkpoint_id'], 403, 'You can only record timings at your assigned checkpoint.');
+        }
         try {
             $timing = $service->record($race, Entry::findOrFail($data['entry_id']), Checkpoint::findOrFail($data['checkpoint_id']), $request->user(), $data);
             $timing->load(['entry.members.athlete', 'checkpoint']);
@@ -74,7 +87,6 @@ class TimingController extends Controller
             $autoFinished = false;
             if (
                 $timing->checkpoint->kind === CheckpointKind::Finish
-                && (bool) data_get($race->settings, 'auto_finish', true)
                 && !$race->finished_at
             ) {
                 $hasUnfinishedParticipants = $race->entries()

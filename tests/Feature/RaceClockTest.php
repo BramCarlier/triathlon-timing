@@ -21,6 +21,7 @@ class RaceClockTest extends TestCase
         Event::fake();
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $race = Race::create(['name' => 'Clock', 'slug' => 'clock', 'event_date' => '2026-09-21', 'timezone' => 'Europe/Brussels', 'created_by' => $admin->id]);
+        $this->makeStartable($race);
         $this->travelTo(\Carbon\Carbon::parse('2026-09-21T12:00:00.123Z'));
         app(RaceClockService::class)->start($race);
         $this->travelTo(\Carbon\Carbon::parse('2026-09-21T12:05:10.456Z'));
@@ -47,15 +48,52 @@ class RaceClockTest extends TestCase
         ])->assertOk()->assertJsonPath('finished_at', '2026-09-22T12:10:00.456000Z')->assertJsonPath('status', 'finished');
     }
 
+    public function test_incomplete_race_cannot_start_and_lock_setup(): void
+    {
+        Event::fake();
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $race = Race::create(['name'=>'Incomplete','slug'=>'incomplete','event_date'=>'2026-10-01','timezone'=>'Europe/Brussels','status'=>RaceStatus::Ready,'created_by'=>$admin->id]);
+
+        try {
+            app(RaceClockService::class)->start($race);
+            $this->fail('Race without athletes should not start.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('race', $e->errors());
+        }
+        $this->assertNull($race->fresh()->started_at);
+
+        $race->entries()->create(['type'=>'solo']);
+        try {
+            app(RaceClockService::class)->start($race);
+            $this->fail('Race without a finish checkpoint should not start.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('race', $e->errors());
+        }
+        $this->assertNull($race->fresh()->started_at);
+    }
+
     public function test_race_start_sets_one_authoritative_timestamp(): void
     {
         Event::fake();
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $race = Race::create(['name'=>'Test Triathlon','slug'=>'test-triathlon','event_date'=>'2026-10-01','timezone'=>'Europe/Brussels','status'=>RaceStatus::Ready,'created_by'=>$admin->id]);
+        $this->makeStartable($race);
         $started = app(RaceClockService::class)->start($race);
         $this->assertSame(RaceStatus::Running, $started->status);
         $this->assertNotNull($started->started_at);
         $this->expectException(ValidationException::class);
         app(RaceClockService::class)->start($started);
+    }
+    private function makeStartable(Race $race): void
+    {
+        $race->entries()->create(['type'=>'solo']);
+        $race->checkpoints()->create([
+            'name'=>'Finish',
+            'code'=>'FINISH',
+            'sequence'=>50,
+            'kind'=>'finish',
+            'is_active'=>true,
+            'is_required'=>true,
+        ]);
     }
 }

@@ -8,6 +8,7 @@ use App\Enums\EntryType;
 use App\Enums\RaceStatus;
 use App\Enums\UserRole;
 use App\Models\Athlete;
+use App\Models\CheckpointAssignment;
 use App\Models\Entry;
 use App\Models\Race;
 use App\Models\User;
@@ -35,7 +36,7 @@ class RaceWorkspaceTest extends TestCase
         }
     }
 
-    public function test_new_races_default_to_automatic_finish(): void
+    public function test_automatic_finish_is_not_a_race_setting(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
 
@@ -45,12 +46,13 @@ class RaceWorkspaceTest extends TestCase
             'timezone' => 'Europe/Brussels',
         ])->assertSessionHasNoErrors();
 
-        $this->assertTrue((bool) Race::sole()->settings['auto_finish']);
+        $this->assertArrayNotHasKey('auto_finish', Race::sole()->settings);
     }
 
-    public function test_race_workspace_contains_participants_and_live_timing_data(): void
+    public function test_race_workspace_contains_participants_assignments_and_live_timing_data(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $official = User::factory()->create(['role' => UserRole::Organizer]);
         $race = Race::create([
             'name' => 'Workspace race',
             'slug' => 'workspace-race',
@@ -58,8 +60,8 @@ class RaceWorkspaceTest extends TestCase
             'timezone' => 'Europe/Brussels',
             'created_by' => $admin->id,
         ]);
-        $race->organizers()->attach($admin);
-        $race->checkpoints()->create([
+        $race->organizers()->attach([$admin->id, $official->id]);
+        $finish = $race->checkpoints()->create([
             'name' => 'Finish',
             'code' => 'FINISH',
             'sequence' => 50,
@@ -68,6 +70,7 @@ class RaceWorkspaceTest extends TestCase
             'is_active' => true,
             'is_required' => true,
         ]);
+        CheckpointAssignment::create(['race_id' => $race->id, 'checkpoint_id' => $finish->id, 'user_id' => $official->id]);
         $this->makeEntry($race, '101', 'Alex Runner');
 
         $this->actingAs($admin)
@@ -76,15 +79,16 @@ class RaceWorkspaceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Races/Show')
                 ->has('participants', 1)
+                ->has('checkpointAssignments', 1)
                 ->has('recentTimings', 0)
                 ->where('completedCount', 0));
     }
 
-    public function test_last_registered_finisher_automatically_finishes_the_race(): void
+    public function test_last_registered_finisher_always_finishes_the_race_automatically(): void
     {
         Event::fake();
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $race = $this->runningRace($admin, true);
+        $race = $this->runningRace($admin);
         $finish = $race->checkpoints()->create([
             'name' => 'Finish',
             'code' => 'FINISH',
@@ -119,35 +123,70 @@ class RaceWorkspaceTest extends TestCase
         $this->assertSame(RaceStatus::Finished, $race->fresh()->status);
     }
 
-    public function test_automatic_finish_can_be_disabled(): void
+    public function test_official_is_locked_to_the_assigned_checkpoint(): void
     {
         Event::fake();
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $race = $this->runningRace($admin, false);
-        $finish = $race->checkpoints()->create([
-            'name' => 'Finish',
-            'code' => 'FINISH',
-            'sequence' => 50,
-            'kind' => CheckpointKind::Finish,
+        $official = User::factory()->create(['role' => UserRole::Organizer]);
+        $race = $this->runningRace($admin);
+        $race->organizers()->attach($official);
+        $swim = $race->checkpoints()->create([
+            'name' => 'Swim exit',
+            'code' => 'SWIM',
+            'sequence' => 10,
+            'kind' => CheckpointKind::Transition,
+            'discipline' => Discipline::Swim,
+            'is_active' => true,
+            'is_required' => true,
+        ]);
+        $run = $race->checkpoints()->create([
+            'name' => 'Run split',
+            'code' => 'RUN',
+            'sequence' => 20,
+            'kind' => CheckpointKind::Split,
             'discipline' => Discipline::Run,
             'is_active' => true,
             'is_required' => true,
         ]);
-        $entry = $this->makeEntry($race, '201', 'Taylor Swim');
+        CheckpointAssignment::create(['race_id' => $race->id, 'checkpoint_id' => $swim->id, 'user_id' => $official->id]);
+        $entry = $this->makeEntry($race, '301', 'Assigned Official');
 
-        $this->actingAs($admin)->postJson("/races/{$race->id}/timings", [
+        $this->actingAs($official)
+            ->post("/races/{$race->id}/checkpoint-selection", ['checkpoint_id' => $run->id])
+            ->assertForbidden();
+
+        $this->postJson("/races/{$race->id}/timings", [
             'entry_id' => $entry->id,
-            'checkpoint_id' => $finish->id,
+            'checkpoint_id' => $run->id,
             'client_uuid' => (string) Str::uuid(),
             'source' => 'online',
-            'workspace' => true,
-        ])->assertOk()->assertJsonPath('auto_finished', false);
+        ])->assertForbidden();
 
-        $this->assertNull($race->fresh()->finished_at);
-        $this->assertSame(RaceStatus::Running, $race->fresh()->status);
+        $this->postJson("/races/{$race->id}/timings", [
+            'entry_id' => $entry->id,
+            'checkpoint_id' => $swim->id,
+            'client_uuid' => (string) Str::uuid(),
+            'source' => 'online',
+        ])->assertOk();
     }
 
-    private function runningRace(User $admin, bool $autoFinish): Race
+    public function test_setup_and_registration_are_locked_after_start(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $race = $this->runningRace($admin);
+
+        $this->actingAs($admin)->put("/races/{$race->id}", [
+            'name' => 'Changed',
+            'event_date' => '2026-10-10',
+            'timezone' => 'Europe/Brussels',
+            'status' => RaceStatus::Running->value,
+        ])->assertSessionHasErrors('race');
+
+        $this->post("/races/{$race->id}/participants", [])->assertSessionHasErrors('race');
+        $this->post("/races/{$race->id}/checkpoints", [])->assertSessionHasErrors('race');
+    }
+
+    private function runningRace(User $admin): Race
     {
         $race = Race::create([
             'name' => 'Race day',
@@ -156,7 +195,7 @@ class RaceWorkspaceTest extends TestCase
             'timezone' => 'Europe/Brussels',
             'status' => RaceStatus::Running,
             'started_at' => now()->subMinute(),
-            'settings' => ['swim_km' => 1, 'bike_km' => 35, 'run_km' => 8, 'auto_finish' => $autoFinish],
+            'settings' => ['swim_km' => 1, 'bike_km' => 35, 'run_km' => 8],
             'created_by' => $admin->id,
         ]);
         $race->organizers()->attach($admin);

@@ -20,5 +20,6 @@ class Race extends Model
     public function entries(): HasMany { return $this->hasMany(Entry::class); }
     public function checkpoints(): HasMany { return $this->hasMany(Checkpoint::class)->orderBy('sequence'); }
     public function timings(): HasMany { return $this->hasMany(TimingRecord::class); }
+    public function checkpointAssignments(): HasMany { return $this->hasMany(CheckpointAssignment::class); }
     public function isRunning(): bool { return $this->status === RaceStatus::Running && $this->started_at !== null; }
 }

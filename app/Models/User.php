@@ -5,6 +5,7 @@ use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -22,11 +23,12 @@ class User extends Authenticatable
         if ($this->isAdmin()) return \App\Support\Permissions::all();
         if (!$this->isOrganizer()) return [];
         $role = $this->access_role_id ? $this->accessRole : AccessRole::where('is_default',true)->first();
-        return array_values(array_intersect($role?->permissions ?? [], \App\Support\Permissions::all()));
+        return array_values(array_intersect($role?->permissions ?? [], \App\Support\Permissions::official()));
     }
     public function hasPermission(string $permission): bool { return $this->isAdmin() || in_array($permission,$this->effectivePermissions(),true); }
     public function athlete(): BelongsTo { return $this->belongsTo(Athlete::class); }
     public function races(): BelongsToMany { return $this->belongsToMany(Race::class)->withTimestamps(); }
+    public function checkpointAssignments(): HasMany { return $this->hasMany(CheckpointAssignment::class); }
     public function isAdmin(): bool { return $this->role === UserRole::Admin; }
     public function isOrganizer(): bool { return in_array($this->role, [UserRole::Admin, UserRole::Organizer], true); }
 }

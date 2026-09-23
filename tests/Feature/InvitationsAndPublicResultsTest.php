@@ -57,7 +57,8 @@ class InvitationsAndPublicResultsTest extends TestCase {
   $admin=$this->admin();$race=Race::create(['name'=>'Public race','slug'=>'public-race','event_date'=>'2026-09-23','created_by'=>$admin->id]);
   $organizer=User::factory()->create(['role'=>'organizer']);
   $this->actingAs($organizer)->post("/races/$race->id/publication",['published'=>true])->assertForbidden();
-  $organizer->races()->attach($race);$this->post("/races/$race->id/publication",['published'=>true])->assertSessionHasNoErrors();
+  $organizer->races()->attach($race);$this->post("/races/$race->id/publication",['published'=>true])->assertForbidden();
+  $this->actingAs($admin)->post("/races/$race->id/publication",['published'=>true])->assertSessionHasNoErrors();
   $token=$race->fresh()->public_results_token;$this->assertNotNull($token);
   $this->post('/logout');$this->get("/live/$token")->assertOk()->assertHeader('X-Robots-Tag','noindex, nofollow')->assertInertia(fn(Assert $page)=>$page->component('Results/Index')->where('publicMode',true)->missing('race.created_by')->missing('race.organizers')->missing('race.public_results_token')->where('auth.user',null));
   $this->get("/races/$race->id/results.csv")->assertRedirect('/login');
@@ -78,6 +79,6 @@ class InvitationsAndPublicResultsTest extends TestCase {
   $admin=$this->admin();$this->actingAs($admin)->post('/races',['name'=>'Distance','event_date'=>'2026-09-23','timezone'=>'Europe/Brussels','swim_km'=>1,'bike_km'=>35,'run_km'=>8]);$race=Race::firstOrFail();
   $data=['name'=>$race->name,'event_date'=>'2026-09-23','timezone'=>'Europe/Brussels','status'=>'draft','swim_km'=>1.5,'bike_km'=>40,'run_km'=>10];
   $this->put("/races/$race->id",$data)->assertSessionHasNoErrors();$this->assertEquals(40,$race->fresh()->settings['bike_km']);$this->assertEquals(40,$race->checkpoints()->where('code','BIKE_FINISH')->first()->distance_km);
-  $race->update(['started_at'=>now(),'status'=>'running']);$data['status']='running';$data['bike_km']=41;$this->put("/races/$race->id",$data)->assertSessionHasErrors('bike_km');$this->assertEquals(40,$race->fresh()->settings['bike_km']);
+  $race->update(['started_at'=>now(),'status'=>'running']);$data['status']='running';$data['bike_km']=41;$this->put("/races/$race->id",$data)->assertSessionHasErrors('race');$this->assertEquals(40,$race->fresh()->settings['bike_km']);
  }
 }

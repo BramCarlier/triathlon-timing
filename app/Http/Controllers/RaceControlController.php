@@ -16,6 +16,7 @@ class RaceControlController extends Controller
     public function show(Race $race): Response
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
         $race->load('checkpoints')->loadCount(['entries','organizers'=>fn($q)=>$q->where('is_active',true)]);
         $recent = $race->timings()->where('status', TimingStatus::Recorded->value)->with(['entry.members.athlete', 'checkpoint:id,name', 'operator:id,name'])->latest('recorded_at')->limit(20)->get();
         $presence = OperatorPresence::where('race_id', $race->id)->where('last_seen_at', '>=', now()->subMinutes(5))->with(['user:id,name', 'checkpoint:id,name'])->get();
@@ -27,6 +28,7 @@ class RaceControlController extends Controller
     public function start(Race $race, RaceClockService $clock): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
         $clock->start($race);
         return back()->with('success', 'Race clock started.');
     }
@@ -34,6 +36,7 @@ class RaceControlController extends Controller
     public function finish(Race $race, RaceClockService $clock): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        abort_unless(request()->user()->isAdmin(), 403);
         $clock->finish($race);
         return back()->with('success', 'Race marked as finished.');
     }

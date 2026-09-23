@@ -14,6 +14,7 @@ use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\RaceControlController;
 use App\Http\Controllers\RaceController;
+use App\Http\Controllers\RaceOfficialController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\TimingController;
 use App\Http\Controllers\UserController;
@@ -47,6 +48,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/races/{race}', [RaceController::class, 'show'])->name('races.show');
         Route::post('/races/{race}/publication', [ResultController::class,'publish'])->middleware('permission:races.setup')->name('results.publish');
         Route::put('/races/{race}', [RaceController::class, 'update'])->middleware('permission:races.setup')->name('races.update');
+        Route::post('/races/{race}/official-assignments', [RaceOfficialController::class, 'store'])->name('races.officials.store');
+        Route::delete('/races/{race}/official-assignments/{official}', [RaceOfficialController::class, 'destroy'])->name('races.officials.destroy');
 
         Route::post('/races/{race}/checkpoints', [CheckpointController::class, 'store'])->middleware('permission:races.setup')->name('races.checkpoints.store');
         Route::put('/races/{race}/checkpoints/{checkpoint}', [CheckpointController::class, 'update'])->middleware('permission:races.setup')->name('races.checkpoints.update');

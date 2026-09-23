@@ -2,19 +2,31 @@
 
 The account types are Organizer (admin), Official and Athlete. Internal keys remain `admin`, `organizer` and `athlete` for compatibility.
 
-Organizer (admin) has full access to all races, user administration, roles, health, deletion and restoration. At least one active admin must remain. Athlete accounts can view only their linked athlete’s races and results. These two built-in roles are protected.
+## Organizer (admin)
 
-Admins use **Roles & permissions** to create, rename, describe or delete custom official roles and grant or remove permissions. The default Official role can have its permissions changed, but cannot be renamed or deleted. Its initial permissions match the previous organizer access. Custom roles cannot be deleted while assigned to users.
+The Organizer owns the race workflow: creating races, editing course details and checkpoints, assigning Officials, adding/importing athletes, starting or manually ending the race, correcting timings, publishing results, managing users and managing roles.
 
-On **Users → Create account / Edit user**, select Official, choose the official role and assign races. Leaving the official role at its default uses the current default Official permissions. Permissions are checked on every request; a removed permission also prevents queued offline timings from uploading. Preserve pending timing backups before revoking timing access.
+Once a race starts, setup and registration are locked. The Organizer can still record timings and may switch between checkpoints.
 
-All officials can view assigned race overviews and results. The permission catalogue grants:
+## Official
 
-- Create races (requires race setup too).
-- Edit race settings, checkpoints and public publication.
-- Manage and import participants.
-- Record timings at stations and undo own records.
-- Start/finish races and correct timings; void own records.
-- Export CSV/XLSX results.
+An Official is a race-day checkpoint operator. Access to a race comes from a checkpoint assignment made by an Organizer.
 
-Race assignments remain mandatory, even when a role has all permissions. Officials cannot manage users or roles or delete races. Permission names correspond to implemented server actions; new types of action require a code change. The page adds and removes these permissions from roles rather than creating unenforced permission names.
+An Official cannot choose or switch checkpoints. The assigned checkpoint follows the account across devices and is enforced by the backend, including queued/offline timings.
+
+Official roles intentionally expose only two optional permissions:
+
+- **Record checkpoint times** — record and undo timings at the assigned checkpoint.
+- **Export results** — download CSV/XLSX results for an assigned race.
+
+Officials can view their assigned races and results. They cannot create or configure races, manage athletes, assign checkpoints, start/end races, publish results, correct arbitrary timings, manage users or manage roles.
+
+## Athlete
+
+Athlete accounts can view only their linked athlete’s races and results. They do not operate timing or race controls.
+
+## Custom Official roles
+
+Admins use **Roles & permissions** to create custom Official roles, for example a normal checkpoint Official or a read-only results helper. The default Official role can be edited but cannot be renamed or deleted. Custom roles cannot be deleted while assigned to users.
+
+Race and checkpoint assignments remain mandatory regardless of role permissions.
