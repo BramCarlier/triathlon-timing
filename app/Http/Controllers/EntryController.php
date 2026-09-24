@@ -63,7 +63,7 @@ class EntryController extends Controller
             'members.*.discipline' => ['required', Rule::enum(Discipline::class)],
             'members.*.athlete_id' => ['nullable','integer',Rule::exists('athletes','id')],
             'members.*.first_name' => ['required','string','max:100'],
-            'members.*.last_name' => ['required','string','max:100'],
+            'members.*.last_name' => ['nullable','string','max:100'],
             'members.*.email' => ['nullable','email','max:255'],
             'members.*.club' => ['nullable','string','max:255'],
         ]);
@@ -107,7 +107,7 @@ class EntryController extends Controller
             'category'=>['nullable','string','max:100'],'status'=>['required',Rule::in(['registered','dns','dnf','dsq'])],
             'reason'=>['nullable','string','min:3','max:1000'],
             'athletes'=>['required','array'],'athletes.*.id'=>['required','integer','distinct'],
-            'athletes.*.first_name'=>['required','string','max:100'],'athletes.*.last_name'=>['required','string','max:100'],
+            'athletes.*.first_name'=>['required','string','max:100'],'athletes.*.last_name'=>['nullable','string','max:100'],
             'athletes.*.email'=>['nullable','email','max:255'],'athletes.*.club'=>['nullable','string','max:255'],
         ]);
         DB::transaction(function()use($request,$race,$entry,$data){

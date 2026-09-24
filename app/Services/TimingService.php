@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 
 class TimingService
 {
-    public function record(Race $race, Entry $entry, Checkpoint $checkpoint, User $operator, array $data): TimingRecord
+    public function record(Race $race, Entry $entry, Checkpoint $checkpoint, ?User $operator, array $data): TimingRecord
     {
         if ($entry->race_id !== $race->id || $checkpoint->race_id !== $race->id) abort(404);
         if (!$race->started_at) throw new TimingConflictException('The race clock has not started.');
@@ -33,7 +33,7 @@ class TimingService
         $timing = DB::transaction(function () use ($race, $entry, $checkpoint, $operator, $data, $uuid, $source) {
             $lockedEntry = Entry::query()->lockForUpdate()->findOrFail($entry->id);
             if ($existing = TimingRecord::where('client_uuid', $uuid)->first()) {
-                if ($existing->race_id !== $race->id || $existing->entry_id !== $entry->id || $existing->checkpoint_id !== $checkpoint->id || $existing->operator_id !== $operator->id) {
+                if ($existing->race_id !== $race->id || $existing->entry_id !== $entry->id || $existing->checkpoint_id !== $checkpoint->id || $existing->operator_id !== $operator?->id) {
                     throw new TimingConflictException('This timing request identifier is already in use.');
                 }
                 return $existing;
@@ -83,7 +83,7 @@ class TimingService
                 'entry_id' => $entry->id,
                 'checkpoint_id' => $checkpoint->id,
                 'athlete_id' => $member?->athlete_id,
-                'operator_id' => $operator->id,
+                'operator_id' => $operator?->id,
                 'recorded_at' => $observed,
                 'elapsed_ms' => $elapsed,
                 'source' => $source,

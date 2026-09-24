@@ -18,8 +18,8 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
         </span>
         <div>
           <h2 class="text-xl font-bold">The simple race flow</h2>
-          <p v-if="role==='admin'" class="mt-2 muted">Everything important happens from the Race workspace. Complete the setup from top to bottom, then the page switches into race-day mode.</p>
-          <p v-else-if="role==='organizer'" class="mt-2 muted">Your Organizer assigns you to one checkpoint. On race day you only need to record participants at that checkpoint.</p>
+          <p v-if="role==='admin'" class="mt-2 muted">Everything important happens from the Race workspace: check the course, add athletes, start the race and share the race-day link. Official and athlete accounts are optional.</p>
+          <p v-else-if="role==='organizer'" class="mt-2 muted">Official accounts are optional. If an Organizer gives you one, it can provide a named, checkpoint-specific timing station with offline recovery.</p>
           <p v-else class="mt-2 muted">Your account is for viewing your race and results. You do not operate checkpoints or race controls.</p>
         </div>
       </div>
@@ -59,7 +59,7 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
         <div class="mt-4 grid gap-3 sm:grid-cols-2">
           <Link href="/admin/roles" class="rounded-xl border border-outline p-4 hover:bg-raised">
             <strong><i class="fa-solid fa-key mr-2" aria-hidden="true"></i>Access & permissions</strong>
-            <p class="mt-2 text-sm muted">Manage account roles when you need something beyond the standard Organizer, Official and Athlete workflow.</p>
+            <p class="mt-2 text-sm muted">Optional advanced setup for named Official or Athlete accounts. Normal race-day timing works from the shared link without these accounts.</p>
           </Link>
           <Link href="/admin/health" class="rounded-xl border border-outline p-4 hover:bg-raised">
             <strong><i class="fa-solid fa-heart-pulse mr-2" aria-hidden="true"></i>System health</strong>

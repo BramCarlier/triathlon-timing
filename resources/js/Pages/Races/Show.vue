@@ -59,6 +59,7 @@ type Step = 'prepare' | 'participants' | 'race-day' | 'finish';
 
 const props = defineProps<{
   race: Race & { checkpoints: Checkpoint[]; entries_count?: number };
+  publicTimingUrl?: string|null;
   officials: Official[];
   checkpointAssignments: CheckpointAssignment[];
   allowedTimingCheckpointIds: number[];
@@ -75,6 +76,20 @@ const can = usePermissions();
 const page = usePage<PageProps>();
 const account = computed(() => page.props.auth.user);
 const isAdmin = computed(() => account.value?.role === 'admin');
+const showOfficialTools = ref(false);
+const copiedRaceDayLink = ref(false);
+const raceDayLink = computed(() => props.publicTimingUrl ?? null);
+const visibleReadinessChecks = computed(() => props.readiness.checks.filter(check => check.key !== 'officials'));
+const copyRaceDayLink = async () => {
+  if (!raceDayLink.value) return;
+  try {
+    await navigator.clipboard.writeText(new URL(raceDayLink.value, window.location.origin).toString());
+    copiedRaceDayLink.value = true;
+    window.setTimeout(() => { copiedRaceDayLink.value = false; }, 2500);
+  } catch {
+    copiedRaceDayLink.value = false;
+  }
+};
 
 useRaceRefresh(() => ['race', 'participants', 'recentTimings', 'completedCount', 'serverNow', 'checkpointAssignments', 'allowedTimingCheckpointIds']);
 
@@ -108,8 +123,7 @@ const workflowState = computed(() => {
   const missingRequired = props.readiness.checks.find(check => check.required && !check.ready);
   if (missingRequired?.key === 'participants') return { title:'Next: add participants', detail:missingRequired.detail, icon:'fa-solid fa-users' };
   if (missingRequired) return { title:'Next: finish course setup', detail:missingRequired.detail, icon:'fa-solid fa-route' };
-  if (props.readiness.unassigned_checkpoint_count > 0) return { title:'Ready to start', detail:'Required setup is complete. Some checkpoints still need an Official, or you can cover them as Organizer.', icon:'fa-solid fa-play' };
-  return { title:'Ready to start', detail:'Required setup is complete. Start the shared clock when the race begins.', icon:'fa-solid fa-play' };
+  return { title:'Ready to start', detail:'The course and athletes are ready. Start the shared clock when the race begins.', icon:'fa-solid fa-play' };
 });
 
 const raceForm = useForm({
@@ -417,11 +431,11 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       <div v-if="isAdmin && !race.started_at" class="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Race setup progress">
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='prepare'">
           <span class="text-xs font-bold uppercase tracking-wider" :class="requiredSetupReady?'text-success':'text-warning'">{{ requiredSetupReady?'Ready':'1' }}</span>
-          <strong class="mt-1 block">Course & Officials</strong>
+          <strong class="mt-1 block">Course</strong>
         </button>
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='participants'">
           <span class="text-xs font-bold uppercase tracking-wider" :class="participantsReady?'text-success':'text-warning'">{{ participantsReady?'Ready':'2' }}</span>
-          <strong class="mt-1 block">Participants</strong>
+          <strong class="mt-1 block">Athletes</strong>
         </button>
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='race-day'">
           <span class="text-xs font-bold uppercase tracking-wider" :class="readiness.ready_to_start?'text-success':'text-muted'">{{ readiness.ready_to_start?'Ready':'3' }}</span>
@@ -432,7 +446,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section v-if="isAdmin && !race.started_at" id="prepare" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='prepare'" @click="toggleStep('prepare')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 1</p><h2 class="text-xl font-bold">Course & Officials</h2><p class="mt-1 text-sm muted">Review the course, then assign Officials to the checkpoints they will time.</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 1</p><h2 class="text-xl font-bold">Course</h2><p class="mt-1 text-sm muted">The default triathlon checkpoints are ready to use. Only change them if this race needs something different.</p></div>
         <i :class="openStep==='prepare'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
 
@@ -472,11 +486,22 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
           <section class="rounded-2xl border border-outline p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
-              <div><h3 class="font-bold">Checkpoints</h3><p class="mt-1 text-sm muted">Officials assigned here will be locked to that checkpoint on race day.</p></div>
+              <div><h3 class="font-bold">Checkpoints</h3><p class="mt-1 text-sm muted">Anyone with the race-day link can choose any active checkpoint. Official accounts are optional.</p></div>
               <button v-if="!checkpointFormOpen" class="btn-primary" type="button" @click="beginAddCheckpoint"><i class="fa-solid fa-plus" aria-hidden="true"></i>Add checkpoint</button>
             </div>
 
             <p v-if="checkpointError" class="mt-3 text-sm text-error" role="alert">{{ checkpointError }}</p>
+            <div class="mt-4 rounded-xl border border-outline bg-canvas p-3">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <strong>Official accounts are optional</strong>
+                  <p class="mt-1 text-sm muted">Use them only when you want named accounts locked to specific checkpoints. The race-day link works without accounts or assignments.</p>
+                </div>
+                <button type="button" class="btn-secondary shrink-0" @click="showOfficialTools=!showOfficialTools">
+                  <i class="fa-solid fa-user-shield" aria-hidden="true"></i>{{ showOfficialTools?'Hide official setup':'Set up officials' }}
+                </button>
+              </div>
+            </div>
             <div class="mt-4 space-y-3">
               <article v-for="cp in setupCheckpoints" :key="cp.id" class="rounded-xl border border-outline p-3">
                 <div class="flex flex-wrap items-start justify-between gap-3">
@@ -486,13 +511,13 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <button class="btn-secondary !px-3" type="button" :aria-expanded="checkpointFormOpen && editingCheckpoint?.id===cp.id" @click="beginEditCheckpoint(cp)"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</button>
-                    <button class="btn-secondary !px-3" type="button" :aria-expanded="assigningCheckpoint?.id===cp.id" @click="beginAssignOfficial(cp)"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Assign official</button>
+                    <button v-if="showOfficialTools" class="btn-secondary !px-3" type="button" :aria-expanded="assigningCheckpoint?.id===cp.id" @click="beginAssignOfficial(cp)"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Assign account</button>
                     <button class="btn-icon text-error" type="button" aria-label="Delete checkpoint" title="Delete checkpoint" @click="removingCheckpoint=cp"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                   </div>
                 </div>
 
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <span v-if="!assignmentsFor(cp.id).length" class="text-sm muted">No Official assigned</span>
+                <div v-if="showOfficialTools" class="mt-3 flex flex-wrap gap-2">
+                  <span v-if="!assignmentsFor(cp.id).length" class="text-sm muted">No account assigned — that is fine for the race-day link</span>
                   <span v-for="assignment in assignmentsFor(cp.id)" :key="assignment.id" class="inline-flex items-center gap-2 rounded-full bg-canvas px-3 py-2 text-sm">
                     <i class="fa-solid fa-user" aria-hidden="true"></i>{{ assignment.user.name }}
                     <button type="button" class="text-error" :aria-label="`Remove ${assignment.user.name}`" @click="removeOfficial(assignment.user)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -511,8 +536,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                   <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save checkpoint</button><button type="button" class="btn-secondary" @click="closeCheckpointForm">Cancel</button></div>
                 </form>
 
-                <form v-if="assigningCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
-                  <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">Assign Official</h4><p class="mt-1 text-sm muted">{{ cp.name }}</p></div><button type="button" class="btn-icon" aria-label="Close official form" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+                <form v-if="showOfficialTools && assigningCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
+                  <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">Optional Official account</h4><p class="mt-1 text-sm muted">{{ cp.name }} · only needed if you want account-based access</p></div><button type="button" class="btn-icon" aria-label="Close official form" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
                   <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     <label class="label">Name<input :value="officialForm.name" class="field" autocomplete="off" placeholder="Official name" required @input="updateOfficialField('name',$event)"></label>
                     <label class="label">Email<input :value="officialForm.email" type="email" class="field" autocomplete="off" placeholder="official@example.com" required @input="updateOfficialField('email',$event)"></label>
@@ -580,19 +605,30 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section v-if="isAdmin && !race.started_at" id="participants" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='participants'" @click="toggleStep('participants')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Participants</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Athletes</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
         <i :class="openStep==='participants'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
       <div v-show="openStep==='participants'" class="border-t border-outline p-4">
         <div class="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
           <form class="rounded-2xl border border-outline p-4" @submit.prevent="addParticipant">
-            <h3 class="font-bold">Add participant</h3>
-            <div class="mt-4 grid gap-3 sm:grid-cols-2">
-              <label class="label">Bib number <span class="font-normal muted">(optional)</span><input v-model="participantForm.bib_number" class="field" maxlength="32"></label>
-              <label class="label">Type<select v-model="participantForm.type" class="field"><option value="solo">Solo athlete</option><option value="relay">3-person relay</option></select></label>
-              <label v-if="participantForm.type==='relay'" class="label sm:col-span-2">Team name<input v-model="participantForm.team_name" class="field" required></label>
-              <label class="label sm:col-span-2">Category <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field"></label>
-            </div>
+            <h3 class="font-bold">Add athlete</h3>
+            <p class="mt-1 text-sm muted">For a normal solo athlete, just enter the name. Bibs and everything else are optional.</p>
+
+            <label class="label mt-4">Bib number <span class="font-normal muted">(optional)</span>
+              <input v-model="participantForm.bib_number" class="field" maxlength="32" placeholder="Leave blank if you do not use bibs">
+            </label>
+
+            <details class="mt-4 rounded-xl border border-outline p-3">
+              <summary class="cursor-pointer text-sm font-semibold">Relay, category & other race options</summary>
+              <div class="mt-3 grid gap-3">
+                <label class="label">Entry type
+                  <select v-model="participantForm.type" class="field"><option value="solo">Solo athlete</option><option value="relay">3-person relay</option></select>
+                </label>
+                <label v-if="participantForm.type==='relay'" class="label">Team name<input v-model="participantForm.team_name" class="field" required></label>
+                <label class="label">Category <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field"></label>
+              </div>
+            </details>
+
             <div class="mt-4 space-y-3">
               <RaceAthletePicker
                 v-for="(member,index) in participantForm.members"
@@ -601,12 +637,14 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 :race-id="race.id"
                 :bib-number="participantForm.bib_number"
                 :initial-options="athleteOptions"
-                :title="participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline)"
+                :title="participantForm.type==='solo'?'Athlete name':disciplineLabel(member.discipline)"
               />
             </div>
             <p v-if="Object.keys(participantForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(participantForm.errors)[0] }}</p>
-            <button class="btn-primary mt-4" :disabled="participantForm.processing"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add participant</button>
-            <Link :href="`/races/${race.id}/participants/import`" class="btn-secondary mt-4 ml-2"><i class="fa-solid fa-file-import" aria-hidden="true"></i>Import file</Link>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button class="btn-primary" :disabled="participantForm.processing"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add athlete</button>
+              <Link :href="`/races/${race.id}/participants/import`" class="btn-secondary"><i class="fa-solid fa-file-import" aria-hidden="true"></i>Import file</Link>
+            </div>
           </form>
 
           <section class="rounded-2xl border border-outline overflow-hidden">
@@ -632,8 +670,22 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       </button>
 
       <div v-show="openStep==='race-day'" class="border-t border-outline p-4">
-        <section v-if="!race.started_at" class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Race readiness">
-          <div v-for="check in readiness.checks" :key="check.key" class="rounded-xl border border-outline p-3">
+        <section v-if="isAdmin && raceDayLink" class="mb-4 rounded-2xl border border-cyan-400/30 bg-cyan-400/5 p-4">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-[.18em] text-accent">Race-day link</div>
+              <h3 class="mt-1 font-bold">No accounts or checkpoint assignments needed</h3>
+              <p class="mt-1 text-sm muted">Share this link with anyone helping at the race. They choose the transition or finish and tap the correct athlete to record the time.</p>
+            </div>
+            <div class="flex shrink-0 flex-wrap gap-2">
+              <a :href="raceDayLink" target="_blank" rel="noopener" class="btn-primary"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>Open race-day view</a>
+              <button type="button" class="btn-secondary" @click="copyRaceDayLink"><i class="fa-solid fa-link" aria-hidden="true"></i>{{ copiedRaceDayLink?'Copied':'Copy link' }}</button>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="!race.started_at" class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label="Race readiness">
+          <div v-for="check in visibleReadinessChecks" :key="check.key" class="rounded-xl border border-outline p-3">
             <div class="flex items-center gap-2"><span :class="check.ready?'text-success':check.required?'text-error':'text-warning'">{{ check.ready?'✓':'!' }}</span><strong class="text-sm">{{ check.label }}</strong><span v-if="!check.required" class="ml-auto text-[10px] uppercase tracking-wider muted">Recommended</span></div>
             <p class="mt-1 text-xs muted">{{ check.detail }}</p>
           </div>

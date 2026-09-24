@@ -60,10 +60,10 @@ class RaceReadinessService
             ],
             [
                 'key' => 'officials',
-                'label' => 'Checkpoint coverage',
+                'label' => 'Official accounts',
                 'ready' => $unassignedCount === 0,
                 'required' => false,
-                'detail' => $unassignedCount === 0 ? 'Every timing checkpoint has an assigned Official.' : "{$unassignedCount} checkpoint".($unassignedCount === 1 ? '' : 's').' still need an Official, or an Organizer can cover them.',
+                'detail' => $unassignedCount === 0 ? 'Optional named Official assignments are configured.' : 'Optional. Anyone with the race-day link can choose a checkpoint and record times without an account.',
             ],
         ];
 

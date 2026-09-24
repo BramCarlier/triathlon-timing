@@ -22,29 +22,27 @@ const submit = () => form.post('/races');
           <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-cyan-400 font-bold text-slate-950">1</span>
           <div>
             <h2 class="font-bold">Start with the essentials</h2>
-            <p class="mt-1 text-sm muted">After creating the race you stay in one workspace to review checkpoints, add participants and run race day.</p>
+            <p class="mt-1 text-sm muted">After creating the race you stay in one workspace to review checkpoints, add athletes and run race day.</p>
           </div>
         </div>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="sm:col-span-2">
-          <label for="race-name" class="label">Race name</label>
-          <input id="race-name" v-model="form.name" class="field" placeholder="Halle Triathlon 2027" required autofocus>
-          <p class="text-sm text-error">{{ form.errors.name }}</p>
-        </div>
-        <div>
-          <label for="race-date" class="label">Race date</label>
-          <input id="race-date" v-model="form.event_date" type="date" class="field" required>
-          <p class="text-sm text-error">{{ form.errors.event_date }}</p>
-        </div>
+      <div>
+        <label for="race-name" class="label">Race name</label>
+        <input id="race-name" v-model="form.name" class="field min-h-12" placeholder="Halle Triathlon 2027" required autofocus>
+        <p class="text-sm text-error">{{ form.errors.name }}</p>
       </div>
 
       <details class="mt-5 rounded-2xl border border-outline p-4">
-        <summary class="cursor-pointer font-semibold"><i class="fa-solid fa-sliders mr-2" aria-hidden="true"></i>Optional course settings</summary>
-        <p class="mt-2 text-sm muted">The defaults work for the current event format. Change them now or later before the race starts.</p>
+        <summary class="cursor-pointer font-semibold"><i class="fa-solid fa-sliders mr-2" aria-hidden="true"></i>Date, distances & other optional details</summary>
+        <p class="mt-2 text-sm muted">You can create the race with only a name. If the date is left blank, today is used. The standard distances stay prefilled at 1 km swim, 35 km bike and 8 km run.</p>
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
-          <div class="sm:col-span-2">
+          <div>
+            <label for="race-date" class="label">Race date <span class="font-normal muted">(optional)</span></label>
+            <input id="race-date" v-model="form.event_date" type="date" class="field">
+            <p class="text-sm text-error">{{ form.errors.event_date }}</p>
+          </div>
+          <div>
             <label for="race-timezone" class="label">Timezone</label>
             <input id="race-timezone" v-model="form.timezone" class="field" required>
           </div>

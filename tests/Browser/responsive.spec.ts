@@ -319,6 +319,11 @@ test.describe('responsive layouts', () => {
         await expect(page.locator('h1')).toContainText('Results');
         await atEverySize(page, 'public results');
 
+        await page.goto('/race/responsive-timing');
+        await expect(page.locator('h1')).toContainText('TriathlonChampionship');
+        await expect(page.getByLabel('1. Checkpoint', { exact: true })).toBeVisible();
+        await atEverySize(page, 'public race-day timing');
+
         expect(errors).toEqual([]);
     });
 });

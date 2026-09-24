@@ -36,12 +36,12 @@ class RaceController extends Controller
     public function store(Request $request): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403);
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'swim_km' => ['nullable', 'numeric', 'min:0'], 'bike_km' => ['nullable', 'numeric', 'min:0'], 'run_km' => ['nullable', 'numeric', 'min:0']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['nullable', 'date'], 'timezone' => ['required', 'timezone'], 'swim_km' => ['nullable', 'numeric', 'min:0'], 'bike_km' => ['nullable', 'numeric', 'min:0'], 'run_km' => ['nullable', 'numeric', 'min:0']]);
         $race = DB::transaction(function () use ($request, $data) {
             $race = Race::create([
                 'name' => $data['name'],
                 'slug' => Str::slug($data['name']).'-'.Str::lower(Str::random(6)),
-                'event_date' => $data['event_date'],
+                'event_date' => ($data['event_date'] ?? null) ?: now($data['timezone'])->toDateString(),
                 'timezone' => $data['timezone'],
                 'status' => RaceStatus::Draft,
                 'settings' => ['swim_km' => $data['swim_km'] ?? 1, 'bike_km' => $data['bike_km'] ?? 35, 'run_km' => $data['run_km'] ?? 8],
@@ -111,6 +111,7 @@ class RaceController extends Controller
 
         return Inertia::render('Races/Show', [
             'race' => $race,
+            'publicTimingUrl' => $request->user()->isAdmin() ? route('race.public', $race->public_timing_token, false) : null,
             'officials' => $officials,
             'checkpointAssignments' => $assignments,
             'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
