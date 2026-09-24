@@ -40,7 +40,7 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
 
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Add athletes</h2></div>
-          <p class="muted">Add solo athletes or relay teams manually, or import a file. Registration is locked as soon as the race starts.</p>
+          <p class="muted">Add solo athletes or relay teams manually, or import a file. The form immediately shows existing athlete profiles and filters them as you type a name, email or bib; select one to keep that athlete’s race history together. If there is no match, the same form creates a new profile. Registration is locked as soon as the race starts.</p>
         </article>
 
         <article class="panel-pad">
@@ -98,12 +98,12 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
           <h2 class="text-lg font-bold">Your race</h2>
-          <p class="mt-2 muted">Open My race to see the event linked to your account. You do not need to choose checkpoints or operate the race clock.</p>
-          <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>Open my race</Link>
+          <p class="mt-2 muted">Open My races to see every event linked to your athlete profile. You do not need to choose checkpoints or operate the race clock.</p>
+          <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>Open my races</Link>
         </article>
         <article class="panel-pad">
           <h2 class="text-lg font-bold">Results</h2>
-          <p class="mt-2 muted">Your race page shows recorded progress and results when they become available.</p>
+          <p class="mt-2 muted">Your race history shows recorded progress and results for each event when they become available.</p>
         </article>
       </section>
     </template>
