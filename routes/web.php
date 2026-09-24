@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class);
 Route::get('/live/{token}', [ResultController::class,'publicIndex'])->middleware('throttle:120,1')->name('results.public');
-Route::get('/race/{token}', [PublicRaceController::class, 'show'])->middleware('throttle:240,1')->name('race.public');
-Route::post('/race/{token}/timings', [PublicRaceController::class, 'record'])->middleware('throttle:240,1')->name('race.public.timings');
+Route::get('/race/{token}', [PublicRaceController::class, 'show'])->middleware('throttle:1200,1')->name('race.public');
+Route::post('/race/{token}/timings', [PublicRaceController::class, 'record'])->middleware('throttle:1200,1')->name('race.public.timings');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
