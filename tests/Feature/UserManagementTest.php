@@ -21,7 +21,7 @@ class UserManagementTest extends TestCase
     public function test_admin_can_edit_user_and_change_assigned_race_permissions(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $operator = User::factory()->create(['role' => UserRole::Organizer]);
+        $operator = User::factory()->create(['role' => UserRole::Official]);
         $first = Race::create(['name' => 'First', 'slug' => 'first', 'event_date' => '2026-09-21', 'created_by' => $admin->id]);
         $second = Race::create(['name' => 'Second', 'slug' => 'second', 'event_date' => '2026-09-21', 'created_by' => $admin->id]);
         $operator->races()->attach($first);
@@ -30,7 +30,7 @@ class UserManagementTest extends TestCase
         $this->assertSame('Updated Organizer', $operator->fresh()->name);
         $this->assertSame('updated@example.com', $operator->fresh()->email);
         $this->actingAs($operator->fresh())->get("/races/{$first->id}")->assertForbidden();
-        $this->get("/races/{$second->id}")->assertOk();
+        $this->get("/races/{$second->id}")->assertRedirect("/races/{$second->id}/station");
         $this->get("/users/{$admin->id}/edit")->assertForbidden();
     }
 
@@ -47,7 +47,7 @@ class UserManagementTest extends TestCase
     public function test_role_changes_require_an_athlete_link_and_remove_old_race_access(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $operator = User::factory()->create(['role' => UserRole::Organizer]);
+        $operator = User::factory()->create(['role' => UserRole::Official]);
         $athlete = Athlete::create(['first_name' => 'Test', 'last_name' => 'Athlete']);
         $race = Race::create(['name' => 'Race', 'slug' => 'race', 'event_date' => '2026-09-21', 'created_by' => $admin->id]);
         $operator->races()->attach($race);
@@ -62,7 +62,7 @@ class UserManagementTest extends TestCase
     public function test_disabled_accounts_lose_access_from_existing_sessions(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $operator = User::factory()->create(['role' => UserRole::Organizer]);
+        $operator = User::factory()->create(['role' => UserRole::Official]);
         $this->actingAs($admin)->put("/users/{$operator->id}", $this->data($operator, ['is_active' => false]))->assertSessionHasNoErrors();
         $this->actingAs($operator->fresh())->get('/races')->assertRedirect('/login');
         $this->assertGuest();

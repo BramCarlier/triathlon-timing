@@ -89,8 +89,12 @@ class EntryController extends Controller
     public function edit(Race $race, Entry $entry): Response
     {
         Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);abort_unless(request()->user()->isAdmin(),403);
-        return Inertia::render('Participants/Edit',['race'=>$race,'entry'=>$entry->load('members.athlete'),
-            'changes'=>EntryChange::where('entry_id',$entry->id)->with('user:id,name')->latest('id')->limit(50)->get()]);
+        return Inertia::render('Participants/Edit',[
+            'race'=>$race,
+            'entry'=>$entry->load('members.athlete.user:id,athlete_id,email,is_active,force_password_change'),
+            'mailConfigured'=>app(\App\Services\AccountInvitationService::class)->configured(),
+            'changes'=>EntryChange::where('entry_id',$entry->id)->with('user:id,name')->latest('id')->limit(50)->get(),
+        ]);
     }
 
     public function update(Request $request,Race $race,Entry $entry): RedirectResponse
@@ -101,7 +105,7 @@ class EntryController extends Controller
             'bib_number'=>['nullable','string','max:32',Rule::unique('entries')->where('race_id',$race->id)->ignore($entry->id)],
             'team_name'=>[$entry->type===EntryType::Relay?'required':'nullable','string','max:255'],
             'category'=>['nullable','string','max:100'],'status'=>['required',Rule::in(['registered','dns','dnf','dsq'])],
-            'reason'=>['required','string','min:3','max:1000'],
+            'reason'=>['nullable','string','min:3','max:1000'],
             'athletes'=>['required','array'],'athletes.*.id'=>['required','integer','distinct'],
             'athletes.*.first_name'=>['required','string','max:100'],'athletes.*.last_name'=>['required','string','max:100'],
             'athletes.*.email'=>['nullable','email','max:255'],'athletes.*.club'=>['nullable','string','max:255'],
@@ -120,15 +124,12 @@ class EntryController extends Controller
                 if($email&&Athlete::where('email',$email)->where('id','!=',$person['id'])->exists())throw ValidationException::withMessages(['athletes'=>'That email belongs to another athlete.']);
                 $athlete=Athlete::lockForUpdate()->findOrFail($person['id']);
                 $athlete->fill(['first_name'=>$person['first_name'],'last_name'=>$person['last_name'],'email'=>$email,'club'=>$person['club']??null]);
-                if($athlete->isDirty()&&!$request->user()->isAdmin()&&$athlete->memberships()->whereHas('entry.race',fn($query)=>$query->whereDoesntHave('organizers',fn($users)=>$users->whereKey($request->user()->id)))->exists()) {
-                    throw ValidationException::withMessages(['athletes'=>'This athlete also belongs to another official’s race. Ask an organizer (admin) to change their shared profile. You can still edit this entry’s bib, category and status.']);
-                }
                 $athlete->save();
             }
             $entry->update(collect($data)->only(['bib_number','team_name','category','status'])->all());
-            EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>$data['reason']]);
+            EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>$data['reason'] ?: 'Participant details updated']);
         });
-        return back()->with('success','Participant updated. The change and reason are saved in the audit history.');
+        return back()->with('success','Participant updated. The change is saved in the history.');
     }
 
     public function destroy(Race $race, Entry $entry): RedirectResponse

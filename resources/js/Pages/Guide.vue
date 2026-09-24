@@ -19,7 +19,7 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
         <div>
           <h2 class="text-xl font-bold">The simple race flow</h2>
           <p v-if="role==='admin'" class="mt-2 muted">Everything important happens from the Race workspace. Complete the setup from top to bottom, then the page switches into race-day mode.</p>
-          <p v-else-if="role==='organizer'" class="mt-2 muted">Your Organizer assigns you to one checkpoint. On race day you only need to record athletes at that checkpoint.</p>
+          <p v-else-if="role==='organizer'" class="mt-2 muted">Your Organizer assigns you to one checkpoint. On race day you only need to record participants at that checkpoint.</p>
           <p v-else class="mt-2 muted">Your account is for viewing your race and results. You do not operate checkpoints or race controls.</p>
         </div>
       </div>
@@ -34,13 +34,13 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Checkpoints & Officials</h2></div>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Course & Officials</h2></div>
           <p class="muted">Add or edit checkpoints, then assign an Official to each location. The form shows available Officials immediately; typing filters the list, and new details create an account only when no existing Official is selected.</p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Add athletes</h2></div>
-          <p class="muted">Add solo athletes or relay teams manually, or import a file. The form immediately shows existing athlete profiles and filters them as you type a name, email or bib; select one to keep that athlete’s race history together. If there is no match, the same form creates a new profile. Registration is locked as soon as the race starts.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Add participants</h2></div>
+          <p class="muted">Add solo participants or relay teams manually, or import a file. Existing athlete profiles appear automatically so the same person can be reused across races. Registration is locked as soon as the race starts.</p>
         </article>
 
         <article class="panel-pad">
@@ -79,17 +79,17 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
 
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Wait for the start</h2></div>
-          <p class="muted">The Organizer starts the shared race clock. Timing buttons remain unavailable until that happens.</p>
+          <p class="muted">The Organizer starts the shared race clock. Your timing station becomes active automatically when the race starts.</p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Tap athletes as they pass</h2></div>
-          <p class="muted">Search by bib or name and tap the athlete once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Tap participants as they pass</h2></div>
+          <p class="muted">Search by bib or name and tap the participant once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.</p>
         </article>
 
         <article class="panel-pad">
           <h2 class="text-lg font-bold">Poor connection?</h2>
-          <p class="mt-2 muted">Open Focused timing before moving to the checkpoint. It can keep unsent timings on the device and synchronize them when the connection returns.</p>
+          <p class="mt-2 muted">Open your Timing station before moving to the checkpoint. It stores unsent timings on the device and synchronizes them when the connection returns.</p>
         </article>
       </section>
     </template>
@@ -97,7 +97,7 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
     <template v-else>
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">Your race</h2>
+          <h2 class="text-lg font-bold">Your races</h2>
           <p class="mt-2 muted">Open My races to see every event linked to your athlete profile. You do not need to choose checkpoints or operate the race clock.</p>
           <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>Open my races</Link>
         </article>

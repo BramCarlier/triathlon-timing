@@ -2,16 +2,15 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
-use App\Models\Race;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response|\Illuminate\Http\RedirectResponse
+    public function __invoke(Request $request): RedirectResponse
     {
-        if ($request->user()->role === UserRole::Athlete) return redirect()->route('athlete.dashboard');
-        return redirect()->route('races.index');
+        return $request->user()->role === UserRole::Athlete
+            ? redirect()->route('athlete.dashboard')
+            : redirect()->route('races.index');
     }
 }

@@ -27,16 +27,23 @@ const logout = () => router.post('/logout');
       <div class="app-container mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
         <Link :href="publicView ? page.url.split('?')[0] : '/dashboard'" class="flex items-center gap-3 font-bold"><span class="grid size-9 place-items-center rounded-xl bg-cyan-400 text-slate-950">T</span><span class="hidden sm:inline">Triathlon Timing</span></Link>
         <button v-if="user && !publicView" class="btn-icon ml-auto xl:hidden" aria-label="Menu" title="Menu" :aria-expanded="menuOpen" aria-controls="main-navigation" @click="menuOpen=!menuOpen"><i :class="menuOpen?'fa-solid fa-xmark':'fa-solid fa-bars'" aria-hidden="true"></i></button>
-        <nav v-if="user && !publicView" id="main-navigation" @click="menuOpen=false" aria-label="Main navigation" class="order-last max-h-[60dvh] overflow-y-auto w-full flex-wrap items-center gap-1 xl:order-none xl:ml-auto xl:flex xl:w-auto xl:justify-end xl:gap-2" :class="menuOpen?'flex':'hidden'">
+        <nav v-if="user && !publicView" id="main-navigation" @click="menuOpen=false" aria-label="Main navigation" class="order-last max-h-[60dvh] w-full flex-wrap items-center gap-1 overflow-y-auto xl:order-none xl:ml-auto xl:flex xl:w-auto xl:justify-end xl:gap-2" :class="menuOpen?'flex':'hidden'">
           <Link v-if="user.role !== 'athlete'" :aria-current="active('/races')?'page':undefined" href="/races" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>Races</Link>
-          <Link v-if="user.role === 'athlete'" :aria-current="active('/athlete')?'page':undefined" href="/athlete" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-person-running" aria-hidden="true"></i>My race</Link>
-          <Link :aria-current="active('/guide')?'page':undefined" href="/guide" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-circle-question" aria-hidden="true"></i>Guide</Link>
-          <Link v-if="user.role === 'admin'" :aria-current="active('/users')?'page':undefined" href="/users" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-users" aria-hidden="true"></i>Users</Link>
-          <Link v-if="user.role === 'admin'" :aria-current="active('/admin/roles')?'page':undefined" href="/admin/roles" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-key" aria-hidden="true"></i>Access</Link>
-          <Link :aria-current="active('/account/password')?'page':undefined" href="/account/password" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-user" aria-hidden="true"></i>Account</Link>
-          <button class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-raised" @click="logout"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Log out</button>
+          <Link v-else :aria-current="active('/athlete')?'page':undefined" href="/athlete" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-person-running" aria-hidden="true"></i>My races</Link>
+          <Link v-if="user.role === 'admin'" :aria-current="active('/users')?'page':undefined" href="/users" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-users" aria-hidden="true"></i>People</Link>
+          <Link :aria-current="active('/guide')?'page':undefined" href="/guide" class="btn-icon" aria-label="Help" title="Help"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></Link>
+          <details class="relative w-full xl:w-auto" @toggle="menuOpen=true">
+            <summary class="inline-flex min-h-11 w-full list-none items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised xl:w-auto"><i class="fa-solid fa-user" aria-hidden="true"></i>Account<i class="fa-solid fa-chevron-down text-xs" aria-hidden="true"></i></summary>
+            <div class="mt-1 grid gap-1 rounded-xl border border-outline bg-surface p-2 shadow-xl xl:absolute xl:right-0 xl:z-40 xl:min-w-56">
+              <Link href="/account/password" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-key" aria-hidden="true"></i>Change password</Link>
+              <Link v-if="user.role === 'admin'" href="/admin/roles" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>Official access</Link>
+              <Link v-if="user.role === 'admin'" href="/admin/health" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>System health</Link>
+              <div class="flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm text-secondary"><span><i class="fa-solid fa-circle-half-stroke mr-2" aria-hidden="true"></i>Appearance</span><ThemeToggle /></div>
+              <button class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-raised" @click="logout"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Log out</button>
+            </div>
+          </details>
         </nav>
-        <div :class="publicView || !user ? 'ml-auto' : ''"><ThemeToggle /></div>
+        <div v-if="publicView || !user" class="ml-auto"><ThemeToggle /></div>
       </div>
     </header>
     <main id="main-content" tabindex="-1" class="app-container app-main mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">

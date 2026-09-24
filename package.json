@@ -8,7 +8,11 @@
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit",
     "quality": "yarn test:frontend && yarn typecheck && yarn build",
-    "test:frontend": "node --test tests/Frontend/*.test.ts"
+    "test:frontend": "node --test tests/Frontend/*.test.ts",
+    "test:browser": "playwright test --project=chromium-smoke",
+    "test:responsive": "playwright test --project=chromium-responsive --workers=3",
+    "test:responsive:webkit": "playwright test --project=webkit-responsive --workers=3",
+    "test:browser:all": "playwright test"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",

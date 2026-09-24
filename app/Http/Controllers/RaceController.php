@@ -8,6 +8,7 @@ use App\Enums\TimingStatus;
 use App\Models\Race;
 use App\Models\User;
 use App\Services\AthleteLookupService;
+use App\Services\RaceReadinessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -23,7 +24,7 @@ class RaceController extends Controller
     public function index(Request $request): Response
     {
         $query = Race::withCount('entries')->latest('event_date');
-        if (!$request->user()->isAdmin()) $query->whereHas('organizers', fn ($q) => $q->whereKey($request->user()->id));
+        if (!$request->user()->isAdmin()) $query->whereHas('staff', fn ($q) => $q->whereKey($request->user()->id));
         return Inertia::render('Races/Index', [
             'races' => $query->get(), 'serverNow'=>now('UTC')->toISOString(),
             'deletedRaces' => $request->user()->isAdmin() ? Race::onlyTrashed()->latest('deleted_at')->get() : [],
@@ -46,7 +47,7 @@ class RaceController extends Controller
                 'settings' => ['swim_km' => $data['swim_km'] ?? 1, 'bike_km' => $data['bike_km'] ?? 35, 'run_km' => $data['run_km'] ?? 8],
                 'created_by' => $request->user()->id,
             ]);
-            $race->organizers()->syncWithoutDetaching([$request->user()->id]);
+            $race->staff()->syncWithoutDetaching([$request->user()->id]);
             $race->checkpoints()->createMany([
                 ['name' => 'Race Start', 'code' => 'START', 'sequence' => 0, 'kind' => CheckpointKind::Start, 'discipline' => null, 'distance_km' => 0, 'is_required' => true],
                 ['name' => 'Swim Exit', 'code' => 'SWIM_FINISH', 'sequence' => 10, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Swim, 'distance_km' => $data['swim_km'] ?? 1, 'is_required' => true],
@@ -60,9 +61,10 @@ class RaceController extends Controller
         return redirect()->route('races.show', $race)->with('success', 'Race created with default triathlon checkpoints.');
     }
 
-    public function show(Request $request, Race $race, AthleteLookupService $athletes): Response
+    public function show(Request $request, Race $race, AthleteLookupService $athletes, RaceReadinessService $readiness): Response|RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        if (!$request->user()->isAdmin()) return redirect()->route('races.station', $race);
         $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence')])->loadCount('entries');
         $officials = $request->user()->isAdmin()
             ? User::whereIn('role', ['admin', 'organizer'])->where('is_active', true)->orderBy('name')->get(['id','name','email','role'])
@@ -113,7 +115,8 @@ class RaceController extends Controller
             'checkpointAssignments' => $assignments,
             'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
             'mailConfigured' => app(\App\Services\AccountInvitationService::class)->configured(),
-            'athleteOptions' => $request->user()->isAdmin() ? $athletes->options($race) : [],
+            'athleteOptions' => $athletes->options($race),
+            'readiness' => $readiness->for($race),
             'participants' => $participants,
             'recentTimings' => $recentTimings,
             'completedCount' => $completedCount,

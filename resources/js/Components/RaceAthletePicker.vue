@@ -51,7 +51,7 @@ const textLookup = computed(() => [
 
 const bibLookup = computed(() => (props.bibNumber ?? '').trim());
 const hasLookup = computed(() => textLookup.value.length >= 2 || bibLookup.value.length > 0);
-const listTitle = computed(() => hasLookup.value ? 'Matching athletes' : 'Available athletes');
+const listTitle = computed(() => hasLookup.value ? 'Matching athletes' : 'Recent athletes');
 
 const selectAthlete = (athlete:AthleteChoice) => {
   if (athlete.already_in_race) return;
@@ -163,7 +163,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
       </div>
 
       <p class="mt-2 text-xs muted">
-        The list below is always available. Typing a name or email<span v-if="bibNumber">, or entering bib {{ bibNumber }}</span>, narrows it automatically. If you do not select an existing athlete, a new profile is created when you add the participant.
+        Recent athlete profiles are shown below. Typing a name or email<span v-if="bibNumber">, or entering bib {{ bibNumber }}</span>, searches all athletes automatically. If you do not select an existing athlete, a new profile is created when you add the participant.
       </p>
 
       <p v-if="loading" class="mt-3 text-sm muted"><i class="fa-solid fa-spinner fa-spin mr-1" aria-hidden="true"></i>Loading athletes…</p>
@@ -197,7 +197,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
       </div>
 
       <p v-else-if="!loading && !error" class="mt-3 rounded-xl bg-canvas p-3 text-sm muted">
-        {{ hasLookup ? 'No existing athlete matches. Complete the details to create a new profile.' : 'No existing athletes are available yet. Complete the details to create the first one.' }}
+        {{ hasLookup ? 'No existing athlete matches. Complete the details to create a new profile.' : 'No recent athletes are available yet. Complete the details to create the first one.' }}
       </p>
     </template>
   </div>

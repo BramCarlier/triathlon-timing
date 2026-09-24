@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import type { Race } from '../types';
+import type { PageProps, Race } from '../types';
 
 const props = defineProps<{ race: Race }>();
-const page = usePage();
+const page = usePage<PageProps>();
 const active = (href: string) => page.url.split('?')[0] === href;
+const isAdmin = page.props.auth.user?.role === 'admin';
+const primaryHref = isAdmin ? `/races/${props.race.id}` : `/races/${props.race.id}/station`;
 </script>
 
 <template>
@@ -14,12 +16,12 @@ const active = (href: string) => page.url.split('?')[0] === href;
         <i class="fa-solid fa-chevron-left mr-2" aria-hidden="true"></i>All races
       </Link>
       <Link
-        :href="`/races/${props.race.id}`"
-        :aria-current="active(`/races/${props.race.id}`) ? 'page' : undefined"
+        :href="primaryHref"
+        :aria-current="active(primaryHref) ? 'page' : undefined"
         class="min-h-11 rounded-xl px-3 py-3 text-sm font-semibold transition-colors"
-        :class="active(`/races/${props.race.id}`) ? 'bg-cyan-400 text-slate-950' : 'text-secondary hover:bg-raised'"
+        :class="active(primaryHref) ? 'bg-cyan-400 text-slate-950' : 'text-secondary hover:bg-raised'"
       >
-        <i class="fa-solid fa-gauge-high mr-2" aria-hidden="true"></i>Race workspace
+        <i :class="isAdmin?'fa-solid fa-gauge-high':'fa-solid fa-stopwatch'" class="mr-2" aria-hidden="true"></i>{{ isAdmin?'Race workspace':'Timing station' }}
       </Link>
       <Link
         :href="`/races/${props.race.id}/results`"

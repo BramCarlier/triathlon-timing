@@ -16,7 +16,9 @@ class Race extends Model
     protected $fillable = ['name', 'slug', 'event_date', 'timezone', 'status', 'started_at', 'finished_at', 'settings', 'created_by', 'public_results_token', 'results_published_at'];
     protected function casts(): array { return ['results_published_at'=>'datetime', 'event_date' => 'date:Y-m-d', 'status' => RaceStatus::class, 'started_at' => 'datetime', 'finished_at' => 'datetime', 'settings' => 'array']; }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
-    public function organizers(): BelongsToMany { return $this->belongsToMany(User::class)->withTimestamps(); }
+    public function staff(): BelongsToMany { return $this->belongsToMany(User::class)->withTimestamps(); }
+    /** @deprecated Use staff() in new code. */
+    public function organizers(): BelongsToMany { return $this->staff(); }
     public function entries(): HasMany { return $this->hasMany(Entry::class); }
     public function checkpoints(): HasMany { return $this->hasMany(Checkpoint::class)->orderBy('sequence'); }
     public function timings(): HasMany { return $this->hasMany(TimingRecord::class); }

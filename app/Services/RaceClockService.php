@@ -3,7 +3,6 @@ namespace App\Services;
 
 use App\Support\RaceBroadcast;
 
-use App\Enums\CheckpointKind;
 use App\Enums\RaceStatus;
 use App\Events\RaceFinished;
 use App\Events\RaceStarted;
@@ -13,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class RaceClockService
 {
+    public function __construct(private readonly RaceReadinessService $readiness) {}
+
     public function start(Race $race): Race
     {
         $race = DB::transaction(function () use ($race) {
@@ -20,11 +21,14 @@ class RaceClockService
             if ($locked->started_at) {
                 throw ValidationException::withMessages(['race' => 'This race has already been started.']);
             }
-            if (!$locked->entries()->where('status', 'registered')->exists()) {
-                throw ValidationException::withMessages(['race' => 'Add at least one athlete before starting the race.']);
-            }
-            if (!$locked->checkpoints()->where('kind', CheckpointKind::Finish->value)->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['race' => 'Add an active finish checkpoint before starting the race.']);
+            $readiness = $this->readiness->for($locked);
+            if (!$readiness['ready_to_start']) {
+                $missing = collect($readiness['checks'])
+                    ->where('required', true)
+                    ->where('ready', false)
+                    ->pluck('detail')
+                    ->implode(' ');
+                throw ValidationException::withMessages(['race' => $missing ?: 'Finish the required race setup before starting.']);
             }
             $locked->forceFill(['started_at' => now('UTC'), 'status' => RaceStatus::Running])->save();
             return $locked->fresh();

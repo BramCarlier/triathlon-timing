@@ -30,7 +30,7 @@ class AccessRoleController extends Controller
     }
     public function store(Request $request) {
         AccessRole::create($this->data($request));
-        return back()->with('success','Role created. Assign it from Users → Edit user.');
+        return back()->with('success','Role created. Assign it from People → Edit user.');
     }
     public function update(Request $request, AccessRole $accessRole) {
         $accessRole->update($this->data($request,$accessRole));
