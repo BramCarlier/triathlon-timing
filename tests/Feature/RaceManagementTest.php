@@ -36,7 +36,7 @@ class RaceManagementTest extends TestCase
 
     public function test_organizers_cannot_delete_or_restore_races(): void
     {
-        $organizer = User::factory()->create(['role' => UserRole::Organizer]);
+        $organizer = User::factory()->create(['role' => UserRole::Official]);
         $race = Race::create(['name' => 'Test', 'slug' => 'test', 'event_date' => '2026-09-21', 'created_by' => $organizer->id]);
         $race->organizers()->attach($organizer);
         $this->actingAs($organizer)->delete("/races/{$race->id}")->assertForbidden();
@@ -48,7 +48,7 @@ class RaceManagementTest extends TestCase
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $athlete = User::factory()->create(['role' => UserRole::Athlete]);
-        $official = User::factory()->create(['role' => UserRole::Organizer]);
+        $official = User::factory()->create(['role' => UserRole::Official]);
         $race = Race::create(['name' => 'Test', 'slug' => 'test', 'event_date' => '2026-09-21', 'created_by' => $admin->id]);
         $race->organizers()->attach($admin);
         $checkpoint = $race->checkpoints()->create(['name'=>'Finish','code'=>'FINISH','sequence'=>50,'kind'=>'finish','is_active'=>true,'is_required'=>true]);
@@ -98,7 +98,7 @@ class RaceManagementTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $newOfficial = User::where('email', 'brand-new-official@example.test')->firstOrFail();
-        $this->assertSame(UserRole::Organizer, $newOfficial->role);
+        $this->assertSame(UserRole::Official, $newOfficial->role);
         $this->assertDatabaseHas('checkpoint_assignments', [
             'race_id' => $race->id,
             'checkpoint_id' => $checkpoint->id,
