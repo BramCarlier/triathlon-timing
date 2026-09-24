@@ -41,7 +41,7 @@ class RaceController extends Controller
             $race = Race::create([
                 'name' => $data['name'],
                 'slug' => Str::slug($data['name']).'-'.Str::lower(Str::random(6)),
-                'event_date' => $data['event_date'] ?: now($data['timezone'])->toDateString(),
+                'event_date' => ($data['event_date'] ?? null) ?: now($data['timezone'])->toDateString(),
                 'timezone' => $data['timezone'],
                 'status' => RaceStatus::Draft,
                 'settings' => ['swim_km' => $data['swim_km'] ?? 1, 'bike_km' => $data['bike_km'] ?? 35, 'run_km' => $data['run_km'] ?? 8],
