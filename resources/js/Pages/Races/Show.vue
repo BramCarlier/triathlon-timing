@@ -350,7 +350,7 @@ async function recordTiming(participant:StationParticipant, override=false, clie
 
     showTimingFeedback('error', data.message ?? 'The time could not be recorded.');
   } catch {
-    showTimingFeedback('error','The time could not be saved here. Open Focused timing if the connection is unreliable.');
+    showTimingFeedback('error','The time could not be saved here. Open the full-screen timing station if the connection is unreliable.');
   } finally {
     timingSaving.value.delete(participant.id);
   }
