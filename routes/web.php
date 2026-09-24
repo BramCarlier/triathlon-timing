@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::post('/users/{user}/invitation', [UserController::class,'invite'])->middleware('throttle:5,1')->name('users.invite');
+        Route::post('/athletes/{athlete}/account-invitation', [UserController::class,'inviteAthlete'])->middleware('throttle:5,1')->name('athletes.invite');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
     });
 });
