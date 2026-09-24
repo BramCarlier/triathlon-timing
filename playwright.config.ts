@@ -23,8 +23,13 @@ export default defineConfig({
             use: { browserName: 'webkit', hasTouch: true },
         },
     ],
+    expect: {
+        timeout: 10000,
+    },
     use: {
         baseURL: 'http://127.0.0.1:8000',
+        actionTimeout: 10000,
+        navigationTimeout: 15000,
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
     },

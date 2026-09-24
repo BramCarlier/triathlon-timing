@@ -251,7 +251,7 @@ test.describe('responsive layouts', () => {
 
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto('/users/9001/edit');
-        await page.getByLabel('Role', { exact: true }).selectOption('athlete');
+        await page.getByLabel('Account type', { exact: true }).selectOption('athlete');
         await expect(page.getByLabel('Athlete', { exact: true })).toBeVisible();
         await atSizes(page, 'athlete picker', representativeSizes);
 
@@ -292,7 +292,7 @@ test.describe('responsive layouts', () => {
         for (const path of ['/athlete', '/races/9001/results']) {
             await page.goto(path);
             if (path === '/athlete') {
-                await expect(page.locator('h1')).toContainText('Welcome');
+                await expect(page.locator('h1')).toContainText('My races');
             }
             await atSizes(page, 'athlete ' + path, representativeSizes);
         }
