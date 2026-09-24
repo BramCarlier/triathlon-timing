@@ -27,7 +27,7 @@ class RaceOfficialController extends Controller
 
         $existingByEmail = $email !== '' ? User::where('email', $email)->first() : null;
         $reusableExisting = $existingByEmail
-            && in_array($existingByEmail->role, [UserRole::Admin, UserRole::Organizer], true)
+            && in_array($existingByEmail->role, [UserRole::Admin, UserRole::Official], true)
             && $existingByEmail->is_active;
         $creating = !$request->filled('user_id') && !$reusableExisting;
 
@@ -37,7 +37,7 @@ class RaceOfficialController extends Controller
                 'nullable',
                 'integer',
                 Rule::exists('users', 'id')->where(fn ($query) => $query
-                    ->whereIn('role', [UserRole::Admin->value, UserRole::Organizer->value])
+                    ->whereIn('role', [UserRole::Admin->value, UserRole::Official->value])
                     ->where('is_active', true)),
             ],
             'name' => ['nullable', Rule::requiredIf(!$request->filled('user_id')), 'string', 'max:255'],
@@ -62,7 +62,7 @@ class RaceOfficialController extends Controller
         $created = false;
         $official = DB::transaction(function () use ($data, $race, $emailInvite, $existingByEmail, $reusableExisting, &$created) {
             if (!empty($data['user_id'])) {
-                $official = User::whereIn('role', [UserRole::Admin->value, UserRole::Organizer->value])
+                $official = User::whereIn('role', [UserRole::Admin->value, UserRole::Official->value])
                     ->where('is_active', true)
                     ->findOrFail($data['user_id']);
             } elseif ($reusableExisting && $existingByEmail) {
@@ -72,7 +72,7 @@ class RaceOfficialController extends Controller
                     'name' => $data['name'],
                     'email' => strtolower($data['email']),
                     'password' => Hash::make($emailInvite ? Str::random(64) : $data['password']),
-                    'role' => UserRole::Organizer,
+                    'role' => UserRole::Official,
                     'force_password_change' => true,
                 ]);
                 $created = true;
@@ -100,7 +100,7 @@ class RaceOfficialController extends Controller
     {
         abort_unless($request->user()->isAdmin(), 403);
         $this->ensureSetupUnlocked($race);
-        abort_unless(in_array($official->role, [UserRole::Admin, UserRole::Organizer], true), 404);
+        abort_unless(in_array($official->role, [UserRole::Admin, UserRole::Official], true), 404);
 
         CheckpointAssignment::where('race_id', $race->id)
             ->where('user_id', $official->id)
