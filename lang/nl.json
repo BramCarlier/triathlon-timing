@@ -717,5 +717,19 @@
   "Invitation could not be sent. Check email settings and retry.": "De uitnodiging kon niet worden verstuurd. Controleer de e-mailinstellingen en probeer opnieuw.",
   "This athlete already has an active account for viewing results.": "Deze atleet heeft al een actief account om resultaten te bekijken.",
   "The results invitation could not be sent. Check email settings and retry.": "De resultatenuitnodiging kon niet worden verstuurd. Controleer de e-mailinstellingen en probeer opnieuw.",
-  "That email already belongs to another account. Resolve it from People before inviting this athlete.": "Dat e-mailadres hoort al bij een ander account. Los dit op via Gebruikers voordat je deze atleet uitnodigt."
+  "That email already belongs to another account. Resolve it from People before inviting this athlete.": "Dat e-mailadres hoort al bij een ander account. Los dit op via Gebruikers voordat je deze atleet uitnodigt.",
+  "This checkpoint is inactive.": "Dit meetpunt is niet actief.",
+  "The race start is controlled from Race Control.": "De wedstrijdstart wordt vanuit Wedstrijdbeheer bediend.",
+  "The recorded time is before the race start.": "De geregistreerde tijd ligt vóór de wedstrijdstart.",
+  "The race has already been finished.": "De wedstrijd is al beëindigd.",
+  "Relay bib :bib should have exactly one swim, bike, and run athlete.": "Trio met startnummer :bib moet precies één zwemmer, één fietser en één loper hebben.",
+  "without bib": "zonder startnummer",
+  "Duplicate solo entry :label. Each solo athlete needs a separate row and a unique bib when supplied.": "Dubbele solo-inschrijving :label. Elke solo-atleet heeft een aparte rij nodig en, indien opgegeven, een uniek startnummer.",
+  "Entry :label mixes solo and relay rows.": "Inschrijving :label combineert solo- en triorijen.",
+  "Relay entries need a team_name.": "Trio-inschrijvingen hebben een team_name nodig.",
+  "A wide-format relay must occupy exactly one row. Use distinct entry_key values for teams with the same name and no bib.": "Een trio in breed formaat moet precies één rij gebruiken. Gebruik verschillende entry_key-waarden voor teams met dezelfde naam en zonder startnummer.",
+  "A relay needs exactly three rows: swim, bike and run. Use distinct entry_key values for teams with the same name and no bib.": "Een trio heeft precies drie rijen nodig: zwemmen, fietsen en lopen. Gebruik verschillende entry_key-waarden voor teams met dezelfde naam en zonder startnummer.",
+  "A relay has more than one :discipline athlete.": "Een trio heeft meer dan één atleet voor :discipline.",
+  "The JSON file must contain an array of participants or a participants array.": "Het JSON-bestand moet een lijst van deelnemers of een participants-lijst bevatten.",
+  "Every participant must be an object in a participants array.": "Elke deelnemer moet een object in een participants-lijst zijn."
 }
