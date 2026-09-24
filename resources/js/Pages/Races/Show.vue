@@ -469,7 +469,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               </div>
             </div>
             <form v-else @submit.prevent="saveRace">
-              <div class="flex items-center justify-between gap-3"><h3 class="font-bold">Edit race details</h3><button type="button" class="btn-icon" :aria-label="$t('Close race details')" @click="editingRaceDetails=false;raceForm.clearErrors()"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+              <div class="flex items-center justify-between gap-3"><h3 class="font-bold">{{ $t("Edit race details") }}</h3><button type="button" class="btn-icon" :aria-label="$t('Close race details')" @click="editingRaceDetails=false;raceForm.clearErrors()"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
               <div class="mt-4 space-y-4">
                 <label class="label">{{ $t("Race name") }}<input v-model="raceForm.name" class="field" required></label>
                 <label class="label">{{ $t("Date") }}<input v-model="raceForm.event_date" type="date" class="field" required></label>
@@ -481,7 +481,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 <label class="label">{{ $t("Timezone") }}<input v-model="raceForm.timezone" class="field" required></label>
               </div>
               <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(raceForm.errors)[0] }}</p>
-              <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="raceForm.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save details</button><button type="button" class="btn-secondary" @click="editingRaceDetails=false">{{ $t("Cancel") }}</button></div>
+              <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="raceForm.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ $t("Save details") }}</button><button type="button" class="btn-secondary" @click="editingRaceDetails=false">{{ $t("Cancel") }}</button></div>
             </form>
           </section>
 
@@ -528,17 +528,17 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 <form v-if="checkpointFormOpen && editingCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="saveCheckpoint">
                   <div class="flex items-center justify-between gap-3"><h4 class="font-bold">{{ $t("Edit checkpoint") }}</h4><button type="button" class="btn-icon" :aria-label="$t('Close checkpoint form')" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
                   <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div class="sm:col-span-2"><label class="label" :for="`checkpoint-name-${cp.id}`">{{ $t("Name") }}</label><input :id="`checkpoint-name-${cp.id}`" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></div>
+                    <div class="sm:col-span-2"><label class="label" :for="`checkpoint-name-${cp.id}`">{{ $t("Name") }}</label><input :id="`checkpoint-name-${cp.id}`" v-model="checkpoint.name" class="field" :placeholder="$t('For example: Run 4 km')" required></div>
                     <div><label class="label" :for="`checkpoint-sport-${cp.id}`">{{ $t("Sport") }}</label><select :id="`checkpoint-sport-${cp.id}`" v-model="checkpoint.discipline" class="field"><option value="">{{ $t("Race-wide") }}</option><option value="swim">{{ $t("Swim") }}</option><option value="bike">{{ $t("Bike") }}</option><option value="run">{{ $t("Run") }}</option></select></div>
                     <div><label class="label" :for="`checkpoint-kind-${cp.id}`">{{ $t("What happens here?") }}</label><select :id="`checkpoint-kind-${cp.id}`" v-model="checkpoint.kind" class="field"><option value="split">{{ $t("Timing point") }}</option><option value="transition">{{ $t("Transition") }}</option><option value="finish">{{ $t("Finish") }}</option></select></div>
-                    <div class="sm:col-span-2"><label class="label" :for="`checkpoint-distance-${cp.id}`">{{ $t("Distance into this sport (km)") }} <span class="font-normal muted">(optional)</span></label><input :id="`checkpoint-distance-${cp.id}`" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></div>
+                    <div class="sm:col-span-2"><label class="label" :for="`checkpoint-distance-${cp.id}`">{{ $t("Distance into this sport (km)") }} <span class="font-normal muted">{{ $t("(optional)") }}</span></label><input :id="`checkpoint-distance-${cp.id}`" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></div>
                   </div>
                   <p v-if="Object.keys(checkpoint.errors).length" class="mt-3 text-sm text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p>
                   <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ $t("Save checkpoint") }}</button><button type="button" class="btn-secondary" @click="closeCheckpointForm">{{ $t("Cancel") }}</button></div>
                 </form>
 
                 <form v-if="showOfficialTools && assigningCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
-                  <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">{{ $t("Optional Official account") }}</h4><p class="mt-1 text-sm muted">{{ cp.name }} · only needed if you want account-based access</p></div><button type="button" class="btn-icon" aria-label="Close official form" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+                  <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">{{ $t("Optional Official account") }}</h4><p class="mt-1 text-sm muted">{{ cp.name }} · only needed if you want account-based access</p></div><button type="button" class="btn-icon" :aria-label="$t('Close official form')" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
                   <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     <label class="label">{{ $t("Name") }}<input :value="officialForm.name" class="field" autocomplete="off" :placeholder="$t('Official name')" required @input="updateOfficialField('name',$event)"></label>
                     <label class="label">{{ $t("Email") }}<input :value="officialForm.email" type="email" class="field" autocomplete="off" :placeholder="$t('official@example.com')" required @input="updateOfficialField('email',$event)"></label>
@@ -591,10 +591,10 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
             <form v-if="checkpointFormOpen && !editingCheckpoint" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="saveCheckpoint">
               <div class="flex items-center justify-between gap-3"><h4 class="font-bold">{{ $t("Add checkpoint") }}</h4><button type="button" class="btn-icon" :aria-label="$t('Close checkpoint form')" @click="closeCheckpointForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
               <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2"><label class="label" for="checkpoint-add-name">{{ $t("Name") }}</label><input id="checkpoint-add-name" v-model="checkpoint.name" class="field" placeholder="For example: Run 4 km" required></div>
+                <div class="sm:col-span-2"><label class="label" for="checkpoint-add-name">{{ $t("Name") }}</label><input id="checkpoint-add-name" v-model="checkpoint.name" class="field" :placeholder="$t('For example: Run 4 km')" required></div>
                 <div><label class="label" for="checkpoint-add-sport">{{ $t("Sport") }}</label><select id="checkpoint-add-sport" v-model="checkpoint.discipline" class="field"><option value="">{{ $t("Race-wide") }}</option><option value="swim">{{ $t("Swim") }}</option><option value="bike">{{ $t("Bike") }}</option><option value="run">{{ $t("Run") }}</option></select></div>
                 <div><label class="label" for="checkpoint-add-kind">{{ $t("What happens here?") }}</label><select id="checkpoint-add-kind" v-model="checkpoint.kind" class="field"><option value="split">{{ $t("Timing point") }}</option><option value="transition">{{ $t("Transition") }}</option><option value="finish">{{ $t("Finish") }}</option></select></div>
-                <div class="sm:col-span-2"><label class="label" for="checkpoint-add-distance">{{ $t("Distance into this sport (km)") }} <span class="font-normal muted">(optional)</span></label><input id="checkpoint-add-distance" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></div>
+                <div class="sm:col-span-2"><label class="label" for="checkpoint-add-distance">{{ $t("Distance into this sport (km)") }} <span class="font-normal muted">{{ $t("(optional)") }}</span></label><input id="checkpoint-add-distance" v-model="checkpoint.distance_km" class="field" type="number" min="0" step="0.001"></div>
               </div>
               <p v-if="Object.keys(checkpoint.errors).length" class="mt-3 text-sm text-error">{{ Object.values(checkpoint.errors).join(' · ') }}</p>
               <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="checkpoint.processing"><i class="fa-solid fa-plus" aria-hidden="true"></i>{{ $t("Add checkpoint") }}</button><button type="button" class="btn-secondary" @click="closeCheckpointForm">{{ $t("Cancel") }}</button></div>
@@ -613,9 +613,9 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
         <div class="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
           <form class="rounded-2xl border border-outline p-4" @submit.prevent="addParticipant">
             <h3 class="font-bold">{{ $t("Add athlete") }}</h3>
-            <p class="mt-1 text-sm muted">For a normal solo athlete, just enter the name. Bibs and everything else are optional.</p>
+            <p class="mt-1 text-sm muted">{{ $t("For a normal solo athlete, just enter the name. Bibs and everything else are optional.") }}</p>
 
-            <label class="label mt-4">{{ $t("Bib number") }} <span class="font-normal muted">(optional)</span>
+            <label class="label mt-4">{{ $t("Bib number") }} <span class="font-normal muted">{{ $t("(optional)") }}</span>
               <input v-model="participantForm.bib_number" class="field" maxlength="32" :placeholder="$t('Leave blank if you do not use bibs')">
             </label>
 
@@ -626,7 +626,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                   <select v-model="participantForm.type" class="field"><option value="solo">{{ $t("Solo athlete") }}</option><option value="relay">{{ $t("3-person relay") }}</option></select>
                 </label>
                 <label v-if="participantForm.type==='relay'" class="label">{{ $t("Team name") }}<input v-model="participantForm.team_name" class="field" required></label>
-                <label class="label">{{ $t("Category") }} <span class="font-normal muted">(optional)</span><input v-model="participantForm.category" class="field"></label>
+                <label class="label">{{ $t("Category") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="participantForm.category" class="field"></label>
               </div>
             </details>
 
@@ -700,7 +700,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               <span v-else class="badge">{{ $t("Race finished") }}</span>
             </div>
           </div>
-          <p v-if="!race.started_at && !readiness.ready_to_start" class="mt-4 text-sm text-warning">Finish the required items above before starting the race.</p>
+          <p v-if="!race.started_at && !readiness.ready_to_start" class="mt-4 text-sm text-warning">{{ $t("Finish the required items above before starting the race.") }}</p>
           <p v-if="race.started_at && !race.finished_at" class="mt-4 text-sm muted">{{ $t("The race will end automatically when every active participant has a finish time. The Organizer can end it manually if needed.") }}</p>
         </section>
 
@@ -708,7 +708,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
           <section class="panel overflow-hidden">
             <div class="border-b border-outline p-4">
               <div v-if="selectedCheckpoint" class="grid gap-3" :class="isAdmin?'sm:grid-cols-[minmax(0,1fr)_minmax(220px,.6fr)]':''">
-                <label class="label">Find athlete or team<input v-model="timingSearch" class="field min-h-14 text-lg" placeholder="Bib number or name"></label>
+                <label class="label">{{ $t("Find athlete or team") }}<input v-model="timingSearch" class="field min-h-14 text-lg" :placeholder="$t('Bib number or name')"></label>
                 <label v-if="isAdmin" class="label">{{ $t("Checkpoint") }}<select v-model="selectedCheckpointId" class="field min-h-14"><option v-for="cp in activeTimingCheckpoints" :key="cp.id" :value="cp.id">{{ cp.name }}</option></select></label>
                 <div v-else class="rounded-xl bg-canvas p-3"><span class="text-xs font-bold uppercase tracking-wider text-accent">{{ $t("Assigned checkpoint") }}</span><strong class="mt-1 block">{{ selectedCheckpoint.name }}</strong></div>
               </div>
@@ -807,7 +807,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <ConfirmDialog
       v-if="removingCheckpoint"
-      title="Delete checkpoint?"
+      :title="$t('Delete checkpoint?')"
       :message="`Delete ${removingCheckpoint.name}?`"
       confirm-label="Delete checkpoint"
       @cancel="removingCheckpoint=null"
