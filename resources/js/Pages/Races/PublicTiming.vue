@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '../../i18n';
 import { computed, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
@@ -74,8 +75,8 @@ function showFeedback(type:'ok'|'error',message:string){
 
 async function record(participant:StationParticipant,override=false,clientUuid=uuid()){
   if(!selectedCheckpoint.value||saving.value.has(participant.id))return;
-  if(!props.race.started_at){showFeedback('error','The race has not started yet.');return;}
-  if(props.race.finished_at){showFeedback('error','The race is finished.');return;}
+  if(!props.race.started_at){showFeedback('error',tr('The race has not started yet.'));return;}
+  if(props.race.finished_at){showFeedback('error',tr('The race is finished.'));return;}
   if(participant.status&&participant.status!=='registered'){showFeedback('error',`${participant.name} is marked ${participant.status.toUpperCase()}.`);return;}
   if(recorded(participant)){showFeedback('error',`${participant.name} already has a time at this checkpoint.`);return;}
 
@@ -105,7 +106,7 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
       recent.value=recent.value.slice(0,12);
       if(selected.kind==='finish')completedCount.value+=1;
       search.value='';
-      showFeedback('ok',data.message??'Time recorded.');
+      showFeedback('ok',data.message??tr('Time recorded.'));
       if(data.auto_finished)router.reload({only:['race','completedCount','serverNow']});
       return;
     }
@@ -115,14 +116,14 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
       confirmation.value={
         participant,
         clientUuid,
-        message:`${data.message??'An earlier checkpoint is missing.'}${missing?` Missing: ${missing}.`:''} Record anyway?`,
+        message:`${data.message??tr('An earlier checkpoint is missing.')}${missing?` Missing: ${missing}.`:''} Record anyway?`,
       };
       return;
     }
 
-    showFeedback('error',data.message??'The time was not recorded. Try again.');
+    showFeedback('error',data.message??tr('The time was not recorded. Try again.'));
   }catch{
-    showFeedback('error','The time was not recorded. Check the connection and try again.');
+    showFeedback('error',tr('The time was not recorded. Check the connection and try again.'));
   }finally{
     saving.value.delete(participant.id);
   }
@@ -141,12 +142,12 @@ function confirmOverride(){
     <section class="panel-pad mb-5">
       <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <div class="text-xs font-bold uppercase tracking-[.18em] text-accent">Race-day timing</div>
-          <h2 class="mt-1 text-xl font-bold">Choose the checkpoint, then tap the athlete</h2>
-          <p class="mt-2 muted">No account is needed. Every tap records the current race time at the selected checkpoint.</p>
+          <div class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ $t("Race-day timing") }}</div>
+          <h2 class="mt-1 text-xl font-bold">{{ $t("Choose the checkpoint, then tap the athlete") }}</h2>
+          <p class="mt-2 muted">{{ $t("No account is needed. Every tap records the current race time at the selected checkpoint.") }}</p>
         </div>
         <div class="rounded-2xl bg-canvas p-4">
-          <div class="mb-1 text-xs font-bold uppercase tracking-[.18em] text-accent">Race clock</div>
+          <div class="mb-1 text-xs font-bold uppercase tracking-[.18em] text-accent">{{ $t("Race clock") }}</div>
           <RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/>
         </div>
       </div>
@@ -156,19 +157,19 @@ function confirmOverride(){
       <div class="border-b border-outline p-4">
         <div class="grid gap-4 md:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
           <div>
-            <label for="public-timing-checkpoint" class="label">1. Checkpoint</label>
+            <label for="public-timing-checkpoint" class="label">{{ $t("1. Checkpoint") }}</label>
             <select id="public-timing-checkpoint" v-model="checkpointId" class="field min-h-14 text-lg">
               <option v-for="checkpoint in race.checkpoints" :key="checkpoint.id" :value="checkpoint.id">{{ checkpoint.name }}</option>
             </select>
           </div>
           <div>
-            <label for="public-timing-search" class="label">2. Find athlete</label>
-            <input id="public-timing-search" v-model="search" class="field min-h-14 text-lg" placeholder="Name or bib number" autocomplete="off">
+            <label for="public-timing-search" class="label">{{ $t("2. Find athlete") }}</label>
+            <input id="public-timing-search" v-model="search" class="field min-h-14 text-lg" :placeholder="$t('Name or bib number')" autocomplete="off">
           </div>
         </div>
 
         <p v-if="selectedCheckpoint" class="mt-3 rounded-xl bg-canvas p-3 text-sm">
-          Recording at <strong>{{ selectedCheckpoint.name }}</strong>. Tap the correct athlete once.
+          {{ $t("Recording at") }} <strong>{{ selectedCheckpoint.name }}</strong>. Tap the correct athlete once.
         </p>
         <p v-if="feedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="feedback.type==='ok'?'bg-emerald-500/10 text-success':'bg-red-500/10 text-error'" role="status">{{ feedback.message }}</p>
       </div>
@@ -186,23 +187,23 @@ function confirmOverride(){
           <span class="max-w-24 rounded-xl bg-canvas px-3 py-2 font-mono text-lg font-black sm:text-xl">{{ bibLabel(participant.bib_number) }}</span>
           <span class="min-w-0">
             <strong class="block truncate text-base sm:text-lg">{{ participant.name }}</strong>
-            <span class="block truncate text-xs muted sm:text-sm">{{ participant.type==='relay'?participant.members.map(member=>`${disciplineLabel(member.discipline)}: ${member.name}`).join(' · '):'Solo athlete' }}</span>
+            <span class="block truncate text-xs muted sm:text-sm">{{ participant.type==='relay'?participant.members.map(member=>`${disciplineLabel(member.discipline)}: ${member.name}`).join(' · '):$t('Solo athlete') }}</span>
           </span>
-          <span class="text-xs font-bold sm:text-sm" :class="recorded(participant)?'text-success':'text-accent'">{{ participant.status&&participant.status!=='registered'?participant.status.toUpperCase():saving.has(participant.id)?'SAVING':recorded(participant)?'RECORDED':'TAP' }}</span>
+          <span class="text-xs font-bold sm:text-sm" :class="recorded(participant)?'text-success':'text-accent'">{{ participant.status&&participant.status!=='registered'?participant.status.toUpperCase():saving.has(participant.id)?$t('SAVING'):recorded(participant)?$t('RECORDED'):$t('TAP') }}</span>
         </button>
-        <p v-if="!filtered.length" class="p-8 text-center muted">No matching athlete.</p>
+        <p v-if="!filtered.length" class="p-8 text-center muted">{{ $t("No matching athlete.") }}</p>
       </div>
 
       <div v-else class="p-8 text-center">
-        <strong>{{ race.finished_at?'This race is finished.':'Timing opens when the organizer starts the race.' }}</strong>
-        <p class="mt-2 muted">{{ race.finished_at?'Recorded results remain available from the organizer.':'You can leave this page open and start tapping athletes once the race begins.' }}</p>
+        <strong>{{ race.finished_at?$t('This race is finished.'):$t('Timing opens when the organizer starts the race.') }}</strong>
+        <p class="mt-2 muted">{{ race.finished_at?$t('Recorded results remain available from the organizer.'):$t('You can leave this page open and start tapping athletes once the race begins.') }}</p>
       </div>
     </section>
 
     <section class="panel mt-5 overflow-hidden">
       <div class="border-b border-outline p-4">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="font-bold">Latest times</h3>
+          <h3 class="font-bold">{{ $t("Latest times") }}</h3>
           <span class="badge">{{ completedCount }} finished</span>
         </div>
       </div>
@@ -215,15 +216,15 @@ function confirmOverride(){
           <span class="shrink-0 font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
         </div>
       </div>
-      <div v-else class="p-6 text-center muted">No times yet.</div>
+      <div v-else class="p-6 text-center muted">{{ $t("No times yet.") }}</div>
       <div v-if="race.results_url" class="border-t border-outline p-4">
-        <a :href="race.results_url" class="font-semibold text-accent underline">Open live results</a>
+        <a :href="race.results_url" class="font-semibold text-accent underline">{{ $t("Open live results") }}</a>
       </div>
     </section>
 
     <ConfirmDialog
       v-if="confirmation"
-      title="Record this time?"
+      :title="$t('Record this time?')"
       :message="confirmation.message"
       confirm-label="Record anyway"
       @cancel="confirmation=null"
