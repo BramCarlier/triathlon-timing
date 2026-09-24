@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import type { Race } from '../../types';
 
-interface Athlete {id:number;first_name:string;last_name:string;email:string|null;club:string|null}
+interface Athlete {id:number;first_name:string;last_name:string;email:string|null;club:string|null;user?:{id:number;email:string;is_active:boolean;force_password_change:boolean}|null}
 interface Snapshot {entry?:Record<string,unknown>;athletes?:Array<Record<string,unknown>>}
 interface Change {id:number;reason:string;created_at:string;user?:{name:string};before:Snapshot;after:Snapshot}
 
-const props=defineProps<{race:Race;entry:{id:number;bib_number:string|null;type:string;team_name:string|null;category:string|null;status:string;members:{athlete:Athlete}[]};changes:Change[]}>();
+const props=defineProps<{race:Race;entry:{id:number;bib_number:string|null;type:string;team_name:string|null;category:string|null;status:string;members:{athlete:Athlete}[]};changes:Change[];mailConfigured:boolean}>();
 const form=useForm({bib_number:props.entry.bib_number??'',team_name:props.entry.team_name??'',category:props.entry.category??'',status:props.entry.status,reason:'',athletes:[...new Map(props.entry.members.map(m=>[m.athlete.id,{...m.athlete}])).values()]});
 const save=()=>form.put(`/races/${props.race.id}/participants/${props.entry.id}`,{preserveScroll:true,onSuccess:()=>form.reset('reason')});
 
@@ -62,6 +62,20 @@ function changeLines(change:Change):string[] {
           <label class="label">Last name<input v-model="athlete.last_name" class="field" required></label>
           <label class="label">Email <span class="font-normal muted">(optional)</span><input v-model="athlete.email" class="field" type="email"></label>
           <label class="label">Club <span class="font-normal muted">(optional)</span><input v-model="athlete.club" class="field"></label>
+          <div class="sm:col-span-2 rounded-xl bg-canvas p-3">
+            <template v-if="athlete.user">
+              <strong class="text-sm">Results account linked</strong>
+              <p class="mt-1 text-xs muted">{{ athlete.user.email }} · {{ athlete.user.is_active ? (athlete.user.force_password_change ? 'Invitation/password setup pending' : 'Active') : 'Disabled' }}</p>
+              <button v-if="athlete.user.force_password_change && athlete.user.is_active && mailConfigured" type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><i class="fa-solid fa-envelope" aria-hidden="true"></i>Resend invitation</button>
+            </template>
+            <template v-else-if="athlete.email && mailConfigured">
+              <strong class="text-sm">Athlete access</strong>
+              <p class="mt-1 text-xs muted">Invite this athlete to sign in and see all races linked to this profile.</p>
+              <button type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>Invite to view results</button>
+            </template>
+            <p v-else-if="!athlete.email" class="text-xs muted">Add and save an email address before inviting this athlete to view results.</p>
+            <p v-else class="text-xs muted">Email invitations are not configured. Manage the account from People instead.</p>
+          </div>
         </fieldset>
       </template>
 
