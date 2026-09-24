@@ -39,9 +39,9 @@ class UserController extends Controller
     {
         $request->merge(['email' => strtolower((string) $request->input('email'))]);
         $data = $request->validate(['name' => ['required','string','max:255'], 'email' => ['required','email','max:255','unique:users,email'], 'delivery'=>['nullable','in:email,manual'], 'password' => ['nullable','required_if:delivery,manual','string','min:12'], 'role' => ['required', Rule::enum(UserRole::class)], 'access_role_id'=>['nullable','integer','exists:access_roles,id'], 'athlete_id' => ['nullable','exists:athletes,id','unique:users,athlete_id'], 'race_ids' => ['nullable','array'], 'race_ids.*' => ['integer', Rule::exists('races', 'id')->whereNull('deleted_at')]]);
-        if ($data['role'] === UserRole::Athlete->value && empty($data['athlete_id'])) return back()->withErrors(['athlete_id' => 'Athlete accounts must be linked to an athlete.']);
+        if ($data['role'] === UserRole::Athlete->value && empty($data['athlete_id'])) return back()->withErrors(['athlete_id' => __('Athlete accounts must be linked to an athlete.')]);
         $emailInvite=($data['delivery']??(empty($data['password'])?'email':'manual'))==='email';
-        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>'Email sending is not configured. Connect email sending first, or choose a temporary password and share it yourself.']);
+        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>__('Email sending is not configured. Connect email sending first, or choose a temporary password and share it yourself.')]);
         $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($emailInvite ? \Illuminate\Support\Str::random(64) : $data['password']), 'role' => $data['role'], 'access_role_id'=>$data['role']==='organizer'?($data['access_role_id']??null):null, 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
         if ($user->role === UserRole::Official) $user->races()->sync($data['race_ids'] ?? []);
         if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error',__('Account created, but the invitation could not be sent. Check email settings and use Resend invitation.'));
@@ -104,22 +104,22 @@ class UserController extends Controller
         $existing = $athlete->user;
         if ($existing) {
             if (!$existing->is_active) {
-                throw ValidationException::withMessages(['athlete' => 'This athlete already has a disabled account. Re-enable it from People.']);
+                throw ValidationException::withMessages(['athlete' => __('This athlete already has a disabled account. Re-enable it from People.')]);
             }
             if (!$existing->force_password_change) {
-                return back()->with('success', 'This athlete already has an active account for viewing results.');
+                return back()->with('success', __('This athlete already has an active account for viewing results.'));
             }
             if (!$invitations->configured()) {
-                throw ValidationException::withMessages(['athlete' => 'Email sending is not configured. Manage this account from People instead.']);
+                throw ValidationException::withMessages(['athlete' => __('Email sending is not configured. Manage this account from People instead.')]);
             }
             $sent = $invitations->send($existing);
             return back()->with($sent ? 'success' : 'error', $sent
-                ? 'A fresh results invitation was sent.'
-                : 'The results invitation could not be sent. Check email settings and retry.');
+                ? __('A fresh results invitation was sent.')
+                : __('The results invitation could not be sent. Check email settings and retry.'));
         }
 
         if (User::where('email', $email)->exists()) {
-            throw ValidationException::withMessages(['athlete' => 'That email already belongs to another account. Resolve it from People before inviting this athlete.']);
+            throw ValidationException::withMessages(['athlete' => __('That email already belongs to another account. Resolve it from People before inviting this athlete.')]);
         }
         if (!$invitations->configured()) {
             throw ValidationException::withMessages(['athlete' => 'Email sending is not configured. Manage this account from People instead.']);
