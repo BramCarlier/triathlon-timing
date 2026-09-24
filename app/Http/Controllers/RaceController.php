@@ -24,7 +24,7 @@ class RaceController extends Controller
     public function index(Request $request): Response
     {
         $query = Race::withCount('entries')->latest('event_date');
-        if (!$request->user()->isAdmin()) $query->whereHas('organizers', fn ($q) => $q->whereKey($request->user()->id));
+        if (!$request->user()->isAdmin()) $query->whereHas('staff', fn ($q) => $q->whereKey($request->user()->id));
         return Inertia::render('Races/Index', [
             'races' => $query->get(), 'serverNow'=>now('UTC')->toISOString(),
             'deletedRaces' => $request->user()->isAdmin() ? Race::onlyTrashed()->latest('deleted_at')->get() : [],
@@ -47,7 +47,7 @@ class RaceController extends Controller
                 'settings' => ['swim_km' => $data['swim_km'] ?? 1, 'bike_km' => $data['bike_km'] ?? 35, 'run_km' => $data['run_km'] ?? 8],
                 'created_by' => $request->user()->id,
             ]);
-            $race->organizers()->syncWithoutDetaching([$request->user()->id]);
+            $race->staff()->syncWithoutDetaching([$request->user()->id]);
             $race->checkpoints()->createMany([
                 ['name' => 'Race Start', 'code' => 'START', 'sequence' => 0, 'kind' => CheckpointKind::Start, 'discipline' => null, 'distance_km' => 0, 'is_required' => true],
                 ['name' => 'Swim Exit', 'code' => 'SWIM_FINISH', 'sequence' => 10, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Swim, 'distance_km' => $data['swim_km'] ?? 1, 'is_required' => true],
