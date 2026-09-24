@@ -35,7 +35,7 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
 
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Checkpoints & Officials</h2></div>
-          <p class="muted">Add or edit checkpoints, then assign an Official to each location. Choose an existing Official or create a new account directly from the checkpoint.</p>
+          <p class="muted">Add or edit checkpoints, then assign an Official to each location. The form shows available Officials immediately; typing filters the list, and new details create an account only when no existing Official is selected.</p>
         </article>
 
         <article class="panel-pad">
