@@ -101,7 +101,7 @@ class EntryController extends Controller
             'bib_number'=>['nullable','string','max:32',Rule::unique('entries')->where('race_id',$race->id)->ignore($entry->id)],
             'team_name'=>[$entry->type===EntryType::Relay?'required':'nullable','string','max:255'],
             'category'=>['nullable','string','max:100'],'status'=>['required',Rule::in(['registered','dns','dnf','dsq'])],
-            'reason'=>['required','string','min:3','max:1000'],
+            'reason'=>['nullable','string','min:3','max:1000'],
             'athletes'=>['required','array'],'athletes.*.id'=>['required','integer','distinct'],
             'athletes.*.first_name'=>['required','string','max:100'],'athletes.*.last_name'=>['required','string','max:100'],
             'athletes.*.email'=>['nullable','email','max:255'],'athletes.*.club'=>['nullable','string','max:255'],
@@ -126,9 +126,9 @@ class EntryController extends Controller
                 $athlete->save();
             }
             $entry->update(collect($data)->only(['bib_number','team_name','category','status'])->all());
-            EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>$data['reason']]);
+            EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>$data['reason'] ?: 'Participant details updated']);
         });
-        return back()->with('success','Participant updated. The change and reason are saved in the audit history.');
+        return back()->with('success','Participant updated. The change is saved in the history.');
     }
 
     public function destroy(Race $race, Entry $entry): RedirectResponse
