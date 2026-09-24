@@ -9,7 +9,7 @@ User::factory()->create(['id'=>9002,'name'=>'Responsive Athlete','email'=>'respo
 $stationRole=AccessRole::create(['name'=>str_repeat('Checkpoint',8),'description'=>str_repeat('RoleDescription',20),'permissions'=>['timings.record']]);
 User::findOrFail(9001)->update(['access_role_id'=>$stationRole->id]);
 foreach ([9001=>'running',9002=>'draft',9003=>'finished'] as $id=>$status) {
-    $race=Race::forceCreate(['id'=>$id,'name'=>str_repeat('TriathlonChampionship',4).' '.$status,'slug'=>'responsive-'.$id,'event_date'=>'2026-09-23','created_by'=>$admin->id,'status'=>$status,'started_at'=>$status==='draft'?null:now()->subHours(2),'finished_at'=>$status==='finished'?now():null,'settings'=>['swim_km'=>1,'bike_km'=>35,'run_km'=>8],'public_results_token'=>$id===9001?'responsive-public':null,'results_published_at'=>$id===9001?now():null]);
+    $race=Race::forceCreate(['id'=>$id,'name'=>str_repeat('TriathlonChampionship',4).' '.$status,'slug'=>'responsive-'.$id,'event_date'=>'2026-09-23','created_by'=>$admin->id,'status'=>$status,'started_at'=>$status==='draft'?null:now()->subHours(2),'finished_at'=>$status==='finished'?now():null,'settings'=>['swim_km'=>1,'bike_km'=>35,'run_km'=>8],'public_results_token'=>$id===9001?'responsive-public':null,'public_timing_token'=>$id===9001?'responsive-timing':null,'results_published_at'=>$id===9001?now():null]);
     $race->organizers()->attach([$admin->id,9001]);
     $race->checkpoints()->create(['name'=>'Race Start','code'=>'START','sequence'=>0,'kind'=>'start','is_active'=>true]);
     $cp=$race->checkpoints()->create(['name'=>'Swim Exit '.str_repeat('Checkpoint',6),'code'=>'SWIM','sequence'=>10,'kind'=>'transition','discipline'=>'swim','distance_km'=>1,'is_active'=>true]);
