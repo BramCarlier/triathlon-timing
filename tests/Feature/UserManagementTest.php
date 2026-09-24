@@ -30,7 +30,7 @@ class UserManagementTest extends TestCase
         $this->assertSame('Updated Organizer', $operator->fresh()->name);
         $this->assertSame('updated@example.com', $operator->fresh()->email);
         $this->actingAs($operator->fresh())->get("/races/{$first->id}")->assertForbidden();
-        $this->get("/races/{$second->id}")->assertOk();
+        $this->get("/races/{$second->id}")->assertRedirect("/races/{$second->id}/station");
         $this->get("/users/{$admin->id}/edit")->assertForbidden();
     }
 
