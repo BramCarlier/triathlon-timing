@@ -13,10 +13,10 @@ class ForcePasswordChange
             auth()->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            return redirect()->route('login')->with('error', 'This account has been disabled.');
+            return redirect()->route('login')->with('error', __('This account has been disabled.'));
         }
         if ($request->user()?->force_password_change && !$request->routeIs('password.edit', 'password.update', 'logout')) {
-            return redirect()->route('password.edit')->with('error', 'Change your temporary password before continuing.');
+            return redirect()->route('password.edit')->with('error', __('Change your temporary password before continuing.'));
         }
         return $next($request);
     }
