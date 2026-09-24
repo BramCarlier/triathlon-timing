@@ -402,49 +402,59 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
       <div v-if="isAdmin && !race.started_at" class="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Race setup progress">
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='prepare'">
-          <span class="text-xs font-bold uppercase tracking-wider" :class="setupReady && checkpointAssignments.length?'text-success':'text-warning'">{{ setupReady && checkpointAssignments.length?'Ready':'1' }}</span>
-          <strong class="mt-1 block">Checkpoints & officials</strong>
+          <span class="text-xs font-bold uppercase tracking-wider" :class="requiredSetupReady?'text-success':'text-warning'">{{ requiredSetupReady?'Ready':'1' }}</span>
+          <strong class="mt-1 block">Course & Officials</strong>
         </button>
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='participants'">
           <span class="text-xs font-bold uppercase tracking-wider" :class="participantsReady?'text-success':'text-warning'">{{ participantsReady?'Ready':'2' }}</span>
-          <strong class="mt-1 block">Athletes</strong>
+          <strong class="mt-1 block">Participants</strong>
         </button>
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='race-day'">
-          <span class="text-xs font-bold uppercase tracking-wider text-muted">3</span>
-          <strong class="mt-1 block">Start race</strong>
+          <span class="text-xs font-bold uppercase tracking-wider" :class="readiness.ready_to_start?'text-success':'text-muted'">{{ readiness.ready_to_start?'Ready':'3' }}</span>
+          <strong class="mt-1 block">Start & timing</strong>
         </button>
       </div>
     </section>
 
     <section v-if="isAdmin && !race.started_at" id="prepare" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='prepare'" @click="toggleStep('prepare')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 1</p><h2 class="text-xl font-bold">Checkpoints & officials</h2><p class="mt-1 text-sm muted">Set the course, then put each Official where they will record athletes.</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 1</p><h2 class="text-xl font-bold">Course & Officials</h2><p class="mt-1 text-sm muted">Review the course, then assign Officials to the checkpoints they will time.</p></div>
         <i :class="openStep==='prepare'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
 
       <div v-show="openStep==='prepare'" class="border-t border-outline p-4">
         <div class="grid gap-5 xl:grid-cols-[.8fr_1.2fr]">
-          <form class="rounded-2xl border border-outline p-4" @submit.prevent="saveRace">
-            <h3 class="font-bold">Race details</h3>
-            <div class="mt-4 space-y-4">
-              <label class="label">Race name<input v-model="raceForm.name" class="field" required></label>
-              <label class="label">Date<input v-model="raceForm.event_date" type="date" class="field" required></label>
-              <fieldset>
-                <legend class="label">Distances</legend>
-                <div class="grid gap-3 sm:grid-cols-3">
+          <section class="rounded-2xl border border-outline p-4">
+            <div v-if="!editingRaceDetails">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 class="font-bold">Race details</h3>
+                  <p class="mt-2 text-sm muted">{{ raceForm.event_date }} · {{ raceForm.timezone }}</p>
+                </div>
+                <button type="button" class="btn-secondary !px-3" @click="editingRaceDetails=true"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit details</button>
+              </div>
+              <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.swim_km }} km</strong><span class="text-xs muted">Swim</span></div>
+                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.bike_km }} km</strong><span class="text-xs muted">Bike</span></div>
+                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.run_km }} km</strong><span class="text-xs muted">Run</span></div>
+              </div>
+            </div>
+            <form v-else @submit.prevent="saveRace">
+              <div class="flex items-center justify-between gap-3"><h3 class="font-bold">Edit race details</h3><button type="button" class="btn-icon" aria-label="Close race details" @click="editingRaceDetails=false;raceForm.clearErrors()"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+              <div class="mt-4 space-y-4">
+                <label class="label">Race name<input v-model="raceForm.name" class="field" required></label>
+                <label class="label">Date<input v-model="raceForm.event_date" type="date" class="field" required></label>
+                <fieldset><legend class="label">Distances</legend><div class="grid gap-3 sm:grid-cols-3">
                   <label class="label">Swim (km)<input v-model="raceForm.swim_km" class="field" type="number" min="0.001" step="0.001" required></label>
                   <label class="label">Bike (km)<input v-model="raceForm.bike_km" class="field" type="number" min="0.001" step="0.001" required></label>
                   <label class="label">Run (km)<input v-model="raceForm.run_km" class="field" type="number" min="0.001" step="0.001" required></label>
-                </div>
-              </fieldset>
-              <details>
-                <summary class="cursor-pointer text-sm font-semibold">More race details</summary>
-                <label class="label mt-3">Timezone<input v-model="raceForm.timezone" class="field" required></label>
-              </details>
-            </div>
-            <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(raceForm.errors)[0] }}</p>
-            <button class="btn-secondary mt-4" :disabled="raceForm.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save details</button>
-          </form>
+                </div></fieldset>
+                <label class="label">Timezone<input v-model="raceForm.timezone" class="field" required></label>
+              </div>
+              <p v-if="Object.keys(raceForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(raceForm.errors)[0] }}</p>
+              <div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="raceForm.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save details</button><button type="button" class="btn-secondary" @click="editingRaceDetails=false">Cancel</button></div>
+            </form>
+          </section>
 
           <section class="rounded-2xl border border-outline p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -556,13 +566,13 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section v-if="isAdmin && !race.started_at" id="participants" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='participants'" @click="toggleStep('participants')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Athletes</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Participants</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
         <i :class="openStep==='participants'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
       <div v-show="openStep==='participants'" class="border-t border-outline p-4">
         <div class="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
           <form class="rounded-2xl border border-outline p-4" @submit.prevent="addParticipant">
-            <h3 class="font-bold">Add athlete or relay</h3>
+            <h3 class="font-bold">Add participant</h3>
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <label class="label">Bib number <span class="font-normal muted">(optional)</span><input v-model="participantForm.bib_number" class="field" maxlength="32"></label>
               <label class="label">Type<select v-model="participantForm.type" class="field"><option value="solo">Solo athlete</option><option value="relay">3-person relay</option></select></label>
@@ -581,12 +591,12 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               />
             </div>
             <p v-if="Object.keys(participantForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(participantForm.errors)[0] }}</p>
-            <button class="btn-primary mt-4" :disabled="participantForm.processing"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add athlete</button>
+            <button class="btn-primary mt-4" :disabled="participantForm.processing"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add participant</button>
             <Link :href="`/races/${race.id}/participants/import`" class="btn-secondary mt-4 ml-2"><i class="fa-solid fa-file-import" aria-hidden="true"></i>Import file</Link>
           </form>
 
           <section class="rounded-2xl border border-outline overflow-hidden">
-            <div class="border-b border-outline p-4"><h3 class="font-bold">Added athletes</h3></div>
+            <div class="border-b border-outline p-4"><h3 class="font-bold">Added participants</h3></div>
             <div v-if="participants.length" class="divide-y divide-outline">
               <div v-for="participant in participants.slice(0,10)" :key="participant.id" class="flex items-center gap-3 p-4">
                 <span class="max-w-24 shrink-0 rounded-xl bg-raised px-3 py-2 font-mono font-bold">{{ bibLabel(participant.bib_number) }}</span>
@@ -594,7 +604,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 <Link :href="`/races/${race.id}/participants/${participant.id}/edit`" class="btn-secondary"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</Link>
               </div>
             </div>
-            <div v-else class="p-6 text-center muted">No athletes yet.</div>
+            <div v-else class="p-6 text-center muted">No participants yet.</div>
             <div v-if="participants.length>10" class="border-t border-outline p-4"><Link :href="`/races/${race.id}/participants`" class="font-semibold text-accent underline">View all {{ participants.length }}</Link></div>
           </section>
         </div>
