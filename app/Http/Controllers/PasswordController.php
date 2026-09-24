@@ -14,6 +14,6 @@ class PasswordController extends Controller
     {
         $data = $request->validate(['current_password' => ['required','current_password'], 'password' => ['required','string','min:12','confirmed','different:current_password']]);
         $request->user()->forceFill(['password' => Hash::make($data['password']), 'force_password_change' => false])->save();
-        return redirect()->route('dashboard')->with('success', 'Password updated. Your account is ready.');
+        return redirect()->route('dashboard')->with('success', __('Password updated. Your account is ready.'));
     }
 }
