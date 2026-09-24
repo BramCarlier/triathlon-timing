@@ -29,13 +29,14 @@ const props = defineProps<{
   modelValue: AthleteMemberValue;
   title: string;
   bibNumber?: string|null;
+  initialOptions: AthleteChoice[];
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: AthleteMemberValue];
 }>();
 
-const results = ref<AthleteChoice[]>([]);
+const results = ref<AthleteChoice[]>([...props.initialOptions]);
 const selected = ref<AthleteChoice|null>(null);
 const loading = ref(false);
 const error = ref('');
@@ -99,6 +100,12 @@ watch([textLookup, bibLookup], ([text, bib]) => {
     return;
   }
 
+  if (text.length < 2 && !bib) {
+    results.value = [...props.initialOptions];
+    loading.value = false;
+    return;
+  }
+
   const currentRequest = requestNumber;
   loading.value = true;
   searchTimer = window.setTimeout(async () => {
@@ -120,6 +127,10 @@ watch([textLookup, bibLookup], ([text, bib]) => {
     }
   }, 220);
 }, { immediate:true });
+
+watch(() => props.initialOptions, options => {
+  if (!props.modelValue.athlete_id && !hasLookup.value) results.value = [...options];
+});
 
 onBeforeUnmount(() => clearTimeout(searchTimer));
 </script>
