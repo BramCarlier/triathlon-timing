@@ -48,14 +48,14 @@ class RaceOfficialController extends Controller
 
         if ($existingByEmail && !$reusableExisting && !$request->filled('user_id')) {
             throw ValidationException::withMessages([
-                'email' => 'That email already belongs to an account that cannot be assigned as an Official.',
+                'email' => __('That email already belongs to an account that cannot be assigned as an Official.'),
             ]);
         }
 
         $emailInvite = $creating && ($data['delivery'] ?? 'email') === 'email';
         if ($emailInvite && !$invitations->configured()) {
             throw ValidationException::withMessages([
-                'delivery' => 'Email sending is not configured. Choose a temporary password instead.',
+                'delivery' => __('Email sending is not configured. Choose a temporary password instead.'),
             ]);
         }
 
@@ -88,12 +88,12 @@ class RaceOfficialController extends Controller
         });
 
         if ($emailInvite && !$invitations->send($official)) {
-            return back()->with('error', 'Official created and assigned, but the invitation email could not be sent. You can resend it from People.');
+            return back()->with('error', __('Official created and assigned, but the invitation email could not be sent. You can resend it from People.'));
         }
 
         return back()->with('success', $created
-            ? 'Official created and assigned to the checkpoint.'
-            : 'Official assigned to the checkpoint.');
+            ? __('Official created and assigned to the checkpoint.')
+            : __('Official assigned to the checkpoint.'));
     }
 
     public function destroy(Request $request, Race $race, User $official): RedirectResponse
@@ -110,7 +110,7 @@ class RaceOfficialController extends Controller
             $official->races()->detach($race->id);
         }
 
-        return back()->with('success', 'Official removed from this race.');
+        return back()->with('success', __('Official removed from this race.'));
     }
 
     private function ensureSetupUnlocked(Race $race): void
