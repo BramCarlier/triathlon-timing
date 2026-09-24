@@ -12,6 +12,7 @@ interface AthleteChoice {
   race_count: number;
   already_in_race: boolean;
   races: Array<{ id:number; name:string; event_date:string }>;
+  recent_bibs: string[];
 }
 
 export interface AthleteMemberValue {
@@ -49,6 +50,7 @@ const textLookup = computed(() => [
 
 const bibLookup = computed(() => (props.bibNumber ?? '').trim());
 const hasLookup = computed(() => textLookup.value.length >= 2 || bibLookup.value.length > 0);
+const listTitle = computed(() => hasLookup.value ? 'Matching athletes' : 'Available athletes');
 
 const selectAthlete = (athlete:AthleteChoice) => {
   if (athlete.already_in_race) return;
@@ -91,7 +93,7 @@ watch([textLookup, bibLookup], ([text, bib]) => {
   clearTimeout(searchTimer);
   error.value = '';
 
-  if (props.modelValue.athlete_id || (text.length < 2 && !bib)) {
+  if (props.modelValue.athlete_id) {
     results.value = [];
     loading.value = false;
     return;
@@ -150,35 +152,41 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
       </div>
 
       <p class="mt-2 text-xs muted">
-        As you type a name, email<span v-if="bibNumber"> or bib {{ bibNumber }}</span>, matching athlete profiles appear below. If you do not select one, a new athlete is created when you add the participant.
+        The list below is always available. Typing a name or email<span v-if="bibNumber">, or entering bib {{ bibNumber }}</span>, narrows it automatically. If you do not select an existing athlete, a new profile is created when you add the participant.
       </p>
 
-      <p v-if="loading" class="mt-3 text-sm muted"><i class="fa-solid fa-spinner fa-spin mr-1" aria-hidden="true"></i>Checking existing athletes…</p>
+      <p v-if="loading" class="mt-3 text-sm muted"><i class="fa-solid fa-spinner fa-spin mr-1" aria-hidden="true"></i>Loading athletes…</p>
       <p v-if="error" class="mt-3 text-sm text-error" role="alert">{{ error }}</p>
 
       <div v-if="!loading && results.length" class="mt-3 rounded-xl border border-cyan-400/30 bg-canvas p-2">
-        <p class="px-2 pb-2 text-xs font-bold uppercase tracking-wider text-accent">Existing athletes found</p>
-        <button
-          v-for="athlete in results"
-          :key="athlete.id"
-          type="button"
-          class="mb-1 w-full rounded-xl border border-outline p-3 text-left last:mb-0"
-          :class="athlete.already_in_race?'cursor-not-allowed opacity-60':'hover:border-cyan-400 hover:bg-raised'"
-          :disabled="athlete.already_in_race"
-          @click="selectAthlete(athlete)"
-        >
-          <span class="flex flex-wrap items-center justify-between gap-2">
-            <strong>{{ athlete.full_name }}</strong>
-            <span v-if="athlete.already_in_race" class="badge">Already in this race</span>
-            <span v-else class="text-xs muted">{{ athlete.race_count }} previous {{ athlete.race_count===1?'race':'races' }}</span>
-          </span>
-          <span class="mt-1 block text-sm muted">{{ athlete.email || 'No email' }}<span v-if="athlete.club"> · {{ athlete.club }}</span></span>
-          <span v-if="athlete.races.length" class="mt-1 block text-xs muted">Recent: {{ athlete.races.map(race=>race.name).join(' · ') }}</span>
-        </button>
+        <div class="flex items-center justify-between gap-3 px-2 pb-2">
+          <p class="text-xs font-bold uppercase tracking-wider text-accent">{{ listTitle }}</p>
+          <span class="text-xs muted">{{ results.length }} shown</span>
+        </div>
+        <div class="max-h-64 space-y-1 overflow-y-auto pr-1">
+          <button
+            v-for="athlete in results"
+            :key="athlete.id"
+            type="button"
+            class="w-full rounded-xl border border-outline p-3 text-left"
+            :class="athlete.already_in_race?'cursor-not-allowed opacity-60':'hover:border-cyan-400 hover:bg-raised'"
+            :disabled="athlete.already_in_race"
+            @click="selectAthlete(athlete)"
+          >
+            <span class="flex flex-wrap items-center justify-between gap-2">
+              <strong>{{ athlete.full_name }}</strong>
+              <span v-if="athlete.already_in_race" class="badge">Already in this race</span>
+              <span v-else class="text-xs muted">{{ athlete.race_count }} previous {{ athlete.race_count===1?'race':'races' }}</span>
+            </span>
+            <span class="mt-1 block text-sm muted">{{ athlete.email || 'No email' }}<span v-if="athlete.club"> · {{ athlete.club }}</span></span>
+            <span v-if="athlete.recent_bibs.length" class="mt-1 block text-xs muted">Previous bibs: {{ athlete.recent_bibs.join(', ') }}</span>
+            <span v-if="athlete.races.length" class="mt-1 block text-xs muted">Recent races: {{ athlete.races.map(race=>race.name).join(' · ') }}</span>
+          </button>
+        </div>
       </div>
 
-      <p v-else-if="!loading && hasLookup && !error" class="mt-3 rounded-xl bg-canvas p-3 text-sm muted">
-        No existing athlete matches yet. Complete the details and this participant will use a new athlete profile.
+      <p v-else-if="!loading && !error" class="mt-3 rounded-xl bg-canvas p-3 text-sm muted">
+        {{ hasLookup ? 'No existing athlete matches. Complete the details to create a new profile.' : 'No existing athletes are available yet. Complete the details to create the first one.' }}
       </p>
     </template>
   </div>
