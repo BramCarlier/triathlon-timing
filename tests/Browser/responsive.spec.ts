@@ -198,6 +198,24 @@ test.describe('responsive layouts', () => {
         }
 
         await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto('/races');
+        await accountMenu(page);
+        const desktopNav = page.getByRole('navigation', { name: 'Main navigation' });
+        await expect(desktopNav).toHaveCSS('overflow-y', 'visible');
+        const logoutButton = page.getByRole('button', { name: 'Log out', exact: true });
+        await expect(logoutButton).toBeVisible();
+        const logoutBox = await logoutButton.boundingBox();
+        expect(logoutBox, 'desktop account menu should be fully visible').not.toBeNull();
+        const topElement = await page.evaluate(({ x, y }) => {
+            const element = document.elementFromPoint(x, y);
+            return element?.closest('button, a, summary')?.textContent?.trim() ?? null;
+        }, {
+            x: logoutBox!.x + logoutBox!.width / 2,
+            y: logoutBox!.y + logoutBox!.height / 2,
+        });
+        expect(topElement).toContain('Log out');
+
+        await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto('/races/9002');
         await page.locator('summary').filter({ hasText: 'More tools' }).click();
         await page.getByRole('button', { name: 'Delete race', exact: true }).click();
