@@ -40,8 +40,8 @@ class RaceOfficialController extends Controller
                     ->whereIn('role', [UserRole::Admin->value, UserRole::Organizer->value])
                     ->where('is_active', true)),
             ],
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
+            'name' => ['nullable', Rule::requiredIf(!$request->filled('user_id')), 'string', 'max:255'],
+            'email' => ['nullable', Rule::requiredIf(!$request->filled('user_id')), 'email', 'max:255'],
             'delivery' => ['nullable', Rule::requiredIf($creating), Rule::in(['email', 'manual'])],
             'password' => ['nullable', Rule::requiredIf($creating && $request->input('delivery') === 'manual'), 'string', 'min:12'],
         ]);
