@@ -31,7 +31,7 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <span role="status" aria-label="Live updates" class="text-xs font-semibold" :class="state==='live' ? 'text-success' : 'text-warning'">
-    {{ state==='live' ? 'Live updates connected' : state==='connecting' ? 'Connecting live updates…' : 'Using automatic refresh · live updates reconnecting' }}
+  <span role="status" :aria-label="$t('Live updates')" class="text-xs font-semibold" :class="state==='live' ? 'text-success' : 'text-warning'">
+    {{ state==='live' ? $t('Live updates connected') : state==='connecting' ? $t('Connecting live updates…') : $t('Using automatic refresh · live updates reconnecting') }}
   </span>
 </template>
