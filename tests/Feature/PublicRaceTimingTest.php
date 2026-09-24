@@ -73,6 +73,27 @@ class PublicRaceTimingTest extends TestCase
         ]);
     }
 
+    public function test_minimal_race_creation_keeps_the_standard_distances(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)->post('/races', [
+            'name' => 'Quick Race',
+            'timezone' => 'Europe/Brussels',
+        ])->assertRedirect();
+
+        $race = Race::where('name', 'Quick Race')->firstOrFail();
+
+        $this->assertSame(now('Europe/Brussels')->toDateString(), $race->event_date->format('Y-m-d'));
+        $this->assertSame(1.0, (float) $race->settings['swim_km']);
+        $this->assertSame(35.0, (float) $race->settings['bike_km']);
+        $this->assertSame(8.0, (float) $race->settings['run_km']);
+        $this->assertNotNull($race->public_timing_token);
+        $this->assertSame(1.0, (float) $race->checkpoints()->where('code', 'SWIM_FINISH')->value('distance_km'));
+        $this->assertSame(35.0, (float) $race->checkpoints()->where('code', 'BIKE_FINISH')->value('distance_km'));
+        $this->assertSame(8.0, (float) $race->checkpoints()->where('code', 'RUN_FINISH')->value('distance_km'));
+    }
+
     public function test_unknown_race_day_link_does_not_expose_a_race(): void
     {
         $this->get('/race/'.Str::uuid())->assertNotFound();
