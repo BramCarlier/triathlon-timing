@@ -8,6 +8,7 @@ use App\Enums\TimingStatus;
 use App\Models\Race;
 use App\Models\User;
 use App\Services\AthleteLookupService;
+use App\Services\RaceReadinessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -60,9 +61,10 @@ class RaceController extends Controller
         return redirect()->route('races.show', $race)->with('success', 'Race created with default triathlon checkpoints.');
     }
 
-    public function show(Request $request, Race $race, AthleteLookupService $athletes): Response
+    public function show(Request $request, Race $race, AthleteLookupService $athletes, RaceReadinessService $readiness): Response|RedirectResponse
     {
         Gate::authorize('manage-race', $race);
+        if (!$request->user()->isAdmin()) return redirect()->route('races.station', $race);
         $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence')])->loadCount('entries');
         $officials = $request->user()->isAdmin()
             ? User::whereIn('role', ['admin', 'organizer'])->where('is_active', true)->orderBy('name')->get(['id','name','email','role'])
@@ -113,7 +115,8 @@ class RaceController extends Controller
             'checkpointAssignments' => $assignments,
             'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
             'mailConfigured' => app(\App\Services\AccountInvitationService::class)->configured(),
-            'athleteOptions' => $request->user()->isAdmin() ? $athletes->options($race) : [],
+            'athleteOptions' => $athletes->options($race),
+            'readiness' => $readiness->for($race),
             'participants' => $participants,
             'recentTimings' => $recentTimings,
             'completedCount' => $completedCount,
