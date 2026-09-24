@@ -29,7 +29,7 @@ const submit = () => form.post('/races');
 
       <div>
         <label for="race-name" class="label">{{ $t("Race name") }}</label>
-        <input id="race-name" v-model="form.name" class="field min-h-12" placeholder="Halle Triathlon 2027" required autofocus>
+        <input id="race-name" v-model="form.name" class="field min-h-12" :placeholder="$t('Halle Triathlon 2027')" required autofocus>
         <p class="text-sm text-error">{{ form.errors.name }}</p>
       </div>
 
@@ -38,7 +38,7 @@ const submit = () => form.post('/races');
         <p class="mt-2 text-sm muted">{{ $t("You can create the race with only a name. If the date is left blank, today is used. The standard distances stay prefilled at 1 km swim, 35 km bike and 8 km run.") }}</p>
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="race-date" class="label">{{ $t("Race date") }} <span class="font-normal muted">(optional)</span></label>
+            <label for="race-date" class="label">{{ $t("Race date") }} <span class="font-normal muted">{{ $t("(optional)") }}</span></label>
             <input id="race-date" v-model="form.event_date" type="date" class="field">
             <p class="text-sm text-error">{{ form.errors.event_date }}</p>
           </div>
