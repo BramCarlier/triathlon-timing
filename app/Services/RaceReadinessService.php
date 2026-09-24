@@ -53,10 +53,10 @@ class RaceReadinessService
             ],
             [
                 'key' => 'participants',
-                'label' => 'Participants',
+                'label' => 'Athletes',
                 'ready' => $participantCount > 0,
                 'required' => true,
-                'detail' => $participantCount > 0 ? "{$participantCount} active participant".($participantCount === 1 ? '' : 's').' registered.' : 'Add at least one participant.',
+                'detail' => $participantCount > 0 ? "{$participantCount} active race entr".($participantCount === 1 ? 'y' : 'ies').' ready.' : 'Add at least one athlete or relay team.',
             ],
             [
                 'key' => 'officials',

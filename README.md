@@ -23,9 +23,11 @@ The normal race-day flow uses an unguessable share link. Anyone with that link c
 A new race gets:
 
 1. Race Start
-2. Swim Finish
-3. Bike Finish
-4. Finish
+2. Swim Exit
+3. T1 (Bike Start)
+4. Bike Finish
+5. T2 (Run Start)
+6. Finish
 
 Admins/organizers can add arbitrary extra splits such as `SWIM_500M`, `BIKE_10K`, `RUN_4K`, etc. Checkpoint sequence numbers determine progression.
 
@@ -134,7 +136,7 @@ Every timing record has:
 - a browser-generated UUID for idempotency
 - race, entry and checkpoint IDs
 - discipline athlete attribution where applicable
-- operator ID
+- operator ID for authenticated timing stations; `null` for the shared race-day link
 - exact UTC `recorded_at`
 - integer elapsed milliseconds
 - source (`online`, `offline`, `manual`)
@@ -145,9 +147,9 @@ The service prevents duplicate active timings at the same checkpoint. Voiding a 
 
 ## Offline behavior
 
-While the checkpoint page is open, a failed timing submission is saved to IndexedDB with its UUID and observed timestamp. On reconnection the page retries queued records. The UUID makes retries idempotent.
+The shared race-day link is the simplest online timing flow. For unreliable connections, use the optional authenticated full-screen timing station: failed timing submissions are saved to IndexedDB with their UUID and observed timestamp, then retried after reconnection. The UUID makes retries idempotent.
 
-Before race day, open every station on its intended device while connectivity is good. Do not clear browser site data during the event.
+When using those offline-capable stations, open each station on its intended device while connectivity is good before race day. Do not clear browser site data during the event.
 
 ## Results
 
@@ -193,8 +195,8 @@ For poor-connectivity events, optionally create named Official accounts and use 
 
 ## Navigation and account management
 
-Every organizer race page has the same race navigation: All races, Race settings, Participants, Timing station, Race control and Results. Imports remain within Participants. The global navigation remains available on phones and stations.
+The primary Organizer workflow lives in one Race workspace: course, athletes, race-day link, race clock, timing and results. The separate participant list, full-screen timing station and race-control pages remain available as secondary tools for bulk editing, offline recovery, corrections and station health.
 
-Use Users → Edit user to update identity, role, active status and role-specific access. Organizer permissions are scoped to assigned races; athlete access is scoped to the linked athlete profile. At least one administrator must remain active. Disabling an account also blocks its existing sessions on their next request.
+Use People only when you need optional named Official or Athlete accounts. Official permissions and checkpoint assignments apply to those account-based stations; athlete access is scoped to the linked athlete profile. At least one Organizer (admin) account must remain active. Disabling an account also blocks its existing sessions on their next request.
 
 Deleting a race is reversible from the Deleted races section on the race list. No participant, checkpoint or timing history is purged. Deleted races are hidden from organizers and athletes until an administrator restores them.

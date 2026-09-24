@@ -29,23 +29,23 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">Create the race</h2></div>
-          <p class="muted">Enter the race name and date. The app creates the normal triathlon checkpoints so you can adjust them instead of building everything from scratch.</p>
+          <p class="muted">Enter a race name and continue. The date can be left blank to use today, and the standard 1 km swim / 35 km bike / 8 km run course is already filled in. The normal triathlon checkpoints are created automatically.</p>
           <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>Open races</Link>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Course & Officials</h2></div>
-          <p class="muted">Add or edit checkpoints, then assign an Official to each location. The form shows available Officials immediately; typing filters the list, and new details create an account only when no existing Official is selected.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Check the course</h2></div>
+          <p class="muted">The default checkpoints are ready to use, including Swim Exit, T1, Bike Finish, T2 and Finish. Only edit or add checkpoints when this race needs something different. Official accounts and checkpoint assignments are optional.</p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Add participants</h2></div>
-          <p class="muted">Add solo participants or relay teams manually, or import a file. Existing athlete profiles appear automatically so the same person can be reused across races. Registration is locked as soon as the race starts.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Add athletes</h2></div>
+          <p class="muted">For a normal solo athlete, a name is enough. Existing athletes appear automatically so you can reuse them across races. Bib, email, club and category are optional; relay and file-import tools are available when needed. Registration locks when the race starts.</p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">4</span><h2 class="text-lg font-bold">Start and record</h2></div>
-          <p class="muted">Start the shared race clock. You can switch between all checkpoints when recording times. Each Official only sees the checkpoint assigned to their account and cannot switch it.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">4</span><h2 class="text-lg font-bold">Share the link, start and record</h2></div>
+          <p class="muted">Open or copy the race-day link and share it with the people helping at transitions or the finish. No account is needed: they choose the checkpoint, then tap the correct athlete. Start the shared race clock when the race begins.</p>
         </article>
 
         <article class="panel-pad lg:col-span-2">
