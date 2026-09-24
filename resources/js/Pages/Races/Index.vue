@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { usePermissions } from '../../Composables/usePermissions';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import RaceClock from '../../Components/RaceClock.vue';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import { formatDate } from '../../presentation';
-import type { Race } from '../../types';
+import type { PageProps, Race } from '../../types';
 
 const can=usePermissions();
+const page=usePage<PageProps>();
+const isAdmin=page.props.auth.user?.role==='admin';
 defineProps<{races:Race[];deletedRaces:Race[];serverNow:string}>();
 useRaceRefresh(()=>['races','serverNow']);
 
@@ -23,8 +25,8 @@ const statusLabel=(race:Race)=>{
   <AppLayout title="Races">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="font-semibold">Choose a race and do everything from its Race workspace.</p>
-        <p class="mt-1 text-sm muted">Setup, checkpoints, participants, the race clock and normal timing controls are kept together.</p>
+        <p class="font-semibold">{{ isAdmin?'Choose a race and continue in its guided workspace.':'Choose a race to open your assigned timing station.' }}</p>
+        <p class="mt-1 text-sm muted">{{ isAdmin?'Course setup, Officials, participants, the race clock and normal timing stay together.':'Your checkpoint assignment follows your account automatically.' }}</p>
       </div>
       <Link v-if="can('races.create')" href="/races/create" class="btn-primary">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>Create race
@@ -44,8 +46,8 @@ const statusLabel=(race:Race)=>{
           <div class="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">{{ race.finished_at?'Final race time':'Shared race clock' }}</div>
           <RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow" compact/>
         </div>
-        <Link :href="`/races/${race.id}`" class="btn-primary mt-auto">
-          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>{{ race.finished_at?'Open finished race':'Open race' }}
+        <Link :href="isAdmin?`/races/${race.id}`:`/races/${race.id}/station`" class="btn-primary mt-auto">
+          <i :class="isAdmin?'fa-solid fa-arrow-right':'fa-solid fa-stopwatch'" aria-hidden="true"></i>{{ isAdmin?(race.finished_at?'Open finished race':'Open race'):'Open timing station' }}
         </Link>
       </article>
     </div>
