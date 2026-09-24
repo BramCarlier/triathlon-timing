@@ -88,7 +88,7 @@ class RaceOfficialController extends Controller
         });
 
         if ($emailInvite && !$invitations->send($official)) {
-            return back()->with('error', 'Official created and assigned, but the invitation email could not be sent. You can resend it from Users.');
+            return back()->with('error', 'Official created and assigned, but the invitation email could not be sent. You can resend it from People.');
         }
 
         return back()->with('success', $created
