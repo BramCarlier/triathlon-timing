@@ -47,8 +47,8 @@ function changeLines(change:Change):string[] {
 
       <div class="grid gap-4 sm:grid-cols-2">
         <template v-if="!race.started_at">
-          <label class="label">{{ $t("Bib number") }} <span class="font-normal muted">(optional)</span><input v-model="form.bib_number" class="field" maxlength="32"></label>
-          <label class="label">{{ $t("Category") }} <span class="font-normal muted">(optional)</span><input v-model="form.category" class="field"></label>
+          <label class="label">{{ $t("Bib number") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="form.bib_number" class="field" maxlength="32"></label>
+          <label class="label">{{ $t("Category") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="form.category" class="field"></label>
           <label v-if="entry.type==='relay'" class="label">{{ $t("Team name") }}<input v-model="form.team_name" class="field" required></label>
         </template>
         <label class="label">Result status<select v-model="form.status" class="field"><option value="registered">Competing / normal result</option><option value="dns">DNS — did not start</option><option value="dnf">DNF — did not finish</option><option value="dsq">DSQ — disqualified</option></select></label>
