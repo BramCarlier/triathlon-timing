@@ -35,7 +35,7 @@ async function layout(page: Page, label: string) {
         .toBeLessThanOrEqual(dimensions.width + 1);
 
     const offenders = await page
-        .locator('input:not([type=checkbox]):not([type=hidden]),select,textarea')
+        .locator('input:not([type=checkbox]):not([type=hidden]):visible,select:visible,textarea:visible')
         .evaluateAll((elements) => elements
             .filter((el) => el.getClientRects().length && el.getBoundingClientRect().width > 0)
             .filter((el) => {
