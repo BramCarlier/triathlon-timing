@@ -613,22 +613,28 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section id="race-day" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='race-day'" @click="toggleStep('race-day')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.started_at?'Live':'Step 3' }}</p><h2 class="text-xl font-bold">{{ race.started_at?'Timing':'Start race & timing' }}</h2><p class="mt-1 text-sm muted">{{ isAdmin ? 'Organizer can switch checkpoints.' : (selectedCheckpoint ? `Your checkpoint: ${selectedCheckpoint.name}` : 'No checkpoint assigned') }}</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.started_at?'Live':'Step 3' }}</p><h2 class="text-xl font-bold">{{ race.started_at?'Timing':'Start & timing' }}</h2><p class="mt-1 text-sm muted">As Organizer, you can switch between checkpoints while timing.</p></div>
         <i :class="openStep==='race-day'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
 
       <div v-show="openStep==='race-day'" class="border-t border-outline p-4">
+        <section v-if="!race.started_at" class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Race readiness">
+          <div v-for="check in readiness.checks" :key="check.key" class="rounded-xl border border-outline p-3">
+            <div class="flex items-center gap-2"><span :class="check.ready?'text-success':check.required?'text-error':'text-warning'">{{ check.ready?'✓':'!' }}</span><strong class="text-sm">{{ check.label }}</strong><span v-if="!check.required" class="ml-auto text-[10px] uppercase tracking-wider muted">Recommended</span></div>
+            <p class="mt-1 text-xs muted">{{ check.detail }}</p>
+          </div>
+        </section>
         <section class="mb-5 rounded-2xl bg-canvas p-4">
           <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div><div class="mb-1 text-xs font-bold uppercase tracking-[.18em] text-accent">Race clock</div><RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/><div class="mt-2"><LiveUpdatesStatus :race-id="race.id"/></div></div>
             <div v-if="isAdmin" class="flex flex-wrap gap-2">
-              <button v-if="!race.started_at" class="btn-primary min-w-36" :disabled="!participantsReady || !setupReady" @click="pendingClockAction='start'"><i class="fa-solid fa-play" aria-hidden="true"></i>Start race</button>
+              <button v-if="!race.started_at" class="btn-primary min-w-36" :disabled="!readiness.ready_to_start" @click="pendingClockAction='start'"><i class="fa-solid fa-play" aria-hidden="true"></i>Start race</button>
               <button v-else-if="!race.finished_at" class="btn-danger" @click="pendingClockAction='finish'"><i class="fa-solid fa-stop" aria-hidden="true"></i>End race now</button>
               <span v-else class="badge">Race finished</span>
             </div>
           </div>
-          <p v-if="isAdmin && !race.started_at && (!participantsReady || !setupReady)" class="mt-4 text-sm text-warning">Finish the setup and add at least one athlete before starting.</p>
-          <p v-if="race.started_at && !race.finished_at" class="mt-4 text-sm muted">The race will end automatically when every active athlete has a finish time. The Organizer can end it manually if needed.</p>
+          <p v-if="!race.started_at && !readiness.ready_to_start" class="mt-4 text-sm text-warning">Finish the required items above before starting the race.</p>
+          <p v-if="race.started_at && !race.finished_at" class="mt-4 text-sm muted">The race will end automatically when every active participant has a finish time. The Organizer can end it manually if needed.</p>
         </section>
 
         <div v-if="can('timings.record')" class="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
@@ -704,9 +710,9 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       <summary class="cursor-pointer font-bold"><i class="fa-solid fa-toolbox mr-2" aria-hidden="true"></i>More tools</summary>
       <p class="mt-2 text-sm muted">Only use these when the normal race flow is not enough.</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
-        <Link v-if="can('timings.record')" :href="`/races/${race.id}/station`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-stopwatch mr-2" aria-hidden="true"></i>Focused timing</strong><p class="mt-2 text-sm muted">Full-screen timing with offline recovery.</p></Link>
-        <Link v-if="isAdmin && !race.started_at" :href="`/races/${race.id}/participants`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-users mr-2" aria-hidden="true"></i>Full athlete list</strong><p class="mt-2 text-sm muted">Search or edit registration details before the start.</p></Link>
-        <Link v-if="isAdmin && race.started_at" :href="`/races/${race.id}/control`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-screwdriver-wrench mr-2" aria-hidden="true"></i>Timing corrections</strong><p class="mt-2 text-sm muted">Correct a missed or incorrect recorded time.</p></Link>
+        <Link v-if="can('timings.record')" :href="`/races/${race.id}/station`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-stopwatch mr-2" aria-hidden="true"></i>Full-screen timing station</strong><p class="mt-2 text-sm muted">The same race timing workflow with extra offline and device recovery controls.</p></Link>
+        <Link v-if="isAdmin && !race.started_at" :href="`/races/${race.id}/participants`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-users mr-2" aria-hidden="true"></i>Full participant list</strong><p class="mt-2 text-sm muted">Search or edit registration details before the start.</p></Link>
+        <Link v-if="isAdmin && race.started_at" :href="`/races/${race.id}/control`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-screwdriver-wrench mr-2" aria-hidden="true"></i>Corrections & station health</strong><p class="mt-2 text-sm muted">Correct recorded times or check which timing stations are online.</p></Link>
       </div>
       <div v-if="isAdmin && !race.started_at" class="mt-5 border-t border-red-500/20 pt-5"><button class="btn-danger" @click="deleting=true"><i class="fa-solid fa-trash" aria-hidden="true"></i>Delete race</button></div>
     </details>
