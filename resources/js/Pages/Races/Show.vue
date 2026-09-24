@@ -435,7 +435,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
         </button>
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='participants'">
           <span class="text-xs font-bold uppercase tracking-wider" :class="participantsReady?'text-success':'text-warning'">{{ participantsReady?'Ready':'2' }}</span>
-          <strong class="mt-1 block">Participants</strong>
+          <strong class="mt-1 block">Athletes</strong>
         </button>
         <button type="button" class="rounded-xl border border-outline p-3 text-left hover:bg-raised" @click="openStep='race-day'">
           <span class="text-xs font-bold uppercase tracking-wider" :class="readiness.ready_to_start?'text-success':'text-muted'">{{ readiness.ready_to_start?'Ready':'3' }}</span>
@@ -605,7 +605,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section v-if="isAdmin && !race.started_at" id="participants" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='participants'" @click="toggleStep('participants')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Participants</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">Step 2</p><h2 class="text-xl font-bold">Athletes</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
         <i :class="openStep==='participants'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
       <div v-show="openStep==='participants'" class="border-t border-outline p-4">
