@@ -38,11 +38,12 @@ const logout = () => router.post('/logout');
               <Link href="/account/password" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-key" aria-hidden="true"></i>Change password</Link>
               <Link v-if="user.role === 'admin'" href="/admin/roles" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>Official access</Link>
               <Link v-if="user.role === 'admin'" href="/admin/health" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary hover:bg-raised"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>System health</Link>
+              <div class="flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm text-secondary"><span><i class="fa-solid fa-circle-half-stroke mr-2" aria-hidden="true"></i>Appearance</span><ThemeToggle /></div>
               <button class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-raised" @click="logout"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>Log out</button>
             </div>
           </details>
         </nav>
-        <div :class="publicView || !user ? 'ml-auto' : ''"><ThemeToggle /></div>
+        <div v-if="publicView || !user" class="ml-auto"><ThemeToggle /></div>
       </div>
     </header>
     <main id="main-content" tabindex="-1" class="app-container app-main mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
