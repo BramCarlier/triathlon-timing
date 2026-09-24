@@ -40,8 +40,8 @@ const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
         <label class="label">{{ $t("Account type") }}<select v-model="form.role" class="field"><option value="admin">{{ $t("Organizer (admin)") }}</option><option value="organizer">{{ $t("Official") }}</option><option value="athlete">{{ $t("Athlete") }}</option></select></label>
         <label class="flex items-center gap-3"><input v-model="form.is_active" type="checkbox"><span><strong class="block text-sm">{{ $t("Account active") }}</strong><span class="text-xs muted">{{ $t("Disabled accounts cannot sign in.") }}</span></span></label>
         <details class="rounded-xl border border-outline p-3">
-          <summary class="font-semibold">Password options</summary>
-          <label class="label mt-3">{{ $t("New temporary password") }} <span class="font-normal muted">(optional)</span><input v-model="form.password" type="password" class="field" autocomplete="new-password" minlength="12"></label>
+          <summary class="font-semibold">{{ $t("Password options") }}</summary>
+          <label class="label mt-3">{{ $t("New temporary password") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="form.password" type="password" class="field" autocomplete="new-password" minlength="12"></label>
           <p class="mt-2 text-xs muted">{{ $t("Leave blank to keep the current password. A new temporary password must be changed at the next sign-in.") }}</p>
         </details>
       </section>
@@ -59,9 +59,9 @@ const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
             <p class="mt-1 text-xs muted">{{ $t("Use only when this Official needs race access without a checkpoint assignment.") }}</p>
             <div class="mt-3 max-h-56 space-y-2 overflow-auto rounded-xl bg-canvas p-3">
               <label v-for="race in races" :key="race.id" class="flex gap-3 text-sm"><input v-model="form.race_ids" type="checkbox" :value="race.id"><span>{{ race.name }} <span class="muted">· {{ formatDate(race.event_date) }}</span></span></label>
-              <p v-if="!races.length" class="muted">No races available.</p>
+              <p v-if="!races.length" class="muted">{{ $t("No races available.") }}</p>
             </div>
-            <Link href="/admin/roles" class="btn-secondary mt-3"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>Manage access presets</Link>
+            <Link href="/admin/roles" class="btn-secondary mt-3"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>{{ $t("Manage access presets") }}</Link>
           </details>
         </template>
         <div v-else class="rounded-xl bg-canvas p-4 text-sm muted">Organizer (admin) accounts have full access to all races and administration.</div>
