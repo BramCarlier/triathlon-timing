@@ -10,8 +10,8 @@
     "quality": "yarn test:frontend && yarn typecheck && yarn build",
     "test:frontend": "node --test tests/Frontend/*.test.ts",
     "test:browser": "playwright test --project=chromium-smoke",
-    "test:responsive": "playwright test --project=chromium-responsive",
-    "test:responsive:webkit": "playwright test --project=webkit-responsive",
+    "test:responsive": "playwright test --project=chromium-responsive --workers=3",
+    "test:responsive:webkit": "playwright test --project=webkit-responsive --workers=3",
     "test:browser:all": "playwright test"
   },
   "dependencies": {

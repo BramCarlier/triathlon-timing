@@ -1,13 +1,4 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
-
-test.beforeAll(() => {
-    execFileSync('php', ['tests/Browser/reset-cache.php']);
-});
-
-test.afterAll(() => {
-    execFileSync('php', ['tests/Browser/reset-cache.php']);
-});
 
 const sizes = [
     { name: 'small-phone', width: 320, height: 568 },
@@ -117,6 +108,13 @@ async function accountMenu(page: Page) {
     }
 }
 
+async function logout(page: Page) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await accountMenu(page);
+    await page.getByRole('button', { name: 'Log out', exact: true }).click();
+    await expect(page).toHaveURL(/\/login$/);
+}
+
 async function screenshot(
     page: Page,
     info: TestInfo,
@@ -134,165 +132,176 @@ async function screenshot(
     });
 }
 
-test('core layouts adapt across phone, tablet and desktop portrait and landscape', async ({ page }, info) => {
-    test.setTimeout(120000);
-
+function collectPageErrors(page: Page) {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    return errors;
+}
 
-    await page.goto('/login');
-    await expect(page.locator('form')).toBeVisible();
-    await atEverySize(page, '/login', async (size) => {
-        await page.emulateMedia({
-            colorScheme: size.name.includes('portrait') ? 'light' : 'dark',
+test.describe('responsive layouts', () => {
+    test.describe.configure({ mode: 'parallel' });
+
+    test('auth, navigation and core admin layouts', async ({ page }) => {
+        test.setTimeout(90000);
+        const errors = collectPageErrors(page);
+
+        await page.goto('/login');
+        await expect(page.locator('form')).toBeVisible();
+        await atEverySize(page, '/login', async (size) => {
+            await page.emulateMedia({
+                colorScheme: size.name.includes('portrait') ? 'light' : 'dark',
+            });
+            const form = await page.locator('form').boundingBox();
+            const toggle = await page.getByRole('button', { name: /Switch to .* mode/ }).boundingBox();
+            expect(form, size.name + ': auth form should be visible').not.toBeNull();
+            expect(toggle, size.name + ': theme switch should be visible').not.toBeNull();
+            expect(form!.y, size.name + ': theme switch must not cover sign-in')
+                .toBeGreaterThanOrEqual(toggle!.y + toggle!.height);
         });
-        const form = await page.locator('form').boundingBox();
-        const toggle = await page.getByRole('button', { name: /Switch to .* mode/ }).boundingBox();
-        expect(form, size.name + ': auth form should be visible').not.toBeNull();
-        expect(toggle, size.name + ': theme switch should be visible').not.toBeNull();
-        expect(form!.y, size.name + ': theme switch must not cover sign-in')
-            .toBeGreaterThanOrEqual(toggle!.y + toggle!.height);
-    });
 
-    await page.goto('/reset-password/layout-preview?email=preview@example.test&welcome=1');
-    await expect(page.locator('form')).toBeVisible();
-    await atSizes(page, 'password setup', representativeSizes);
+        await page.goto('/reset-password/layout-preview?email=preview@example.test&welcome=1');
+        await expect(page.locator('form')).toBeVisible();
+        await atSizes(page, 'password setup', representativeSizes);
 
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await login(page, 'admin@example.test');
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await login(page, 'admin@example.test');
 
-    for (const path of [
-        '/races/9001',
-        '/races/9001/participants',
-        '/users',
-    ]) {
-        await page.goto(path);
+        for (const path of ['/races/9001', '/races/9001/participants', '/users']) {
+            await page.goto(path);
+            await expect(page.locator('h1')).toBeVisible();
+            await atEverySize(page, path);
+        }
+
+        await page.goto('/admin/roles');
         await expect(page.locator('h1')).toBeVisible();
-        await atEverySize(page, path);
-    }
+        await atSizes(page, '/admin/roles', representativeSizes);
 
-    await page.goto('/admin/roles');
-    await expect(page.locator('h1')).toBeVisible();
-    await atSizes(page, '/admin/roles', representativeSizes);
+        await page.goto('/account/password');
+        await expect(page.locator('h1')).toBeVisible();
+        await atSizes(page, '/account/password', representativeSizes);
 
-    await page.goto('/account/password');
-    await expect(page.locator('h1')).toBeVisible();
-    await atSizes(page, '/account/password', representativeSizes);
+        await page.goto('/races');
+        for (const size of sizes) {
+            await page.setViewportSize({ width: size.width, height: size.height });
+            const button = page.getByRole('button', { name: 'Menu', exact: true });
 
-    await page.goto('/races');
-    for (const size of sizes) {
-        await page.setViewportSize({ width: size.width, height: size.height });
-        const button = page.getByRole('button', { name: 'Menu', exact: true });
+            if (await button.isVisible() && await button.getAttribute('aria-expanded') === 'false') {
+                await button.click();
+            }
 
-        if (await button.isVisible() && await button.getAttribute('aria-expanded') === 'false') {
-            await button.click();
+            await expect(page.getByRole('link', { name: 'People', exact: true })).toBeVisible();
+            await layout(page, size.name + ' open menu');
+
+            if (await button.isVisible() && await button.getAttribute('aria-expanded') === 'true') {
+                await button.click();
+            }
         }
 
-        await expect(page.getByRole('link', { name: 'People', exact: true })).toBeVisible();
-        await layout(page, size.name + ' open menu');
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto('/races/9002');
+        await page.locator('summary').filter({ hasText: 'More tools' }).click();
+        await page.getByRole('button', { name: 'Delete race', exact: true }).click();
 
-        if (await button.isVisible() && await button.getAttribute('aria-expanded') === 'true') {
-            await button.click();
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await atSizes(page, 'delete race dialog', representativeSizes, async (size) => {
+            const box = await dialog.boundingBox();
+            expect(box, size.name + ': dialog should be visible').not.toBeNull();
+            expect(box!.height).toBeLessThanOrEqual(size.height - 16);
+            expect(box!.width).toBeLessThanOrEqual(size.width - 16);
+        });
+
+        expect(errors).toEqual([]);
+    });
+
+    test('timing, results and complex form states', async ({ page }, info) => {
+        test.setTimeout(90000);
+        const errors = collectPageErrors(page);
+
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await login(page, 'admin@example.test');
+
+        await page.goto('/races/9001/station');
+        if (await page.getByRole('button', { name: 'Open checkpoint' }).isVisible()) {
+            await page.getByRole('button', { name: 'Open checkpoint' }).click();
         }
-    }
 
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/races/9002');
-    await page.locator('summary').filter({ hasText: 'More tools' }).click();
-    await page.getByRole('button', { name: 'Delete race', exact: true }).click();
+        await page.getByLabel('Find participant').fill('TheLongestRelay');
+        await expect(page.getByRole('button', { name: /TheLongestRelay.*TAP/ })).toBeVisible();
+        await atEverySize(page, 'selected timing station', async (size) => {
+            await screenshot(page, info, size, 'station');
+        });
 
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await atSizes(page, 'delete race dialog', representativeSizes, async (size) => {
-        const box = await dialog.boundingBox();
-        expect(box, size.name + ': dialog should be visible').not.toBeNull();
-        expect(box!.height).toBeLessThanOrEqual(size.height - 16);
-        expect(box!.width).toBeLessThanOrEqual(size.width - 16);
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto('/races/9001/results');
+        await page.getByText('Display options', { exact: true }).click();
+        await page.getByLabel('Timing precision').selectOption('3');
+        await page.getByRole('button', { name: 'View splits', exact: true }).first().click();
+        await expect(
+            page.getByText('split 00:16:40.234', { exact: true }).filter({ visible: true }),
+        ).toBeVisible();
+
+        await atEverySize(page, 'expanded results', async (size) => {
+            await screenshot(page, info, size, 'results');
+        });
+
+        await page.getByRole('button', { name: 'Large-screen display' }).click();
+        await atSizes(page, 'large-screen results', representativeSizes);
+        await page.getByRole('button', { name: 'Exit display mode' }).click();
+
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto('/users/9001/edit');
+        await page.getByLabel('Role', { exact: true }).selectOption('athlete');
+        await expect(page.getByLabel('Athlete', { exact: true })).toBeVisible();
+        await atSizes(page, 'athlete picker', representativeSizes);
+
+        await page.goto('/races/9002/participants/import');
+        await page.getByLabel('Participant file').setInputFiles({
+            name: 'long-participant-import-preview.csv',
+            mimeType: 'text/csv',
+            buffer: Buffer.from(
+                'type,first_name,last_name\nsolo,' + 'LongName'.repeat(10) + ',Runner\n',
+            ),
+        });
+        await page.getByRole('button', { name: 'Preview file', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'Confirm import' })).toBeVisible();
+        await atSizes(page, 'import preview', representativeSizes);
+
+        expect(errors).toEqual([]);
     });
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
 
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/races/9001/station');
-    if (await page.getByRole('button', { name: 'Open checkpoint' }).isVisible()) {
-        await page.getByRole('button', { name: 'Open checkpoint' }).click();
-    }
+    test('official, athlete and public layouts', async ({ page }) => {
+        test.setTimeout(90000);
+        const errors = collectPageErrors(page);
 
-    await page.getByLabel('Find participant').fill('TheLongestRelay');
-    await expect(page.getByRole('button', { name: /TheLongestRelay.*TAP/ })).toBeVisible();
-    await atEverySize(page, 'selected timing station', async (size) => {
-        await screenshot(page, info, size, 'station');
-    });
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await login(page, 'responsive-official@example.test');
 
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/races/9001/results');
-    await page.getByText('Display options', { exact: true }).click();
-    await page.getByLabel('Timing precision').selectOption('3');
-    await page.getByRole('button', { name: 'View splits', exact: true }).first().click();
-    await expect(
-        page.getByText('split 00:16:40.234', { exact: true }).filter({ visible: true }),
-    ).toBeVisible();
-
-    await atEverySize(page, 'expanded results', async (size) => {
-        await screenshot(page, info, size, 'results');
-    });
-
-    await page.getByRole('button', { name: 'Large-screen display' }).click();
-    await atSizes(page, 'large-screen results', representativeSizes);
-    await page.getByRole('button', { name: 'Exit display mode' }).click();
-
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/users/9001/edit');
-    await page.getByLabel('Role', { exact: true }).selectOption('athlete');
-    await expect(page.getByLabel('Athlete', { exact: true })).toBeVisible();
-    await atSizes(page, 'athlete picker', representativeSizes);
-
-    await page.goto('/races/9002/participants/import');
-    await page.getByLabel('Participant file').setInputFiles({
-        name: 'long-participant-import-preview.csv',
-        mimeType: 'text/csv',
-        buffer: Buffer.from(
-            'type,first_name,last_name\nsolo,' + 'LongName'.repeat(10) + ',Runner\n',
-        ),
-    });
-    await page.getByRole('button', { name: 'Preview file', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Confirm import' })).toBeVisible();
-    await atSizes(page, 'import preview', representativeSizes);
-
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/races');
-    await accountMenu(page);
-    await page.getByRole('button', { name: 'Log out', exact: true }).click();
-
-    await login(page, 'responsive-official@example.test');
-    for (const path of ['/races/9001/station', '/races/9001/results']) {
-        await page.goto(path);
-        await atSizes(page, 'official ' + path, representativeSizes);
-        await expect(page.getByRole('link', { name: 'Corrections & station health', exact: true }))
-            .toHaveCount(0);
-        await expect(page.getByRole('link', { name: 'Export CSV', exact: true }))
-            .toHaveCount(0);
-    }
-
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await accountMenu(page);
-    await page.getByRole('button', { name: 'Log out', exact: true }).click();
-
-    await login(page, 'responsive-athlete@example.test');
-    for (const path of ['/athlete', '/races/9001/results']) {
-        await page.goto(path);
-        if (path === '/athlete') {
-            await expect(page.locator('h1')).toContainText('Welcome');
+        for (const path of ['/races/9001/station', '/races/9001/results']) {
+            await page.goto(path);
+            await atSizes(page, 'official ' + path, representativeSizes);
+            await expect(page.getByRole('link', { name: 'Corrections & station health', exact: true }))
+                .toHaveCount(0);
+            await expect(page.getByRole('link', { name: 'Export CSV', exact: true }))
+                .toHaveCount(0);
         }
-        await atSizes(page, 'athlete ' + path, representativeSizes);
-    }
 
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await accountMenu(page);
-    await page.getByRole('button', { name: 'Log out', exact: true }).click();
+        await logout(page);
+        await login(page, 'responsive-athlete@example.test');
 
-    await page.goto('/live/responsive-public');
-    await expect(page.locator('h1')).toContainText('Results');
-    await atEverySize(page, 'public results');
+        for (const path of ['/athlete', '/races/9001/results']) {
+            await page.goto(path);
+            if (path === '/athlete') {
+                await expect(page.locator('h1')).toContainText('Welcome');
+            }
+            await atSizes(page, 'athlete ' + path, representativeSizes);
+        }
 
-    expect(errors).toEqual([]);
+        await logout(page);
+        await page.goto('/live/responsive-public');
+        await expect(page.locator('h1')).toContainText('Results');
+        await atEverySize(page, 'public results');
+
+        expect(errors).toEqual([]);
+    });
 });

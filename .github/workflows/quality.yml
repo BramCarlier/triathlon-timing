@@ -46,10 +46,10 @@ jobs:
       APP_URL: http://127.0.0.1:8000
       DB_CONNECTION: sqlite
       DB_DATABASE: /tmp/triathlon-browser.sqlite
-      SESSION_DRIVER: database
+      SESSION_DRIVER: file
       SESSION_SECURE_COOKIE: 'false'
-      CACHE_STORE: database
-      QUEUE_CONNECTION: database
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
     steps:
       - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
@@ -84,10 +84,10 @@ jobs:
       APP_URL: http://127.0.0.1:8000
       DB_CONNECTION: sqlite
       DB_DATABASE: /tmp/triathlon-browser.sqlite
-      SESSION_DRIVER: database
+      SESSION_DRIVER: file
       SESSION_SECURE_COOKIE: 'false'
-      CACHE_STORE: database
-      QUEUE_CONNECTION: database
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
     steps:
       - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
@@ -130,10 +130,10 @@ jobs:
       APP_URL: http://127.0.0.1:8000
       DB_CONNECTION: sqlite
       DB_DATABASE: /tmp/triathlon-browser.sqlite
-      SESSION_DRIVER: database
+      SESSION_DRIVER: file
       SESSION_SECURE_COOKIE: 'false'
-      CACHE_STORE: database
-      QUEUE_CONNECTION: database
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
     steps:
       - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
