@@ -37,33 +37,37 @@ class RaceReadinessService
         $checks = [
             [
                 'key' => 'course',
-                'label' => 'Course',
+                'label' => __('Course'),
                 'ready' => $courseReady,
                 'required' => true,
                 'detail' => $courseReady
-                    ? ($hasExplicitCourse ? 'Distances are configured.' : 'Course uses the checkpoint configuration.')
-                    : 'Set the swim, bike and run distances.',
+                    ? ($hasExplicitCourse ? __('Distances are configured.') : __('Course uses the checkpoint configuration.'))
+                    : __('Set the swim, bike and run distances.'),
             ],
             [
                 'key' => 'finish',
-                'label' => 'Finish checkpoint',
+                'label' => __('Finish checkpoint'),
                 'ready' => $finishReady,
                 'required' => true,
-                'detail' => $finishReady ? 'An active finish is configured.' : 'Add or activate a finish checkpoint.',
+                'detail' => $finishReady ? __('An active finish is configured.') : __('Add or activate a finish checkpoint.'),
             ],
             [
                 'key' => 'participants',
-                'label' => 'Athletes',
+                'label' => __('Athletes'),
                 'ready' => $participantCount > 0,
                 'required' => true,
-                'detail' => $participantCount > 0 ? "{$participantCount} active race entr".($participantCount === 1 ? 'y' : 'ies').' ready.' : 'Add at least one athlete or relay team.',
+                'detail' => $participantCount > 0
+                    ? __('Active race entries ready: :count', ['count' => $participantCount])
+                    : __('Add at least one athlete or relay team.'),
             ],
             [
                 'key' => 'officials',
-                'label' => 'Official accounts',
+                'label' => __('Official accounts'),
                 'ready' => $unassignedCount === 0,
                 'required' => false,
-                'detail' => $unassignedCount === 0 ? 'Optional named Official assignments are configured.' : 'Optional. Anyone with the race-day link can choose a checkpoint and record times without an account.',
+                'detail' => $unassignedCount === 0
+                    ? __('Optional named Official assignments are configured.')
+                    : __('Optional. Anyone with the race-day link can choose a checkpoint and record times without an account.'),
             ],
         ];
 
