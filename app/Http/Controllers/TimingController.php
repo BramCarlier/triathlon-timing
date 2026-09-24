@@ -24,13 +24,13 @@ class TimingController extends Controller
     public function selectCheckpoint(Request $request, Race $race): RedirectResponse
     {
         Gate::authorize('manage-race', $race);
-        abort_unless($request->user()->isAdmin(), 403, 'Only the Organizer can switch checkpoints.');
+        abort_unless($request->user()->isAdmin(), 403, __('Only the Organizer can switch checkpoints.'));
         $data = $request->validate(['checkpoint_id' => ['required', Rule::exists('checkpoints', 'id')->where('race_id', $race->id)]]);
         $checkpoint = Checkpoint::findOrFail($data['checkpoint_id']);
-        abort_if(!$checkpoint->is_active, 422, 'This checkpoint is inactive.');
-        abort_if($checkpoint->kind === CheckpointKind::Start, 422, 'The race start is controlled from Race Control.');
+        abort_if(!$checkpoint->is_active, 422, __('This checkpoint is inactive.'));
+        abort_if($checkpoint->kind === CheckpointKind::Start, 422, __('The race start is controlled from Race Control.'));
         $request->session()->put("checkpoint.{$race->id}", $checkpoint->id);
-        return redirect()->route('races.station', $race)->with('success', "Checkpoint selected: {$checkpoint->name}");
+        return redirect()->route('races.station', $race)->with('success', __('Checkpoint selected: :checkpoint', ['checkpoint'=>__($checkpoint->name)]));
     }
 
     public function station(Request $request, Race $race): Response
@@ -77,7 +77,7 @@ class TimingController extends Controller
             $assignedCheckpointId = $race->checkpointAssignments()
                 ->where('user_id', $request->user()->id)
                 ->value('checkpoint_id');
-            abort_unless((int) $assignedCheckpointId === (int) $data['checkpoint_id'], 403, 'You can only record timings at your assigned checkpoint.');
+            abort_unless((int) $assignedCheckpointId === (int) $data['checkpoint_id'], 403, __('You can only record timings at your assigned checkpoint.'));
         }
         try {
             $timing = $service->record($race, Entry::findOrFail($data['entry_id']), Checkpoint::findOrFail($data['checkpoint_id']), $request->user(), $data);
@@ -105,7 +105,7 @@ class TimingController extends Controller
             return response()->json([
                 'timing' => $timing,
                 'auto_finished' => $autoFinished,
-                'message' => "{$label} recorded at {$timing->checkpoint->name}.".($autoFinished ? ' All active participants are finished, so the race was finished automatically.' : ''),
+                'message' => __(':label recorded at :checkpoint.', ['label'=>$label, 'checkpoint'=>__($timing->checkpoint->name)]).($autoFinished ? ' '.__('All active participants are finished, so the race was finished automatically.') : ''),
             ]);
         } catch (TimingWarningException $e) {
             return response()->json(['warning' => true, 'message' => $e->getMessage(), ...$e->context], 409);
@@ -124,7 +124,7 @@ class TimingController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $service->correct($race, Entry::findOrFail($data['entry_id']), Checkpoint::findOrFail($data['checkpoint_id']), $request->user(), (int) $data['elapsed_ms'], $data['notes'] ?? null);
-        return back()->with('success', 'Checkpoint timing corrected. The previous timing, if any, remains in the audit trail as voided.');
+        return back()->with('success', __('Checkpoint timing corrected. The previous timing, if any, remains in the audit trail as voided.'));
     }
 
     public function void(Request $request, Race $race, TimingRecord $timing, TimingService $service): JsonResponse|RedirectResponse
@@ -133,6 +133,6 @@ class TimingController extends Controller
         if (!$request->user()->isAdmin()) abort_unless($timing->operator_id === $request->user()->id, 403);
         $data = $request->validate(['reason' => ['nullable','string','max:1000']]);
         $service->void($timing, $request->user(), $data['reason'] ?? null);
-        return $request->expectsJson() ? response()->json(['ok' => true]) : back()->with('success', 'Timing voided. You can record the participant again.');
+        return $request->expectsJson() ? response()->json(['ok' => true]) : back()->with('success', __('Timing voided. You can record the participant again.'));
     }
 }
