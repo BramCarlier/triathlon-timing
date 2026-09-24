@@ -19,7 +19,7 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
         <div>
           <h2 class="text-xl font-bold">The simple race flow</h2>
           <p v-if="role==='admin'" class="mt-2 muted">Everything important happens from the Race workspace. Complete the setup from top to bottom, then the page switches into race-day mode.</p>
-          <p v-else-if="role==='organizer'" class="mt-2 muted">Your Organizer assigns you to one checkpoint. On race day you only need to record athletes at that checkpoint.</p>
+          <p v-else-if="role==='organizer'" class="mt-2 muted">Your Organizer assigns you to one checkpoint. On race day you only need to record participants at that checkpoint.</p>
           <p v-else class="mt-2 muted">Your account is for viewing your race and results. You do not operate checkpoints or race controls.</p>
         </div>
       </div>
@@ -83,8 +83,8 @@ const roleLabel = computed(() => props.role === 'admin' ? 'Organizer (admin)' : 
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Tap athletes as they pass</h2></div>
-          <p class="muted">Search by bib or name and tap the athlete once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Tap participants as they pass</h2></div>
+          <p class="muted">Search by bib or name and tap the participant once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.</p>
         </article>
 
         <article class="panel-pad">
