@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '../../i18n';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import type { Race } from '../../types';
@@ -12,8 +13,8 @@ const form=useForm({bib_number:props.entry.bib_number??'',team_name:props.entry.
 const save=()=>form.put(`/races/${props.race.id}/participants/${props.entry.id}`,{preserveScroll:true,onSuccess:()=>form.reset('reason')});
 
 const value=(input:unknown)=>input===null||input===undefined||input===''?'—':String(input);
-const entryLabels:Record<string,string>={bib_number:'Bib number',team_name:'Team name',category:'Category',status:'Result status'};
-const athleteLabels:Record<string,string>={first_name:'First name',last_name:'Last name',email:'Email',club:'Club'};
+const entryLabels:Record<string,string>={bib_number:tr('Bib number'),team_name:tr('Team name'),category:tr('Category'),status:tr('Result status')};
+const athleteLabels:Record<string,string>={first_name:tr('First name'),last_name:tr('Last name'),email:tr('Email'),club:tr('Club')};
 
 function changeLines(change:Change):string[] {
   const lines:string[]=[];
@@ -26,29 +27,29 @@ function changeLines(change:Change):string[] {
   for(const after of change.after?.athletes??[]) {
     const id=Number(after.id);
     const before=beforeAthletes.get(id)??{};
-    const athleteName=`${value(after.first_name)} ${value(after.last_name)}`.replace(/—/g,'').trim()||'Athlete';
+    const athleteName=`${value(after.first_name)} ${value(after.last_name)}`.replace(/—/g,'').trim()||tr('Athlete');
     for(const [key,label] of Object.entries(athleteLabels)) {
       if(value(before[key])!==value(after[key])) lines.push(`${athleteName} · ${label}: ${value(before[key])} → ${value(after[key])}`);
     }
   }
-  return lines.length?lines:['No visible field changes recorded.'];
+  return lines.length?lines:[tr('No visible field changes recorded.')];
 }
 </script>
 
 <template>
-  <Head title="Edit participant"/>
+  <Head :title="$t('Edit participant')"/>
   <AppLayout :title="`${race.name} · Edit participant`">
     <form class="panel-pad max-w-3xl" @submit.prevent="save">
       <div v-if="race.started_at" class="mb-4 rounded-xl border border-outline bg-canvas p-4">
-        <strong>Registration details are locked.</strong>
-        <p class="mt-1 text-sm muted">During a live or finished race, only the result status can be corrected here.</p>
+        <strong>{{ $t("Registration details are locked.") }}</strong>
+        <p class="mt-1 text-sm muted">{{ $t("During a live or finished race, only the result status can be corrected here.") }}</p>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2">
         <template v-if="!race.started_at">
-          <label class="label">Bib number <span class="font-normal muted">(optional)</span><input v-model="form.bib_number" class="field" maxlength="32"></label>
-          <label class="label">Category <span class="font-normal muted">(optional)</span><input v-model="form.category" class="field"></label>
-          <label v-if="entry.type==='relay'" class="label">Team name<input v-model="form.team_name" class="field" required></label>
+          <label class="label">{{ $t("Bib number") }} <span class="font-normal muted">(optional)</span><input v-model="form.bib_number" class="field" maxlength="32"></label>
+          <label class="label">{{ $t("Category") }} <span class="font-normal muted">(optional)</span><input v-model="form.category" class="field"></label>
+          <label v-if="entry.type==='relay'" class="label">{{ $t("Team name") }}<input v-model="form.team_name" class="field" required></label>
         </template>
         <label class="label">Result status<select v-model="form.status" class="field"><option value="registered">Competing / normal result</option><option value="dns">DNS — did not start</option><option value="dnf">DNF — did not finish</option><option value="dsq">DSQ — disqualified</option></select></label>
       </div>
