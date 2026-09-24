@@ -22,36 +22,51 @@ class RaceOfficialController extends Controller
         abort_unless($request->user()->isAdmin(), 403);
         $this->ensureSetupUnlocked($race);
 
-        $request->merge(['email' => strtolower((string) $request->input('email'))]);
+        $email = strtolower(trim((string) $request->input('email')));
+        $request->merge(['email' => $email]);
+
+        $existingByEmail = $email !== '' ? User::where('email', $email)->first() : null;
+        $reusableExisting = $existingByEmail
+            && in_array($existingByEmail->role, [UserRole::Admin, UserRole::Organizer], true)
+            && $existingByEmail->is_active;
+        $creating = !$request->filled('user_id') && !$reusableExisting;
+
         $data = $request->validate([
             'checkpoint_id' => ['required', Rule::exists('checkpoints', 'id')->where(fn ($query) => $query->where('race_id', $race->id)->where('kind', '!=', 'start')->where('is_active', true))],
-            'mode' => ['required', Rule::in(['existing', 'new'])],
             'user_id' => [
                 'nullable',
-                'required_if:mode,existing',
                 'integer',
                 Rule::exists('users', 'id')->where(fn ($query) => $query
                     ->whereIn('role', [UserRole::Admin->value, UserRole::Organizer->value])
                     ->where('is_active', true)),
             ],
-            'name' => ['nullable', 'required_if:mode,new', 'string', 'max:255'],
-            'email' => ['nullable', 'required_if:mode,new', 'email', 'max:255', Rule::unique('users', 'email')],
-            'delivery' => ['nullable', 'required_if:mode,new', Rule::in(['email', 'manual'])],
-            'password' => ['nullable', Rule::requiredIf(fn () => $request->input('mode') === 'new' && $request->input('delivery') === 'manual'), 'string', 'min:12'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'delivery' => ['nullable', Rule::requiredIf($creating), Rule::in(['email', 'manual'])],
+            'password' => ['nullable', Rule::requiredIf($creating && $request->input('delivery') === 'manual'), 'string', 'min:12'],
         ]);
 
-        $emailInvite = ($data['mode'] === 'new' && ($data['delivery'] ?? 'email') === 'email');
+        if ($existingByEmail && !$reusableExisting && !$request->filled('user_id')) {
+            throw ValidationException::withMessages([
+                'email' => 'That email already belongs to an account that cannot be assigned as an Official.',
+            ]);
+        }
+
+        $emailInvite = $creating && ($data['delivery'] ?? 'email') === 'email';
         if ($emailInvite && !$invitations->configured()) {
             throw ValidationException::withMessages([
                 'delivery' => 'Email sending is not configured. Choose a temporary password instead.',
             ]);
         }
 
-        $official = DB::transaction(function () use ($data, $race, $emailInvite) {
-            if ($data['mode'] === 'existing') {
+        $created = false;
+        $official = DB::transaction(function () use ($data, $race, $emailInvite, $existingByEmail, $reusableExisting, &$created) {
+            if (!empty($data['user_id'])) {
                 $official = User::whereIn('role', [UserRole::Admin->value, UserRole::Organizer->value])
                     ->where('is_active', true)
                     ->findOrFail($data['user_id']);
+            } elseif ($reusableExisting && $existingByEmail) {
+                $official = $existingByEmail;
             } else {
                 $official = User::create([
                     'name' => $data['name'],
@@ -60,6 +75,7 @@ class RaceOfficialController extends Controller
                     'role' => UserRole::Organizer,
                     'force_password_change' => true,
                 ]);
+                $created = true;
             }
 
             $official->races()->syncWithoutDetaching([$race->id]);
@@ -75,7 +91,7 @@ class RaceOfficialController extends Controller
             return back()->with('error', 'Official created and assigned, but the invitation email could not be sent. You can resend it from Users.');
         }
 
-        return back()->with('success', $data['mode'] === 'new'
+        return back()->with('success', $created
             ? 'Official created and assigned to the checkpoint.'
             : 'Official assigned to the checkpoint.');
     }
