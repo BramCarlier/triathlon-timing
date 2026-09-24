@@ -3,7 +3,6 @@
 use App\Support\Permissions;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 return new class extends Migration
 {
@@ -18,7 +17,7 @@ return new class extends Migration
         }
 
         if (DB::connection()->getDriverName() !== 'mysql') {
-            throw new RuntimeException('Production reset aborted: expected the MySQL production database.');
+            throw new \RuntimeException('Production reset aborted: expected the MySQL production database.');
         }
 
         if (DB::table('users')->count() === 0) {
@@ -34,7 +33,7 @@ return new class extends Migration
         if ($admins->count() !== 2
             || $admins->pluck('name')->sort()->values()->all() !== collect($expectedNames)->sort()->values()->all()
             || $admins->contains(fn ($user) => $user->role !== 'admin')) {
-            throw new RuntimeException('Production reset aborted: the two expected administrator accounts were not found exactly as required.');
+            throw new \RuntimeException('Production reset aborted: the two expected administrator accounts were not found exactly as required.');
         }
 
         $preserved = $admins->mapWithKeys(fn ($user) => [
@@ -48,8 +47,8 @@ return new class extends Migration
         $preservedIds = array_keys($preserved);
 
         $tableNames = collect(DB::select(
-            "select table_name from information_schema.tables where table_schema = database() and table_type = 'BASE TABLE'"
-        ))->map(fn ($row) => $row->table_name)->values();
+            "select table_name as name from information_schema.tables where table_schema = database() and table_type = 'BASE TABLE'"
+        ))->map(fn ($row) => $row->name)->values();
 
         DB::transaction(function () use ($preservedIds, $tableNames): void {
             DB::table('users')
@@ -86,7 +85,7 @@ return new class extends Migration
         $remainingUsers = DB::table('users')->orderBy('id')->get();
 
         if ($remainingUsers->count() !== 2) {
-            throw new RuntimeException('Production reset verification failed: unexpected user count.');
+            throw new \RuntimeException('Production reset verification failed: unexpected user count.');
         }
 
         foreach ($remainingUsers as $user) {
@@ -97,18 +96,32 @@ return new class extends Migration
                 || $user->email !== $before['email']
                 || $user->password !== $before['password']
                 || $user->role !== $before['role']) {
-                throw new RuntimeException('Production reset verification failed: an administrator account changed unexpectedly.');
+                throw new \RuntimeException('Production reset verification failed: an administrator account changed unexpectedly.');
             }
         }
 
         if (DB::table('access_roles')->count() !== 1
             || ! DB::table('access_roles')->where('name', 'Official')->where('is_default', true)->exists()) {
-            throw new RuntimeException('Production reset verification failed: the default Official role was not restored.');
+            throw new \RuntimeException('Production reset verification failed: the default Official role was not restored.');
         }
 
-        foreach ($tableNames->reject(fn (string $table) => in_array($table, ['migrations', 'users', 'access_roles'], true)) as $table) {
+        $domainTables = [
+            'races',
+            'race_user',
+            'athletes',
+            'entries',
+            'entry_members',
+            'checkpoints',
+            'timing_records',
+            'operator_presence',
+            'import_batches',
+            'entry_changes',
+            'checkpoint_assignments',
+        ];
+
+        foreach ($domainTables as $table) {
             if (DB::table($table)->exists()) {
-                throw new RuntimeException("Production reset verification failed: {$table} is not empty.");
+                throw new \RuntimeException("Production reset verification failed: {$table} is not empty.");
             }
         }
     }
