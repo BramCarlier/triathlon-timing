@@ -40,21 +40,36 @@ class EntryController extends Controller
         abort_unless($request->user()->isAdmin(), 403);
 
         $search = trim((string) $request->query('q'));
-        if (mb_strlen($search) < 2) return response()->json(['athletes' => []]);
+        $bib = trim((string) $request->query('bib'));
 
-        $tokens = preg_split('/\\s+/', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $tokens = mb_strlen($search) >= 2
+            ? (preg_split('/\\s+/', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY) ?: [])
+            : [];
+
         $athletes = Athlete::query()
             ->with(['memberships.entry.race:id,name,event_date'])
-            ->where(function ($query) use ($tokens) {
-                foreach ($tokens as $token) {
-                    $query->where(function ($part) use ($token) {
-                        $like = '%'.$token.'%';
-                        $part->whereRaw('LOWER(first_name) LIKE ?', [$like])
-                            ->orWhereRaw('LOWER(last_name) LIKE ?', [$like])
-                            ->orWhereRaw('LOWER(COALESCE(email, \'\')) LIKE ?', [$like]);
-                    });
-                }
+            ->when($tokens || $bib !== '', function ($query) use ($tokens, $bib) {
+                $query->where(function ($match) use ($tokens, $bib) {
+                    if ($tokens) {
+                        $match->where(function ($textQuery) use ($tokens) {
+                            foreach ($tokens as $token) {
+                                $textQuery->where(function ($part) use ($token) {
+                                    $like = '%'.$token.'%';
+                                    $part->whereRaw('LOWER(first_name) LIKE ?', [$like])
+                                        ->orWhereRaw('LOWER(last_name) LIKE ?', [$like])
+                                        ->orWhereRaw('LOWER(COALESCE(email, \'\')) LIKE ?', [$like]);
+                                });
+                            }
+                        });
+                    }
+
+                    if ($bib !== '') {
+                        $method = $tokens ? 'orWhereHas' : 'whereHas';
+                        $match->{$method}('memberships.entry', fn ($entry) => $entry->where('bib_number', 'like', '%'.$bib.'%'));
+                    }
+                });
             })
+            ->orderByDesc('updated_at')
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->limit(20)
@@ -81,6 +96,16 @@ class EntryController extends Controller
                         'name' => $item->name,
                         'event_date' => $item->event_date?->toDateString() ?? (string) $item->event_date,
                     ])->all(),
+                    'recent_bibs' => $athlete->memberships
+                        ->pluck('entry')
+                        ->filter()
+                        ->sortByDesc(fn ($entry) => $entry->race?->event_date)
+                        ->pluck('bib_number')
+                        ->filter()
+                        ->unique()
+                        ->take(3)
+                        ->values()
+                        ->all(),
                 ];
             });
 
