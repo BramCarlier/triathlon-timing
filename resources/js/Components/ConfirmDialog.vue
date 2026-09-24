@@ -13,7 +13,7 @@ onMounted(() => dialog.value?.showModal());
     <p id="confirmation-message" class="mt-3 text-secondary">{{ message }}</p>
     <slot />
     <div class="mt-6 flex flex-wrap justify-end gap-3">
-      <button autofocus class="btn-secondary" :disabled="busy" @click="emit('cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i>Cancel</button>
+      <button autofocus class="btn-secondary" :disabled="busy" @click="emit('cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i>{{ $t("Cancel") }}</button>
       <button class="btn-primary" :disabled="busy" @click="emit('confirm')"><i class="fa-solid fa-check" aria-hidden="true"></i>{{ confirmLabel }}</button>
     </div>
   </dialog>
