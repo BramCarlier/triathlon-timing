@@ -106,7 +106,8 @@ class UserController extends Controller
             if (!$invitations->configured()) {
                 throw ValidationException::withMessages(['athlete' => 'Email sending is not configured. Manage this account from People instead.']);
             }
-            return back()->with($invitations->send($existing) ? 'success' : 'error', $invitations->send($existing)
+            $sent = $invitations->send($existing);
+            return back()->with($sent ? 'success' : 'error', $sent
                 ? 'A fresh results invitation was sent.'
                 : 'The results invitation could not be sent. Check email settings and retry.');
         }
