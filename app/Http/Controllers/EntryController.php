@@ -8,6 +8,7 @@ use App\Models\Entry;
 use App\Models\EntryChange;
 use Illuminate\Validation\ValidationException;
 use App\Models\Race;
+use App\Services\AthleteLookupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ use Inertia\Response;
 
 class EntryController extends Controller
 {
-    public function index(Request $request, Race $race): Response
+    public function index(Request $request, Race $race, AthleteLookupService $athletes): Response
     {
         Gate::authorize('manage-race', $race);
         abort_unless($request->user()->isAdmin(), 403);
@@ -31,85 +32,21 @@ class EntryController extends Controller
                     ->orWhereHas('members.athlete', fn ($athlete) => $athlete->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"));
             });
         })->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')->paginate(50)->withQueryString();
-        return Inertia::render('Participants/Index', ['race' => $race, 'entries' => $entries, 'search' => $search]);
+        return Inertia::render('Participants/Index', ['race' => $race, 'entries' => $entries, 'search' => $search, 'athleteOptions' => $athletes->options($race)]);
     }
 
-    public function athleteSearch(Request $request, Race $race): JsonResponse
+    public function athleteSearch(Request $request, Race $race, AthleteLookupService $athletes): JsonResponse
     {
         Gate::authorize('manage-race', $race);
         abort_unless($request->user()->isAdmin(), 403);
 
-        $search = trim((string) $request->query('q'));
-        $bib = trim((string) $request->query('bib'));
-
-        $tokens = mb_strlen($search) >= 2
-            ? (preg_split('/\\s+/', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY) ?: [])
-            : [];
-
-        $athletes = Athlete::query()
-            ->with(['memberships.entry.race:id,name,event_date'])
-            ->when($tokens || $bib !== '', function ($query) use ($tokens, $bib) {
-                $query->where(function ($match) use ($tokens, $bib) {
-                    if ($tokens) {
-                        $match->where(function ($textQuery) use ($tokens) {
-                            foreach ($tokens as $token) {
-                                $textQuery->where(function ($part) use ($token) {
-                                    $like = '%'.$token.'%';
-                                    $part->whereRaw('LOWER(first_name) LIKE ?', [$like])
-                                        ->orWhereRaw('LOWER(last_name) LIKE ?', [$like])
-                                        ->orWhereRaw('LOWER(COALESCE(email, \'\')) LIKE ?', [$like]);
-                                });
-                            }
-                        });
-                    }
-
-                    if ($bib !== '') {
-                        $method = $tokens ? 'orWhereHas' : 'whereHas';
-                        $match->{$method}('memberships.entry', fn ($entry) => $entry->where('bib_number', 'like', '%'.$bib.'%'));
-                    }
-                });
-            })
-            ->orderByDesc('updated_at')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->limit(20)
-            ->get()
-            ->map(function (Athlete $athlete) use ($race) {
-                $races = $athlete->memberships
-                    ->pluck('entry.race')
-                    ->filter()
-                    ->unique('id')
-                    ->sortByDesc('event_date')
-                    ->values();
-
-                return [
-                    'id' => $athlete->id,
-                    'full_name' => $athlete->full_name,
-                    'first_name' => $athlete->first_name,
-                    'last_name' => $athlete->last_name,
-                    'email' => $athlete->email,
-                    'club' => $athlete->club,
-                    'race_count' => $races->count(),
-                    'already_in_race' => $races->contains('id', $race->id),
-                    'races' => $races->take(3)->map(fn ($item) => [
-                        'id' => $item->id,
-                        'name' => $item->name,
-                        'event_date' => $item->event_date?->toDateString() ?? (string) $item->event_date,
-                    ])->all(),
-                    'recent_bibs' => $athlete->memberships
-                        ->pluck('entry')
-                        ->filter()
-                        ->sortByDesc(fn ($entry) => $entry->race?->event_date)
-                        ->pluck('bib_number')
-                        ->filter()
-                        ->unique()
-                        ->take(3)
-                        ->values()
-                        ->all(),
-                ];
-            });
-
-        return response()->json(['athletes' => $athletes]);
+        return response()->json([
+            'athletes' => $athletes->options(
+                $race,
+                (string) $request->query('q', ''),
+                (string) $request->query('bib', ''),
+            ),
+        ]);
     }
 
     public function store(Request $request, Race $race): RedirectResponse
