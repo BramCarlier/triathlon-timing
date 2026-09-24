@@ -5,6 +5,7 @@ test('admin creates, edits and deletes an Official access preset', async ({ page
     await page.getByRole('textbox', { name: 'Email', exact: true }).fill('admin@example.test');
     await page.getByLabel('Password', { exact: true }).fill('browser-test-password-123');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
+    await expect(page).not.toHaveURL(/\/login/);
 
     await page.goto('/admin/roles');
     await expect(page.getByRole('heading', { name: 'Organizer (admin)', exact: true })).toBeVisible();

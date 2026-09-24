@@ -18,7 +18,7 @@ test('temporary-password onboarding requires a new password before race access',
     await page.locator('summary').filter({ hasText: 'Create account' }).click();
     await page.getByLabel('Name', { exact: true }).fill('New Organizer');
     await page.getByLabel('Email', { exact: true }).fill('new-organizer@example.test');
-    await page.getByLabel('Invitation', { exact: true }).selectOption('manual');
+    await page.locator('label').filter({ hasText: 'Invitation' }).locator('select').selectOption('manual');
     await page.getByLabel('Temporary password', { exact: true }).fill('temporary-race-password');
     await page.getByRole('button', { name: 'Create account', exact: true }).click();
     await expect(page.getByText('Account created.', { exact: false })).toBeVisible();
