@@ -197,7 +197,9 @@ const availableOfficials = computed(() => props.officials.filter(official => {
 const selectedOfficial = computed(() => props.officials.find(official => official.id === officialForm.user_id) ?? null);
 const updateOfficialField = (field:'name'|'email', event:Event) => {
   officialForm.user_id = null;
-  officialForm[field] = (event.target as HTMLInputElement).value;
+  const value = (event.target as HTMLInputElement).value;
+  if (field === 'name') officialForm.name = value;
+  else officialForm.email = value;
 };
 const selectOfficial = (official:Official) => {
   officialForm.user_id = official.id;
@@ -507,13 +509,14 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
                   <p v-else class="mt-3 rounded-xl bg-canvas p-3 text-sm muted">No existing Official matches these details. Complete the form below to create and assign a new Official.</p>
 
-                  <div v-if="!officialForm.user_id" class="mt-4 space-y-3">
+                  <div v-if="!officialForm.user_id && !availableOfficials.length" class="mt-4 space-y-3">
                     <label class="label">Account setup<select v-model="officialForm.delivery" class="field"><option value="email" :disabled="!mailConfigured">Send password setup email</option><option value="manual">Use a temporary password</option></select></label>
                     <label v-if="officialForm.delivery==='manual'" class="label">Temporary password<input v-model="officialForm.password" type="password" minlength="12" class="field" required></label>
                   </div>
                   <p class="mt-2 text-xs muted">Organizers (admin) are included in the Official list and can be assigned to a checkpoint.</p>
                   <p v-if="Object.keys(officialForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(officialForm.errors)[0] }}</p>
-                  <button class="btn-primary mt-4" :disabled="officialForm.processing"><i class="fa-solid fa-user-check" aria-hidden="true"></i>{{ officialForm.user_id?'Assign to checkpoint':'Create & assign Official' }}</button>
+                  <button v-if="officialForm.user_id || !availableOfficials.length" class="btn-primary mt-4" :disabled="officialForm.processing"><i class="fa-solid fa-user-check" aria-hidden="true"></i>{{ officialForm.user_id?'Assign to checkpoint':'Create & assign Official' }}</button>
+                  <p v-else class="mt-4 rounded-xl bg-canvas p-3 text-sm muted">Select an Official from the list, or keep typing the name and email until there is no existing match to create a new account.</p>
                 </form>
               </article>
             </div>
