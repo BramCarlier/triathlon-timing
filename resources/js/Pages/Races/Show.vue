@@ -59,6 +59,7 @@ type Step = 'prepare' | 'participants' | 'race-day' | 'finish';
 
 const props = defineProps<{
   race: Race & { checkpoints: Checkpoint[]; entries_count?: number };
+  publicTimingUrl?: string|null;
   officials: Official[];
   checkpointAssignments: CheckpointAssignment[];
   allowedTimingCheckpointIds: number[];
@@ -77,7 +78,7 @@ const account = computed(() => page.props.auth.user);
 const isAdmin = computed(() => account.value?.role === 'admin');
 const showOfficialTools = ref(false);
 const copiedRaceDayLink = ref(false);
-const raceDayLink = computed(() => props.race.public_timing_token ? `/race/${props.race.public_timing_token}` : null);
+const raceDayLink = computed(() => props.publicTimingUrl ?? null);
 const visibleReadinessChecks = computed(() => props.readiness.checks.filter(check => check.key !== 'officials'));
 const copyRaceDayLink = async () => {
   if (!raceDayLink.value) return;
