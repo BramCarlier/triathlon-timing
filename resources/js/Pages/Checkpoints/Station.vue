@@ -38,8 +38,8 @@ const recoveryNeedsAttention = computed(() => !!storageError.value || foreignCou
 const confirmation=ref<{message:string;label:string;action:()=>void|Promise<void>}|null>(null);
 const confirmAction=async()=>{const action=confirmation.value?.action;confirmation.value=null;await action?.();};
 const refreshRace = useRaceRefresh(() => ['race', 'serverNow', ...(pending.value===0 && saving.value.size===0 ? ['participants','recentTimings'] : [])]);
-const retryPending=async(id:string,override=false)=>{try{await retry(id,override);refreshRace();}catch{showFeedback('error','Unable to access pending timings.');}};
-const removePending=(id:string)=>{confirmation.value={message:'Discard this unsynchronized timing? Export a backup first if it may be needed.',label:'Discard timing',action:async()=>{await discard(id);refreshRace();}};};
+const retryPending=async(id:string,override=false)=>{try{await retry(id,override);refreshRace();}catch{showFeedback('error',tr('Unable to access pending timings.'));}};
+const removePending=(id:string)=>{confirmation.value={message:tr('Discard this unsynchronized timing? Export a backup first if it may be needed.'),label:tr('Discard timing'),action:async()=>{await discard(id);refreshRace();}};};
 const exportPending=()=>{const rows=[...queuedItems.value,...(account.role==='admin'?legacy.value:[])];const url=URL.createObjectURL(new Blob([JSON.stringify(rows,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download=`race-${props.race.id}-pending-timings.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 const deviceUuid = localStorage.getItem('triathlon-device-uuid') ?? uuid();
 localStorage.setItem('triathlon-device-uuid', deviceUuid);
@@ -56,14 +56,14 @@ const showFeedback = (type:'ok'|'error'|'offline', message:string) => { feedback
 
 async function record(participant: StationParticipant, override = false, clientUuid = uuid()) {
   if (!props.checkpoint || saving.value.has(participant.id)) return;
-  if (participant.status && participant.status!=='registered') {showFeedback('error','This entry is marked '+participant.status.toUpperCase()+'. Update its status in Participants before recording.');return;}
+  if (participant.status && participant.status!=='registered') {showFeedback('error',tr('This entry is marked :status. Update its status in Participants before recording.', {status:participant.status.toUpperCase()}));return;}
   if (!props.race.started_at) { showFeedback('error', tr('The race clock has not started.')); return; }
-  if (props.race.finished_at) { showFeedback('error', 'This race is finished. Use Corrections & station health for corrections.'); return; }
-  if (selected(participant)) { showFeedback('error', `${participant.name} (${bibLabel(participant.bib_number)}) is already recorded here.`); return; }
+  if (props.race.finished_at) { showFeedback('error', tr('This race is finished. Use Corrections & station health for corrections.')); return; }
+  if (selected(participant)) { showFeedback('error', tr(':name (:bib) is already recorded here.', {name:participant.name,bib:bibLabel(participant.bib_number)})); return; }
   const missing = priorRequiredIds.value.filter(id => !participant.completed_checkpoint_ids.includes(id));
   if (missing.length && !override) {
-    const names = props.checkpoints.filter(cp => missing.includes(cp.id)).map(cp => cp.name).join(', ');
-    confirmation.value={message:`Earlier required timing missing: ${names}. Record ${participant.name} here anyway?`,label:tr('Record anyway'),action:()=>record(participant,true,clientUuid)};return;
+    const names = props.checkpoints.filter(cp => missing.includes(cp.id)).map(cp => tr(cp.name)).join(', ');
+    confirmation.value={message:tr('Earlier required timing missing: :checkpoints. Record :name here anyway?', {checkpoints:names,name:participant.name}),label:tr('Record anyway'),action:()=>record(participant,true,clientUuid)};return;
   }
 
   const payload = { operator_id:account.id, entry_id:participant.id, checkpoint_id:props.checkpoint.id, client_uuid:clientUuid, observed_at:new Date(serverNowMs()).toISOString(), source:online.value ? 'online' : 'offline', override_warning:override };
@@ -72,7 +72,7 @@ async function record(participant: StationParticipant, override = false, clientU
   saving.value.add(participant.id);
   const saveOffline=async()=>{
     await queue(`/races/${props.race.id}/timings`,payload,participant.name,localTiming.elapsed_ms);
-    showFeedback('offline',`${participant.name} saved on this device. Pending sync.`);query.value='';
+    showFeedback('offline',tr(':name saved on this device. Pending sync.', {name:participant.name}));query.value='';
   };
   try {
     if(!online.value){await saveOffline();return;}
@@ -83,12 +83,12 @@ async function record(participant: StationParticipant, override = false, clientU
     if(response.ok&&data.timing){
       participant.completed_checkpoint_ids.push(props.checkpoint.id);
       recent.value.unshift({...data.timing,entry:{id:participant.id,bib_number:participant.bib_number,display_name:participant.name}});recent.value=recent.value.slice(0,10);
-      showFeedback('ok',data.message??'Timing recorded.');query.value='';return;
+      showFeedback('ok',data.message??tr('Timing recorded.'));query.value='';return;
     }
     if((response.ok&&!data.timing)||response.status>=500||[401,403,408,419,429].includes(response.status)){await saveOffline();return;}
     if(response.status===409&&data.warning){confirmation.value={message:`${data.message} ${(data.missing_checkpoints??[]).join(', ')}`,label:tr('Record anyway'),action:()=>record(participant,true,clientUuid)};return;}
-    showFeedback('error',data.message??'Timing could not be recorded.');
-  } catch {showFeedback('error','Timing was NOT saved: device storage is unavailable. Use a backup stopwatch.');}
+    showFeedback('error',data.message??tr('Timing could not be recorded.'));
+  } catch {showFeedback('error',tr('Timing was NOT saved: device storage is unavailable. Use a backup stopwatch.'));}
   finally {saving.value.delete(participant.id);}
 
 }
@@ -100,13 +100,13 @@ async function undo(timing:Timing) {
     await discard(timing.client_uuid);
     if (participant) participant.completed_checkpoint_ids = participant.completed_checkpoint_ids.filter(id => id !== props.checkpoint!.id);
     recent.value = recent.value.filter(t => t.client_uuid !== timing.client_uuid);
-    showFeedback('ok','Offline timing removed.'); return;
+    showFeedback('ok',tr('Offline timing removed.')); return;
   }
-  if (!timing.id || !online.value) { showFeedback('error','Reconnect before undoing a synced timing.'); return; }
-  const {response} = await jsonRequest(`/races/${props.race.id}/timings/${timing.id}/void`, {method:'POST',body:JSON.stringify({reason:'Accidental checkpoint tap'})});
+  if (!timing.id || !online.value) { showFeedback('error',tr('Reconnect before undoing a synced timing.')); return; }
+  const {response} = await jsonRequest(`/races/${props.race.id}/timings/${timing.id}/void`, {method:'POST',body:JSON.stringify({reason:tr('Accidental checkpoint tap')})});
   if (response.ok) {
     if (participant) participant.completed_checkpoint_ids = participant.completed_checkpoint_ids.filter(id => id !== props.checkpoint!.id);
-    recent.value = recent.value.filter(t => t.id !== timing.id); showFeedback('ok','Timing voided.');
+    recent.value = recent.value.filter(t => t.id !== timing.id); showFeedback('ok',tr('Timing voided.'));
   }
 }
 
@@ -117,10 +117,10 @@ async function ping() {
     if (response.ok && ((data.started_at ?? null) !== (props.race.started_at ?? null) || (data.finished_at ?? null) !== (props.race.finished_at ?? null))) refreshRace();
   } catch { /* presence is best-effort */ }
 }
-const syncPending=async()=>{try{if(await flush())refreshRace();}catch{showFeedback('error','Unable to access pending timings. Keep this page open.');}};
+const syncPending=async()=>{try{if(await flush())refreshRace();}catch{showFeedback('error',tr('Unable to access pending timings. Keep this page open.'));}};
 const handleOnline = async () => { online.value=true; await syncPending(); await ping(); };
 const handleFocus=()=>{if(document.visibilityState==='visible')void syncPending();};
-const handleOffline = () => { online.value=false; showFeedback('offline','Offline mode. Timings will be kept on this device.'); };
+const handleOffline = () => { online.value=false; showFeedback('offline',tr('Offline mode. Timings will be kept on this device.')); };
 let pingTimer:number|undefined;let syncTimer:number|undefined;
 const channelName = `race.${props.race.id}`;
 onMounted(async () => {
@@ -136,7 +136,7 @@ onMounted(async () => {
       .listen('.timing.voided', (event:any) => { const p=participants.value.find(item=>item.id===event.entry_id); if(p) p.completed_checkpoint_ids=p.completed_checkpoint_ids.filter(id=>id!==event.checkpoint_id); });
   }
   pingTimer=window.setInterval(ping,30000);
-  try { await refreshQueue(); await syncPending(); } catch { showFeedback('error', 'Unable to access saved offline timings. Keep this browser open and check device storage.'); }
+  try { await refreshQueue(); await syncPending(); } catch { showFeedback('error', tr('Unable to access saved offline timings. Keep this browser open and check device storage.')); }
   await ping();
 });
 onBeforeUnmount(() => {
@@ -146,61 +146,61 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-<Head :title="`${race.name} timing station`"/><AppLayout :title="`${race.name} · Timing station`">
+<Head :title="`${race.name} · ${$t('Timing station')}`"/><AppLayout :title="`${race.name} · ${$t('Timing station')}`">
   <div v-if="feedback" role="status" aria-live="polite" class="fixed inset-x-3 top-20 z-50 mx-auto max-w-xl rounded-2xl border p-4 text-center text-lg font-bold shadow-2xl" :class="feedback.type==='ok'?'border-emerald-400 bg-emerald-700 text-white':feedback.type==='offline'?'border-amber-300 bg-amber-500 text-slate-950':'border-red-400 bg-red-700 text-white'">{{ feedback.message }}</div>
 
   <section v-if="!checkpoint" class="mx-auto max-w-2xl panel-pad">
     <template v-if="account.role==='admin'">
-      <h2 class="text-xl font-bold">Choose a checkpoint</h2>
+      <h2 class="text-xl font-bold">{{ $t("Choose a checkpoint") }}</h2>
       <p class="mt-2 muted">{{ $t("As Organizer you can move between checkpoints when needed.") }}</p>
-      <form class="mt-5" @submit.prevent="selectCheckpoint"><label class="label" for="choose-checkpoint">{{ $t("Checkpoint") }}</label><select id="choose-checkpoint" v-model="selectForm.checkpoint_id" class="field"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ cp.sequence }} · {{ cp.name }} · {{ checkpointDistanceText(race, cp) }}</option></select><button class="btn-primary mt-4 w-full"><i class="fa-solid fa-play" aria-hidden="true"></i>{{ $t("Open checkpoint") }}</button></form>
+      <form class="mt-5" @submit.prevent="selectCheckpoint"><label class="label" for="choose-checkpoint">{{ $t("Checkpoint") }}</label><select id="choose-checkpoint" v-model="selectForm.checkpoint_id" class="field"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ cp.sequence }} · {{ $t(cp.name) }} · {{ checkpointDistanceText(race, cp) }}</option></select><button class="btn-primary mt-4 w-full"><i class="fa-solid fa-play" aria-hidden="true"></i>{{ $t("Open checkpoint") }}</button></form>
     </template>
     <template v-else>
-      <h2 class="text-xl font-bold">No checkpoint assigned</h2>
-      <p class="mt-2 muted">Ask the Organizer to assign you to a checkpoint before race day. Officials cannot choose or switch checkpoints themselves.</p>
+      <h2 class="text-xl font-bold">{{ $t("No checkpoint assigned") }}</h2>
+      <p class="mt-2 muted">{{ $t("Ask the Organizer to assign you to a checkpoint before race day. Officials cannot choose or switch checkpoints themselves.") }}</p>
     </template>
   </section>
 
   <template v-else>
 
-    <p v-if="race.finished_at" class="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-success">Race finished. The shared clock is stopped. <Link :href="`/races/${race.id}/results`" class="font-bold underline">View results</Link> <Link v-if="account.role==='admin'" :href="`/races/${race.id}/control`" class="underline">Correct a timing</Link></p>
+    <p v-if="race.finished_at" class="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-success">{{ $t("Race finished. The shared clock is stopped.") }} <Link :href="`/races/${race.id}/results`" class="font-bold underline">{{ $t("View results") }}</Link> <Link v-if="account.role==='admin'" :href="`/races/${race.id}/control`" class="underline">{{ $t("Correct a timing") }}</Link></p>
     <div class="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
-      <section class="panel-pad"><div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"><div><div class="text-xs font-semibold uppercase tracking-[.2em] text-accent">{{ checkpoint.name }}</div><div class="mt-1 text-sm muted">{{ checkpointDistanceText(race, checkpoint) }}</div></div><RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/></div></section>
-      <section class="panel-pad flex flex-col justify-center"><form v-if="account.role==='admin'" @submit.prevent="selectCheckpoint"><label class="label" for="station-checkpoint">Checkpoint</label><select id="station-checkpoint" v-model="selectForm.checkpoint_id" class="field text-sm" @change="selectCheckpoint"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ cp.name }} · {{ checkpointDistanceText(race, cp) }}</option></select></form><div v-else class="rounded-xl bg-canvas p-3 text-sm"><strong>Assigned checkpoint</strong><span class="mt-1 block muted">{{ checkpoint.name }}</span></div><div class="mt-3"><LiveUpdatesStatus :race-id="race.id"/></div></section>
+      <section class="panel-pad"><div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"><div><div class="text-xs font-semibold uppercase tracking-[.2em] text-accent">{{ $t(checkpoint.name) }}</div><div class="mt-1 text-sm muted">{{ checkpointDistanceText(race, checkpoint) }}</div></div><RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/></div></section>
+      <section class="panel-pad flex flex-col justify-center"><form v-if="account.role==='admin'" @submit.prevent="selectCheckpoint"><label class="label" for="station-checkpoint">{{ $t("Checkpoint") }}</label><select id="station-checkpoint" v-model="selectForm.checkpoint_id" class="field text-sm" @change="selectCheckpoint"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ $t(cp.name) }} · {{ checkpointDistanceText(race, cp) }}</option></select></form><div v-else class="rounded-xl bg-canvas p-3 text-sm"><strong>{{ $t("Assigned checkpoint") }}</strong><span class="mt-1 block muted">{{ $t(checkpoint.name) }}</span></div><div class="mt-3"><LiveUpdatesStatus :race-id="race.id"/></div></section>
     </div>
 
-    <div class="station-status sticky z-20 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline bg-surface p-3 shadow-lg"><div class="min-w-0"><strong class="block truncate" :data-discipline="checkpoint.discipline">{{ checkpoint.name }}</strong><span class="text-xs muted">{{ pending?`${pending} waiting to upload`:'Everything saved' }}</span></div><div class="flex flex-wrap gap-2"><span class="badge" :class="online?'!text-success':'!text-warning'">{{ online?'Online':'Offline' }}</span><span class="badge">{{ race.finished_at?'Finished':race.started_at?'Timing active':'Awaiting start' }}</span></div></div>
+    <div class="station-status sticky z-20 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline bg-surface p-3 shadow-lg"><div class="min-w-0"><strong class="block truncate" :data-discipline="checkpoint.discipline">{{ $t(checkpoint.name) }}</strong><span class="text-xs muted">{{ pending?$t(':count waiting to upload', {count:pending}):$t('Everything saved') }}</span></div><div class="flex flex-wrap gap-2"><span class="badge" :class="online?'!text-success':'!text-warning'">{{ online?$t('Online'):$t('Offline') }}</span><span class="badge">{{ race.finished_at?$t('Finished'):race.started_at?$t('Timing active'):$t('Awaiting start') }}</span></div></div>
     <div class="grid gap-4 xl:grid-cols-[1fr_360px]">
-      <section class="panel overflow-hidden"><div class="border-b border-outline p-4"><label class="label" for="station-search">Bib number or participant/team name</label><input id="station-search" v-model="query" class="field min-h-14 text-xl" placeholder="Search name, team or bib" aria-label="Find participant"></div><div class="station-list max-h-[62dvh] overflow-auto p-2"><button v-for="participant in filtered" :key="participant.id" class="mb-2 grid min-h-20 w-full grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-4 rounded-2xl border p-4 text-left transition" :class="selected(participant)?'border-emerald-500/30 bg-emerald-500/10 opacity-70':'border-outline bg-surface hover:border-cyan-400 hover:bg-raised active:scale-[.995]'" :disabled="saving.has(participant.id) || selected(participant) || !race.started_at || !!race.finished_at || (!!participant.status && participant.status!=='registered')" @click="record(participant)"><span class="max-w-24 rounded-xl bg-canvas px-3 py-2 font-mono text-xl font-black">{{ bibLabel(participant.bib_number) }}</span><span class="min-w-0"><span class="block text-lg font-bold">{{ participant.name }}</span><span v-if="participant.type==='relay'" class="block text-sm muted">{{ participant.members.map(m=>`${m.discipline}: ${m.name}`).join(' · ') }}</span><span v-else class="block text-sm muted">Solo athlete</span></span><span class="col-start-2 sm:col-start-auto text-sm font-bold" :class="selected(participant)?'text-success':'text-accent'">{{ participant.status && participant.status!=='registered' ? participant.status.toUpperCase() : saving.has(participant.id) ? 'SAVING' : selected(participant) ? 'RECORDED' : race.finished_at ? 'FINISHED' : !race.started_at ? 'WAITING' : 'TAP' }}</span></button><div v-if="!filtered.length" class="p-8 text-center muted">No matching participant.</div></div></section>
-      <section class="panel overflow-hidden"><div class="flex items-center justify-between border-b border-outline p-4"><h2 class="font-bold">Your recent taps</h2><span class="text-xs muted">Undo mistakes here</span></div><div v-if="recent.length" class="divide-y divide-outline"><div v-for="timing in recent" :key="timing.client_uuid || timing.id" class="p-4"><div class="flex items-center justify-between gap-3"><div><div class="font-mono text-lg font-bold">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</div><div class="font-mono text-sm text-accent">{{ formatDuration(timing.elapsed_ms,2) }}</div></div><div class="shrink-0 text-right"><span v-if="timing.queued" class="mb-1 block text-xs font-semibold text-warning">OFFLINE · PENDING</span><button class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-error hover:bg-red-500/10" @click="undo(timing)"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>Undo</button></div></div></div></div><div v-else class="p-6 text-center muted">No timings recorded by you here yet.</div></section>
+      <section class="panel overflow-hidden"><div class="border-b border-outline p-4"><label class="label" for="station-search">{{ $t("Bib number or participant/team name") }}</label><input id="station-search" v-model="query" class="field min-h-14 text-xl" :placeholder="$t('Search name, team or bib')" :aria-label="$t('Find participant')"></div><div class="station-list max-h-[62dvh] overflow-auto p-2"><button v-for="participant in filtered" :key="participant.id" class="mb-2 grid min-h-20 w-full grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-4 rounded-2xl border p-4 text-left transition" :class="selected(participant)?'border-emerald-500/30 bg-emerald-500/10 opacity-70':'border-outline bg-surface hover:border-cyan-400 hover:bg-raised active:scale-[.995]'" :disabled="saving.has(participant.id) || selected(participant) || !race.started_at || !!race.finished_at || (!!participant.status && participant.status!=='registered')" @click="record(participant)"><span class="max-w-24 rounded-xl bg-canvas px-3 py-2 font-mono text-xl font-black">{{ bibLabel(participant.bib_number) }}</span><span class="min-w-0"><span class="block text-lg font-bold">{{ participant.name }}</span><span v-if="participant.type==='relay'" class="block text-sm muted">{{ participant.members.map(m=>`${$t(m.discipline)}: ${m.name}`).join(' · ') }}</span><span v-else class="block text-sm muted">{{ $t("Solo athlete") }}</span></span><span class="col-start-2 sm:col-start-auto text-sm font-bold" :class="selected(participant)?'text-success':'text-accent'">{{ participant.status && participant.status!=='registered' ? participant.status.toUpperCase() : saving.has(participant.id) ? $t('SAVING') : selected(participant) ? $t('RECORDED') : race.finished_at ? $t('FINISHED') : !race.started_at ? $t('WAITING') : $t('TAP') }}</span></button><div v-if="!filtered.length" class="p-8 text-center muted">{{ $t("No matching participant.") }}</div></div></section>
+      <section class="panel overflow-hidden"><div class="flex items-center justify-between border-b border-outline p-4"><h2 class="font-bold">{{ $t("Your recent taps") }}</h2><span class="text-xs muted">{{ $t("Undo mistakes here") }}</span></div><div v-if="recent.length" class="divide-y divide-outline"><div v-for="timing in recent" :key="timing.client_uuid || timing.id" class="p-4"><div class="flex items-center justify-between gap-3"><div><div class="font-mono text-lg font-bold">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</div><div class="font-mono text-sm text-accent">{{ formatDuration(timing.elapsed_ms,2) }}</div></div><div class="shrink-0 text-right"><span v-if="timing.queued" class="mb-1 block text-xs font-semibold text-warning">{{ $t("OFFLINE · PENDING") }}</span><button class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-error hover:bg-red-500/10" @click="undo(timing)"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>{{ $t("Undo") }}</button></div></div></div></div><div v-else class="p-6 text-center muted">{{ $t("No timings recorded by you here yet.") }}</div></section>
     </div>
-    <details class="panel-pad mb-4" :open="recoveryNeedsAttention" aria-label="Device and sync">
+    <details class="panel-pad mb-4" :open="recoveryNeedsAttention" :aria-label="$t('Device and sync')">
       <summary class="flex min-h-11 items-center justify-between gap-3 font-semibold">
-        <span><i class="fa-solid fa-cloud-arrow-up mr-2" aria-hidden="true"></i>Device & sync</span>
-        <span :class="recoveryNeedsAttention?'text-warning':'text-success'" class="text-sm">{{ recoveryNeedsAttention ? (pending ? `${pending} waiting to upload` : 'Needs attention') : 'Everything saved' }}</span>
+        <span><i class="fa-solid fa-cloud-arrow-up mr-2" aria-hidden="true"></i>{{ $t("Device & sync") }}</span>
+        <span :class="recoveryNeedsAttention?'text-warning':'text-success'" class="text-sm">{{ recoveryNeedsAttention ? (pending ? $t(':count waiting to upload', {count:pending}) : $t('Needs attention')) : $t('Everything saved') }}</span>
       </summary>
       <div class="mt-4 border-t border-outline pt-4">
         <p v-if="storageError" role="alert" class="text-error">{{ storageError }}</p>
-        <p v-if="foreignCount" class="text-warning">{{ foreignCount }} pending timings belong to another account. Sign in with that account to synchronize them.</p>
-        <p v-if="legacy.length" class="text-warning">{{ legacy.length }} older timings have no recorded account owner. An Organizer can export and review them in Corrections & station health.</p>
-        <p class="mb-3 text-sm muted">{{ pending ? 'These timings are safely stored on this device until they can upload.' : 'Offline recovery is ready. You normally do not need anything here.' }}</p>
+        <p v-if="foreignCount" class="text-warning">{{ foreignCount }} {{ $t("pending timings belong to another account. Sign in with that account to synchronize them.") }}</p>
+        <p v-if="legacy.length" class="text-warning">{{ legacy.length }} {{ $t("older timings have no recorded account owner. An Organizer can export and review them in Corrections & station health.") }}</p>
+        <p class="mb-3 text-sm muted">{{ pending ? $t('These timings are safely stored on this device until they can upload.') : $t('Offline recovery is ready. You normally do not need anything here.') }}</p>
         <div class="flex flex-wrap items-center gap-3">
-          <button v-if="pending" class="btn-secondary" :disabled="flushing || !online" @click="syncPending"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>{{ flushing ? 'Uploading…' : 'Upload now' }}</button>
-          <button v-if="pending || (account.role==='admin' && legacy.length)" class="btn-secondary" @click="exportPending"><i class="fa-solid fa-file-export" aria-hidden="true"></i>Export backup</button>
-          <button v-if="wake.supported" class="btn-secondary" @click="wake.toggle"><i :class="wake.enabled.value?'fa-solid fa-moon':'fa-solid fa-eye'" aria-hidden="true"></i>{{ wake.enabled.value ? 'Allow screen sleep' : 'Keep screen awake' }}</button>
-          <span v-if="wake.active.value" class="text-success">Screen stays awake</span><span v-if="wake.error.value" class="text-warning">{{ wake.error.value }}</span>
+          <button v-if="pending" class="btn-secondary" :disabled="flushing || !online" @click="syncPending"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>{{ flushing ? $t('Uploading…') : $t('Upload now') }}</button>
+          <button v-if="pending || (account.role==='admin' && legacy.length)" class="btn-secondary" @click="exportPending"><i class="fa-solid fa-file-export" aria-hidden="true"></i>{{ $t("Export backup") }}</button>
+          <button v-if="wake.supported" class="btn-secondary" @click="wake.toggle"><i :class="wake.enabled.value?'fa-solid fa-moon':'fa-solid fa-eye'" aria-hidden="true"></i>{{ wake.enabled.value ? $t('Allow screen sleep') : $t('Keep screen awake') }}</button>
+          <span v-if="wake.active.value" class="text-success">{{ $t("Screen stays awake") }}</span><span v-if="wake.error.value" class="text-warning">{{ wake.error.value }}</span>
         </div>
         <div v-for="item in queuedItems" :key="item.client_uuid" class="mt-3 rounded-xl border border-amber-600/40 p-3">
-          <strong>{{ item.label ?? 'Pending participant' }}</strong> · {{ formatDuration(item.elapsed_ms,2) }} · {{ checkpoints.find(c=>c.id===item.payload.checkpoint_id)?.name }}
-          <p class="text-sm text-warning">{{ item.error ?? 'Saved on this device. Waiting to synchronize.' }}</p>
-          <div class="mt-2 flex flex-wrap gap-2"><button class="btn-secondary" :disabled="flushing||!online" @click="retryPending(item.client_uuid)"><i class="fa-solid fa-rotate" aria-hidden="true"></i>Retry</button>
-          <button v-if="item.warning" class="btn-secondary" :disabled="flushing||!online" @click="confirmation={message:'Record despite missing earlier checkpoints? This override is kept in the timing audit.',label:'Record anyway',action:()=>retryPending(item.client_uuid,true)}"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Review warning</button>
-          <button class="btn-danger" :disabled="flushing" @click="removePending(item.client_uuid)"><i class="fa-solid fa-trash" aria-hidden="true"></i>Discard</button></div>
+          <strong>{{ item.label ?? $t('Pending participant') }}</strong> · {{ formatDuration(item.elapsed_ms,2) }} · {{ $t(checkpoints.find(c=>c.id===item.payload.checkpoint_id)?.name ?? '') }}
+          <p class="text-sm text-warning">{{ item.error ?? $t('Saved on this device. Waiting to synchronize.') }}</p>
+          <div class="mt-2 flex flex-wrap gap-2"><button class="btn-secondary" :disabled="flushing||!online" @click="retryPending(item.client_uuid)"><i class="fa-solid fa-rotate" aria-hidden="true"></i>{{ $t("Retry") }}</button>
+          <button v-if="item.warning" class="btn-secondary" :disabled="flushing||!online" @click="confirmation={message:$t('Record despite missing earlier checkpoints? This override is kept in the timing audit.'),label:$t('Record anyway'),action:()=>retryPending(item.client_uuid,true)}"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>{{ $t("Review warning") }}</button>
+          <button class="btn-danger" :disabled="flushing" @click="removePending(item.client_uuid)"><i class="fa-solid fa-trash" aria-hidden="true"></i>{{ $t("Discard") }}</button></div>
         </div>
       </div>
     </details>
-    <div class="mt-4 text-center text-xs text-muted">For unreliable connections, open this timing station before moving to the checkpoint. Unsent timings are stored on this device and synchronize automatically.</div>
+    <div class="mt-4 text-center text-xs text-muted">{{ $t("For unreliable connections, open this timing station before moving to the checkpoint. Unsent timings are stored on this device and synchronize automatically.") }}</div>
   </template>
-<ConfirmDialog v-if="confirmation" title="Confirm timing action" :message="confirmation.message" :confirm-label="confirmation.label" @cancel="confirmation=null" @confirm="confirmAction"/>
+<ConfirmDialog v-if="confirmation" :title="$t('Confirm timing action')" :message="confirmation.message" :confirm-label="confirmation.label" @cancel="confirmation=null" @confirm="confirmAction"/>
 </AppLayout>
 </template>

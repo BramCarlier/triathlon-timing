@@ -10,8 +10,8 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
 </script>
 
 <template>
-  <Head :title="`${roleLabel} guide`" />
-  <AppLayout :title="`${roleLabel} guide`">
+  <Head :title="$t(':role guide', {role:roleLabel})" />
+  <AppLayout :title="$t(':role guide', {role:roleLabel})">
     <section class="panel-pad mb-5">
       <div class="flex items-start gap-4">
         <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-400 text-xl text-slate-950">
@@ -73,24 +73,24 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
     <template v-else-if="role==='organizer'">
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">Open your race</h2></div>
-          <p class="muted">Open the race assigned to your account. Your checkpoint assignment follows your account, so you do not have to choose a station yourself.</p>
-          <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>Open my races</Link>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">{{ $t("Open your race") }}</h2></div>
+          <p class="muted">{{ $t("Open the race assigned to your account. Your checkpoint assignment follows your account, so you do not have to choose a station yourself.") }}</p>
+          <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>{{ $t("Open my races") }}</Link>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">Wait for the start</h2></div>
-          <p class="muted">The Organizer starts the shared race clock. Your timing station becomes active automatically when the race starts.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">{{ $t("Wait for the start") }}</h2></div>
+          <p class="muted">{{ $t("The Organizer starts the shared race clock. Your timing station becomes active automatically when the race starts.") }}</p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">Tap participants as they pass</h2></div>
-          <p class="muted">Search by bib or name and tap the participant once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.</p>
+          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">{{ $t("Tap participants as they pass") }}</h2></div>
+          <p class="muted">{{ $t("Search by bib or name and tap the participant once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.") }}</p>
         </article>
 
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">Poor connection?</h2>
-          <p class="mt-2 muted">Open your Timing station before moving to the checkpoint. It stores unsent timings on the device and synchronizes them when the connection returns.</p>
+          <h2 class="text-lg font-bold">{{ $t("Poor connection?") }}</h2>
+          <p class="mt-2 muted">{{ $t("Open your Timing station before moving to the checkpoint. It stores unsent timings on the device and synchronizes them when the connection returns.") }}</p>
         </article>
       </section>
     </template>
@@ -98,13 +98,13 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
     <template v-else>
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">Your races</h2>
-          <p class="mt-2 muted">Open My races to see every event linked to your athlete profile. You do not need to choose checkpoints or operate the race clock.</p>
-          <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>Open my races</Link>
+          <h2 class="text-lg font-bold">{{ $t("Your races") }}</h2>
+          <p class="mt-2 muted">{{ $t("Open My races to see every event linked to your athlete profile. You do not need to choose checkpoints or operate the race clock.") }}</p>
+          <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>{{ $t("Open my races") }}</Link>
         </article>
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">Results</h2>
-          <p class="mt-2 muted">Your race history shows recorded progress and results for each event when they become available.</p>
+          <h2 class="text-lg font-bold">{{ $t("Results") }}</h2>
+          <p class="mt-2 muted">{{ $t("Your race history shows recorded progress and results for each event when they become available.") }}</p>
         </article>
       </section>
     </template>

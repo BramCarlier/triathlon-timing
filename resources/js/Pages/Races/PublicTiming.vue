@@ -66,7 +66,7 @@ const filtered=computed(()=>{
 const recorded=(participant:StationParticipant)=>!!selectedCheckpoint.value
   && participant.completed_checkpoint_ids.includes(selectedCheckpoint.value.id);
 
-const disciplineLabel=(value:string)=>value.charAt(0).toUpperCase()+value.slice(1);
+const disciplineLabel=(value:string)=>tr(value.charAt(0).toUpperCase()+value.slice(1));
 
 function showFeedback(type:'ok'|'error',message:string){
   feedback.value={type,message};
@@ -77,8 +77,8 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
   if(!selectedCheckpoint.value||saving.value.has(participant.id))return;
   if(!props.race.started_at){showFeedback('error',tr('The race has not started yet.'));return;}
   if(props.race.finished_at){showFeedback('error',tr('The race is finished.'));return;}
-  if(participant.status&&participant.status!=='registered'){showFeedback('error',`${participant.name} is marked ${participant.status.toUpperCase()}.`);return;}
-  if(recorded(participant)){showFeedback('error',`${participant.name} already has a time at this checkpoint.`);return;}
+  if(participant.status&&participant.status!=='registered'){showFeedback('error',tr(':name is marked :status.', {name:participant.name,status:participant.status.toUpperCase()}));return;}
+  if(recorded(participant)){showFeedback('error',tr(':name already has a time at this checkpoint.', {name:participant.name}));return;}
 
   const selected=selectedCheckpoint.value;
   saving.value.add(participant.id);
@@ -116,7 +116,7 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
       confirmation.value={
         participant,
         clientUuid,
-        message:`${data.message??tr('An earlier checkpoint is missing.')}${missing?` Missing: ${missing}.`:''} Record anyway?`,
+        message:[data.message??tr('An earlier checkpoint is missing.'), missing?tr('Missing: :checkpoints.',{checkpoints:missing}):'', tr('Record anyway?')].filter(Boolean).join(' '),
       };
       return;
     }
@@ -137,7 +137,7 @@ function confirmOverride(){
 </script>
 
 <template>
-  <Head :title="`${race.name} · Race timing`"/>
+  <Head :title="`${race.name} · ${$t('Race timing')}`"/>
   <AppLayout :title="race.name" public-view>
     <section class="panel-pad mb-5">
       <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
@@ -159,7 +159,7 @@ function confirmOverride(){
           <div>
             <label for="public-timing-checkpoint" class="label">{{ $t("1. Checkpoint") }}</label>
             <select id="public-timing-checkpoint" v-model="checkpointId" class="field min-h-14 text-lg">
-              <option v-for="checkpoint in race.checkpoints" :key="checkpoint.id" :value="checkpoint.id">{{ checkpoint.name }}</option>
+              <option v-for="checkpoint in race.checkpoints" :key="checkpoint.id" :value="checkpoint.id">{{ $t(checkpoint.name) }}</option>
             </select>
           </div>
           <div>
@@ -169,7 +169,7 @@ function confirmOverride(){
         </div>
 
         <p v-if="selectedCheckpoint" class="mt-3 rounded-xl bg-canvas p-3 text-sm">
-          {{ $t("Recording at") }} <strong>{{ selectedCheckpoint.name }}</strong>. Tap the correct athlete once.
+          {{ $t("Recording at") }} <strong>{{ $t(selectedCheckpoint.name) }}</strong>{{ $t(". Tap the correct athlete once.") }}
         </p>
         <p v-if="feedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="feedback.type==='ok'?'bg-emerald-500/10 text-success':'bg-red-500/10 text-error'" role="status">{{ feedback.message }}</p>
       </div>
@@ -204,14 +204,14 @@ function confirmOverride(){
       <div class="border-b border-outline p-4">
         <div class="flex items-center justify-between gap-3">
           <h3 class="font-bold">{{ $t("Latest times") }}</h3>
-          <span class="badge">{{ completedCount }} finished</span>
+          <span class="badge">{{ completedCount }} {{ $t("finished") }}</span>
         </div>
       </div>
       <div v-if="recent.length" class="divide-y divide-outline">
         <div v-for="timing in recent" :key="timing.id??timing.client_uuid" class="flex items-center justify-between gap-3 p-4">
           <div class="min-w-0">
             <strong class="block truncate">{{ timing.entry?.display_name??bibLabel(timing.entry?.bib_number) }}</strong>
-            <span class="text-sm muted">{{ timing.checkpoint?.name }}</span>
+            <span class="text-sm muted">{{ $t(timing.checkpoint?.name ?? '') }}</span>
           </div>
           <span class="shrink-0 font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
         </div>
@@ -226,7 +226,7 @@ function confirmOverride(){
       v-if="confirmation"
       :title="$t('Record this time?')"
       :message="confirmation.message"
-      confirm-label="Record anyway"
+      :confirm-label="$t('Record anyway')"
       @cancel="confirmation=null"
       @confirm="confirmOverride"
     />

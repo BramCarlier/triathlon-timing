@@ -1,5 +1,5 @@
 import type { Checkpoint } from './types/index';
-import { localeTag, tr } from './i18n';
+import { localeTag, tr } from './i18n.ts';
 
 type Course = { settings?: Record<string, unknown> };
 type Point = Pick<Checkpoint, 'kind'|'discipline'|'distance_km'>;

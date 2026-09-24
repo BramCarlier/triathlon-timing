@@ -155,7 +155,7 @@ const checkpoint = useForm({
   code: '',
   sequence: suggestedSequence(),
   discipline: 'run',
-  kind: tr('split'),
+  kind: 'split',
   distance_km: '',
   is_required: true,
   is_active: true,
@@ -169,7 +169,7 @@ const beginAddCheckpoint = () => {
   checkpoint.code = '';
   checkpoint.sequence = suggestedSequence();
   checkpoint.discipline = 'run';
-  checkpoint.kind = tr('split');
+  checkpoint.kind = 'split';
   checkpoint.distance_km = '';
   checkpoint.is_required = true;
   checkpoint.is_active = true;
@@ -207,7 +207,7 @@ const confirmCheckpointRemoval = () => {
   router.delete(`/races/${props.race.id}/checkpoints/${removingCheckpoint.value.id}`, {
     preserveScroll:true,
     onSuccess:() => { removingCheckpoint.value = null; checkpointError.value = ''; },
-    onError:errors => { checkpointError.value = String(Object.values(errors)[0] ?? 'Unable to delete checkpoint'); },
+    onError:errors => { checkpointError.value = String(Object.values(errors)[0] ?? tr('Unable to delete checkpoint')); },
   });
 };
 
@@ -282,7 +282,7 @@ const addParticipant = () => participantForm.post(`/races/${props.race.id}/parti
   preserveScroll:true,
   onSuccess:() => participantForm.reset(),
 });
-const disciplineLabel = (discipline:string) => discipline.charAt(0).toUpperCase()+discipline.slice(1);
+const disciplineLabel = (discipline:string) => tr(discipline.charAt(0).toUpperCase()+discipline.slice(1));
 
 const timingParticipants = ref(props.participants.map(p => ({...p, completed_checkpoint_ids:[...p.completed_checkpoint_ids]})));
 const recent = ref<Timing[]>(props.recentTimings.map(t => ({...t})));
@@ -323,10 +323,10 @@ const showTimingFeedback = (type:'ok'|'error'|'offline', message:string) => {
 
 async function recordTiming(participant:StationParticipant, override=false, clientUuid=uuid()) {
   if (!selectedCheckpoint.value || timingSaving.value.has(participant.id)) return;
-  if (!props.race.started_at) { showTimingFeedback('error','Start the race before recording times.'); return; }
+  if (!props.race.started_at) { showTimingFeedback('error',tr('Start the race before recording times.')); return; }
   if (props.race.finished_at) { showTimingFeedback('error',tr('The race is finished.')); return; }
-  if (participant.status && participant.status !== 'registered') { showTimingFeedback('error',`${participant.name} is marked ${participant.status.toUpperCase()}.`); return; }
-  if (participantRecorded(participant)) { showTimingFeedback('error',`${participant.name} is already recorded here.`); return; }
+  if (participant.status && participant.status !== 'registered') { showTimingFeedback('error',tr(':name is marked :status.', {name:participant.name,status:participant.status.toUpperCase()})); return; }
+  if (participantRecorded(participant)) { showTimingFeedback('error',tr(':name is already recorded here.', {name:participant.name})); return; }
 
   const checkpointId=selectedCheckpoint.value.id;
   const payload={
@@ -343,7 +343,7 @@ async function recordTiming(participant:StationParticipant, override=false, clie
   const saveOffline=async()=>{
     await queueWorkspaceTiming(`/races/${props.race.id}/timings`,payload,participant.name,elapsed);
     timingSearch.value='';
-    showTimingFeedback('offline',`${participant.name} saved on this device and will upload automatically.`);
+    showTimingFeedback('offline',tr(':name saved on this device and will upload automatically.', {name:participant.name}));
   };
 
   timingSaving.value.add(participant.id);
@@ -368,13 +368,13 @@ async function recordTiming(participant:StationParticipant, override=false, clie
       return;
     }
     if(response.status===409&&data.warning){
-      timingConfirmation.value={participant,clientUuid,message:`${data.message??tr('An earlier checkpoint is missing.')} ${(data.missing_checkpoints??[]).join(', ')} Record anyway?`};
+      timingConfirmation.value={participant,clientUuid,message:[data.message??tr('An earlier checkpoint is missing.'), (data.missing_checkpoints??[]).join(', '), tr('Record anyway?')].filter(Boolean).join(' ')};
       return;
     }
     if((response.ok&&!data.timing)||response.status>=500||[401,403,408,419,429].includes(response.status)){await saveOffline();return;}
-    showTimingFeedback('error',data.message??'The time could not be recorded.');
+    showTimingFeedback('error',data.message??tr('The time could not be recorded.'));
   } catch {
-    showTimingFeedback('error','Timing was NOT saved: device storage is unavailable. Open the full-screen timing station and check device storage.');
+    showTimingFeedback('error',tr('Timing was NOT saved: device storage is unavailable. Open the full-screen timing station and check device storage.'));
   } finally {
     timingSaving.value.delete(participant.id);
   }
@@ -463,9 +463,9 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 <button type="button" class="btn-secondary !px-3" @click="editingRaceDetails=true"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ $t("Edit details") }}</button>
               </div>
               <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.swim_km }} km</strong><span class="text-xs muted">{{ $t("Swim") }}</span></div>
-                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.bike_km }} km</strong><span class="text-xs muted">{{ $t("Bike") }}</span></div>
-                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.run_km }} km</strong><span class="text-xs muted">{{ $t("Run") }}</span></div>
+                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.swim_km }} {{ $t("km") }}</strong><span class="text-xs muted">{{ $t("Swim") }}</span></div>
+                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.bike_km }} {{ $t("km") }}</strong><span class="text-xs muted">{{ $t("Bike") }}</span></div>
+                <div class="rounded-xl bg-canvas p-3"><strong class="block">{{ raceForm.run_km }} {{ $t("km") }}</strong><span class="text-xs muted">{{ $t("Run") }}</span></div>
               </div>
             </div>
             <form v-else @submit.prevent="saveRace">
@@ -507,7 +507,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               <article v-for="cp in setupCheckpoints" :key="cp.id" class="rounded-xl border border-outline p-3">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <strong class="block">{{ cp.name }}</strong>
+                    <strong class="block">{{ $t(cp.name) }}</strong>
                     <span class="mt-1 block text-sm muted">{{ checkpointDistanceText(race, cp) }}</span>
                   </div>
                   <div class="flex flex-wrap gap-2">
@@ -521,7 +521,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                   <span v-if="!assignmentsFor(cp.id).length" class="text-sm muted">{{ $t("No account assigned — that is fine for the race-day link") }}</span>
                   <span v-for="assignment in assignmentsFor(cp.id)" :key="assignment.id" class="inline-flex items-center gap-2 rounded-full bg-canvas px-3 py-2 text-sm">
                     <i class="fa-solid fa-user" aria-hidden="true"></i>{{ assignment.user.name }}
-                    <button type="button" class="text-error" :aria-label="`Remove ${assignment.user.name}`" @click="removeOfficial(assignment.user)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                    <button type="button" class="text-error" :aria-label="$t('Remove :name', {name:assignment.user.name})" @click="removeOfficial(assignment.user)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                   </span>
                 </div>
 
@@ -538,7 +538,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 </form>
 
                 <form v-if="showOfficialTools && assigningCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
-                  <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">{{ $t("Optional Official account") }}</h4><p class="mt-1 text-sm muted">{{ cp.name }} · only needed if you want account-based access</p></div><button type="button" class="btn-icon" :aria-label="$t('Close official form')" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+                  <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">{{ $t("Optional Official account") }}</h4><p class="mt-1 text-sm muted">{{ $t(cp.name) }} {{ $t("· only needed if you want account-based access") }}</p></div><button type="button" class="btn-icon" :aria-label="$t('Close official form')" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
                   <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     <label class="label">{{ $t("Name") }}<input :value="officialForm.name" class="field" autocomplete="off" :placeholder="$t('Official name')" required @input="updateOfficialField('name',$event)"></label>
                     <label class="label">{{ $t("Email") }}<input :value="officialForm.email" type="email" class="field" autocomplete="off" :placeholder="$t('official@example.com')" required @input="updateOfficialField('email',$event)"></label>
@@ -550,8 +550,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                       <div>
                         <span class="text-xs font-bold uppercase tracking-wider text-success">{{ $t("Existing Official selected") }}</span>
                         <strong class="mt-1 block">{{ selectedOfficial.name }}</strong>
-                        <span class="mt-1 block text-sm muted">{{ selectedOfficial.email }}{{ selectedOfficial.role==='admin'?' · Organizer (admin)':'' }}</span>
-                        <span v-if="assignmentForOfficial(selectedOfficial.id)" class="mt-1 block text-xs muted">Currently assigned to {{ assignmentForOfficial(selectedOfficial.id)?.checkpoint?.name }}</span>
+                        <span class="mt-1 block text-sm muted">{{ selectedOfficial.email }}{{ selectedOfficial.role==='admin'?' · '+$t('Organizer (admin)'):'' }}</span>
+                        <span v-if="assignmentForOfficial(selectedOfficial.id)" class="mt-1 block text-xs muted">{{ $t("Currently assigned to") }} {{ $t(assignmentForOfficial(selectedOfficial.id)?.checkpoint?.name ?? '') }}</span>
                       </div>
                       <button type="button" class="btn-secondary !px-3" @click="clearOfficialSelection"><i class="fa-solid fa-rotate" aria-hidden="true"></i>{{ $t("Change") }}</button>
                     </div>
@@ -559,8 +559,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
                   <div v-else-if="availableOfficials.length" class="mt-3 rounded-xl border border-cyan-400/30 bg-canvas p-2">
                     <div class="flex items-center justify-between gap-3 px-2 pb-2">
-                      <p class="text-xs font-bold uppercase tracking-wider text-accent">{{ officialFilterTokens.length ? 'Matching officials' : $t('Available officials') }}</p>
-                      <span class="text-xs muted">{{ availableOfficials.length }} shown</span>
+                      <p class="text-xs font-bold uppercase tracking-wider text-accent">{{ officialFilterTokens.length ? $t('Matching officials') : $t('Available officials') }}</p>
+                      <span class="text-xs muted">{{ availableOfficials.length }} {{ $t("shown") }}</span>
                     </div>
                     <div class="max-h-60 space-y-1 overflow-y-auto pr-1">
                       <button v-for="official in availableOfficials" :key="official.id" type="button" class="w-full rounded-xl border border-outline p-3 text-left hover:border-cyan-400 hover:bg-raised" @click="selectOfficial(official)">
@@ -569,7 +569,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                           <span v-if="official.role==='admin'" class="badge">{{ $t("Organizer (admin)") }}</span>
                         </span>
                         <span class="mt-1 block text-sm muted">{{ official.email }}</span>
-                        <span v-if="assignmentForOfficial(official.id)" class="mt-1 block text-xs muted">Assigned to {{ assignmentForOfficial(official.id)?.checkpoint?.name }}</span>
+                        <span v-if="assignmentForOfficial(official.id)" class="mt-1 block text-xs muted">{{ $t("Assigned to") }} {{ $t(assignmentForOfficial(official.id)?.checkpoint?.name ?? '') }}</span>
                       </button>
                     </div>
                   </div>
@@ -606,7 +606,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section v-if="isAdmin && !race.started_at" id="participants" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='participants'" @click="toggleStep('participants')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ $t("Step 2") }}</p><h2 class="text-xl font-bold">{{ $t("Athletes") }}</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} added</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ $t("Step 2") }}</p><h2 class="text-xl font-bold">{{ $t("Athletes") }}</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} {{ $t("added") }}</p></div>
         <i :class="openStep==='participants'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
       <div v-show="openStep==='participants'" class="border-t border-outline p-4">
@@ -658,7 +658,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               </div>
             </div>
             <div v-else class="p-6 text-center muted">{{ $t("No athletes or teams yet.") }}</div>
-            <div v-if="participants.length>10" class="border-t border-outline p-4"><Link :href="`/races/${race.id}/participants`" class="font-semibold text-accent underline">View all {{ participants.length }}</Link></div>
+            <div v-if="participants.length>10" class="border-t border-outline p-4"><Link :href="`/races/${race.id}/participants`" class="font-semibold text-accent underline">{{ $t("View all") }} {{ participants.length }}</Link></div>
           </section>
         </div>
       </div>
@@ -666,7 +666,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section id="race-day" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='race-day'" @click="toggleStep('race-day')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.started_at?'Live':$t('Step 3') }}</p><h2 class="text-xl font-bold">{{ race.started_at?$t('Timing'):$t('Start & timing') }}</h2><p class="mt-1 text-sm muted">{{ $t("As Organizer, you can switch between checkpoints while timing.") }}</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.started_at?$t('Live'):$t('Step 3') }}</p><h2 class="text-xl font-bold">{{ race.started_at?$t('Timing'):$t('Start & timing') }}</h2><p class="mt-1 text-sm muted">{{ $t("As Organizer, you can switch between checkpoints while timing.") }}</p></div>
         <i :class="openStep==='race-day'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
 
@@ -709,11 +709,11 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
             <div class="border-b border-outline p-4">
               <div v-if="selectedCheckpoint" class="grid gap-3" :class="isAdmin?'sm:grid-cols-[minmax(0,1fr)_minmax(220px,.6fr)]':''">
                 <label class="label">{{ $t("Find athlete or team") }}<input v-model="timingSearch" class="field min-h-14 text-lg" :placeholder="$t('Bib number or name')"></label>
-                <label v-if="isAdmin" class="label">{{ $t("Checkpoint") }}<select v-model="selectedCheckpointId" class="field min-h-14"><option v-for="cp in activeTimingCheckpoints" :key="cp.id" :value="cp.id">{{ cp.name }}</option></select></label>
-                <div v-else class="rounded-xl bg-canvas p-3"><span class="text-xs font-bold uppercase tracking-wider text-accent">{{ $t("Assigned checkpoint") }}</span><strong class="mt-1 block">{{ selectedCheckpoint.name }}</strong></div>
+                <label v-if="isAdmin" class="label">{{ $t("Checkpoint") }}<select v-model="selectedCheckpointId" class="field min-h-14"><option v-for="cp in activeTimingCheckpoints" :key="cp.id" :value="cp.id">{{ $t(cp.name) }}</option></select></label>
+                <div v-else class="rounded-xl bg-canvas p-3"><span class="text-xs font-bold uppercase tracking-wider text-accent">{{ $t("Assigned checkpoint") }}</span><strong class="mt-1 block">{{ $t(selectedCheckpoint.name) }}</strong></div>
               </div>
               <div v-else class="rounded-xl bg-amber-500/10 p-4 text-warning"><strong>{{ $t("No checkpoint assigned.") }}</strong><span class="mt-1 block text-sm">{{ $t("Ask the Organizer to assign this account before race day.") }}</span></div>
-              <p v-if="timingFeedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="timingFeedback.type==='ok'?'bg-emerald-500/10 text-success':timingFeedback.type==='offline'?'bg-amber-500/10 text-warning':'bg-red-500/10 text-error'" role="status">{{ timingFeedback.message }}</p><p v-if="workspacePending" class="mt-2 text-sm text-warning"><i class="fa-solid fa-cloud-arrow-up mr-1" aria-hidden="true"></i>{{ workspacePending }} timing{{ workspacePending===1?'':'s' }} waiting to upload automatically. <Link :href="`/races/${race.id}/station`" class="font-semibold underline">{{ $t("Review device sync") }}</Link></p>
+              <p v-if="timingFeedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="timingFeedback.type==='ok'?'bg-emerald-500/10 text-success':timingFeedback.type==='offline'?'bg-amber-500/10 text-warning':'bg-red-500/10 text-error'" role="status">{{ timingFeedback.message }}</p><p v-if="workspacePending" class="mt-2 text-sm text-warning"><i class="fa-solid fa-cloud-arrow-up mr-1" aria-hidden="true"></i>{{ $t('Timings waiting to upload automatically: :count.', {count:workspacePending}) }} <Link :href="`/races/${race.id}/station`" class="font-semibold underline">{{ $t("Review device sync") }}</Link></p>
             </div>
 
             <div v-if="race.started_at && !race.finished_at && selectedCheckpoint" class="max-h-[58dvh] overflow-y-auto p-2">
@@ -731,15 +731,15 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               </button>
               <p v-if="!filteredTimingParticipants.length" class="p-8 text-center muted">{{ $t("No matching athlete.") }}</p>
             </div>
-            <div v-else-if="selectedCheckpoint" class="p-8 text-center"><strong>{{ race.finished_at?$t('Timing is closed'):'Timing opens when the race starts' }}</strong></div>
+            <div v-else-if="selectedCheckpoint" class="p-8 text-center"><strong>{{ race.finished_at?$t('Timing is closed'):$t('Timing opens when the race starts') }}</strong></div>
           </section>
 
           <section class="panel overflow-hidden">
-            <div class="border-b border-outline p-4"><div class="flex items-center justify-between gap-3"><h3 class="font-bold">{{ $t("Latest times") }}</h3><span class="badge">{{ localCompletedCount }} finished</span></div></div>
+            <div class="border-b border-outline p-4"><div class="flex items-center justify-between gap-3"><h3 class="font-bold">{{ $t("Latest times") }}</h3><span class="badge">{{ localCompletedCount }} {{ $t("finished") }}</span></div></div>
             <div v-if="recent.length" class="divide-y divide-outline">
               <div v-for="timing in recent.slice(0,12)" :key="timing.id ?? timing.client_uuid" class="p-4">
                 <div class="flex items-center justify-between gap-3">
-                  <div class="min-w-0"><strong class="block truncate">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</strong><span class="text-sm muted">{{ timing.checkpoint?.name }}<span v-if="timing.operator?.name"> · {{ timing.operator.name }}</span></span></div>
+                  <div class="min-w-0"><strong class="block truncate">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</strong><span class="text-sm muted">{{ $t(timing.checkpoint?.name ?? '') }}<span v-if="timing.operator?.name"> · {{ timing.operator.name }}</span></span></div>
                   <span class="shrink-0 font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
                 </div>
               </div>
@@ -754,7 +754,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
     <section id="finish" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='finish'" @click="toggleStep('finish')">
-        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.finished_at?'Finished':$t('Step 4') }}</p><h2 class="text-xl font-bold">{{ $t("Results") }}</h2><p class="mt-1 text-sm muted">{{ localCompletedCount }} of {{ race.entries_count ?? 0 }} have a finish time</p></div>
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ race.finished_at?$t('Finished'):$t('Step 4') }}</p><h2 class="text-xl font-bold">{{ $t("Results") }}</h2><p class="mt-1 text-sm muted">{{ localCompletedCount }} {{ $t("of") }} {{ race.entries_count ?? 0 }} {{ $t("have a finish time") }}</p></div>
         <i :class="openStep==='finish'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
       <div v-show="openStep==='finish'" class="border-t border-outline p-4">
@@ -787,8 +787,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
     <ConfirmDialog
       v-if="pendingClockAction"
       :title="pendingClockAction==='start'?$t('Start the race?'):$t('End the race now?')"
-      :message="pendingClockAction==='start'?$t('Start the shared clock now? Timing opens immediately for every checkpoint.'):'Stop the race now? Normally it ends automatically when the last active athlete finishes.'"
-      :confirm-label="pendingClockAction==='start'?$t('Start race'):'End race'"
+      :message="pendingClockAction==='start'?$t('Start the shared clock now? Timing opens immediately for every checkpoint.'):$t('Stop the race now? Normally it ends automatically when the last active athlete finishes.')"
+      :confirm-label="pendingClockAction==='start'?$t('Start race'):$t('End race')"
       :busy="clockForm.processing"
       @cancel="pendingClockAction=null; clockForm.clearErrors()"
       @confirm="changeClock"
@@ -800,7 +800,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       v-if="timingConfirmation"
       :title="$t('Record this time?')"
       :message="timingConfirmation.message"
-      confirm-label="Record anyway"
+      :confirm-label="$t('Record anyway')"
       @cancel="timingConfirmation=null"
       @confirm="confirmTimingOverride"
     />
@@ -808,8 +808,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
     <ConfirmDialog
       v-if="removingCheckpoint"
       :title="$t('Delete checkpoint?')"
-      :message="`Delete ${removingCheckpoint.name}?`"
-      confirm-label="Delete checkpoint"
+      :message="$t('Delete :name?', {name:$t(removingCheckpoint.name)})"
+      :confirm-label="$t('Delete checkpoint')"
       @cancel="removingCheckpoint=null"
       @confirm="confirmCheckpointRemoval"
     />
@@ -827,8 +827,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
     <ConfirmDialog
       v-if="deleting"
       :title="$t('Delete race?')"
-      :message="`Move ${race.name} to Deleted races?`"
-      confirm-label="Delete race"
+      :message="$t('Move :name to Deleted races?', {name:race.name})"
+      :confirm-label="$t('Delete race')"
       :busy="deleteForm.processing"
       @cancel="deleting=false"
       @confirm="deleteRace"

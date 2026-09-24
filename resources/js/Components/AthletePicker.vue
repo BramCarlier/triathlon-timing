@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '../i18n';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { jsonRequest } from '../lib';
 
@@ -29,7 +30,7 @@ async function load(number=1){
     page.value=data.current_page;
     last.value=data.last_page;
   }catch{
-    if(current===request){rows.value=[];error.value='Could not load athletes. Please try again.';}
+    if(current===request){rows.value=[];error.value=tr('Could not load athletes. Please try again.');}
   }finally{if(current===request)busy.value=false;}
 }
 function choose(athlete:Athlete){selected.value=athlete;model.value=athlete.id;}

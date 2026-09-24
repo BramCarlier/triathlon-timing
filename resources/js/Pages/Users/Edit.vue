@@ -21,7 +21,7 @@ const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
 </script>
 
 <template>
-  <Head :title="`Edit ${account.name}`"/>
+  <Head :title="$t('Edit :name', {name:account.name})"/>
   <AppLayout :title="$t('Edit person & access')">
     <Link href="/users" class="btn-secondary mb-5"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>{{ $t("Back to People") }}</Link>
 
@@ -47,14 +47,14 @@ const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
       </section>
 
       <section class="panel-pad space-y-4">
-        <h2 class="text-lg font-bold">{{ form.role==='athlete'?'Athlete profile':'Access' }}</h2>
+        <h2 class="text-lg font-bold">{{ form.role==='athlete'?$t('Athlete profile'):$t('Access') }}</h2>
         <AthletePicker v-if="form.role==='athlete'" v-model="form.athlete_id" :account-id="account.id" :initial="linkedAthlete"/>
         <template v-else-if="form.role==='organizer'">
           <p class="text-sm muted">{{ $t("Checkpoint assignments normally grant race access automatically. Only change the options below for exceptional access.") }}</p>
           <details class="rounded-xl border border-outline p-3">
             <summary class="font-semibold">{{ $t("Advanced Official access") }}</summary>
             <label class="label mt-3">{{ $t("Access preset") }}<select v-model="form.access_role_id" class="field"><option :value="null">{{ $t("Official (default)") }}</option><option v-for="role in accessRoles.filter(r=>!r.is_default)" :key="role.id" :value="role.id">{{ role.name }}</option></select></label>
-            <p class="mt-2 text-xs muted">{{ (form.access_role_id?accessRoles.find(r=>r.id===form.access_role_id):accessRoles.find(r=>r.is_default))?.description }}</p>
+            <p class="mt-2 text-xs muted">{{ $t((form.access_role_id?accessRoles.find(r=>r.id===form.access_role_id):accessRoles.find(r=>r.is_default))?.description ?? '') }}</p>
             <h3 class="mt-4 text-sm font-semibold">{{ $t("Extra race access") }}</h3>
             <p class="mt-1 text-xs muted">{{ $t("Use only when this Official needs race access without a checkpoint assignment.") }}</p>
             <div class="mt-3 max-h-56 space-y-2 overflow-auto rounded-xl bg-canvas p-3">
@@ -64,12 +64,12 @@ const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
             <Link href="/admin/roles" class="btn-secondary mt-3"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>{{ $t("Manage access presets") }}</Link>
           </details>
         </template>
-        <div v-else class="rounded-xl bg-canvas p-4 text-sm muted">Organizer (admin) accounts have full access to all races and administration.</div>
+        <div v-else class="rounded-xl bg-canvas p-4 text-sm muted">{{ $t("Organizer (admin) accounts have full access to all races and administration.") }}</div>
       </section>
 
       <div class="lg:col-span-2">
         <ul v-if="Object.keys(form.errors).length" role="alert" class="mb-4 list-disc rounded-xl border border-red-500/30 bg-red-500/10 p-4 pl-8 text-error"><li v-for="(error,field) in form.errors" :key="field">{{ error }}</li></ul>
-        <div class="flex flex-wrap gap-3"><button class="btn-primary" :disabled="form.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>Save changes</button><Link href="/users" class="btn-secondary">Cancel</Link></div>
+        <div class="flex flex-wrap gap-3"><button class="btn-primary" :disabled="form.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ $t("Save changes") }}</button><Link href="/users" class="btn-secondary">{{ $t("Cancel") }}</Link></div>
       </div>
     </form>
   </AppLayout>

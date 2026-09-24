@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { activeLocale, setLocale, type Locale } from '../i18n';
+import { ref } from 'vue';
+import { activeLocale, type Locale } from '../i18n';
 
+const pending = ref(false);
 function change(event: Event) {
-  const locale = (event.target as HTMLSelectElement).value as Locale;
-  setLocale(locale);
-  router.post('/locale', { locale }, { preserveScroll: true, preserveState: true });
+  const select = event.target as HTMLSelectElement;
+  const locale = select.value as Locale;
+  pending.value = true;
+  router.post('/locale', { locale }, { preserveScroll: true, preserveState: true,
+    onFinish: () => { pending.value = false; select.value = activeLocale.value; },
+  });
 }
 </script>
 
@@ -15,6 +20,7 @@ function change(event: Event) {
     <span class="sr-only">{{ $t('Language') }}</span>
     <select
       :value="activeLocale"
+      :disabled="pending"
       class="appearance-none bg-transparent pr-5 font-semibold outline-none"
       :aria-label="$t('Language')"
       @change="change"

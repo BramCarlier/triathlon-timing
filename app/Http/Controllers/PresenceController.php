@@ -18,7 +18,7 @@ class PresenceController extends Controller
             $assignedCheckpointId = $race->checkpointAssignments()
                 ->where('user_id', $request->user()->id)
                 ->value('checkpoint_id');
-            abort_unless((int) $assignedCheckpointId === (int) $data['checkpoint_id'], 403, 'You can only use your assigned checkpoint.');
+            abort_unless((int) $assignedCheckpointId === (int) $data['checkpoint_id'], 403, __('You can only use your assigned checkpoint.'));
         }
         OperatorPresence::updateOrCreate(['device_uuid' => $data['device_uuid'], 'race_id' => $race->id], ['user_id' => $request->user()->id, 'checkpoint_id' => $data['checkpoint_id'], 'pending_count' => $data['pending_count'], 'last_seen_at' => now()]);
         return response()->json(['ok' => true, 'server_now' => now('UTC')->toISOString(), 'started_at' => $race->started_at?->toISOString(), 'finished_at' => $race->finished_at?->toISOString(), 'status' => $race->status->value]);

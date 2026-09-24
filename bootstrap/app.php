@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [SetLocale::class, HandleInertiaRequests::class, ForcePasswordChange::class]);
+        $middleware->appendToPriorityList(\Illuminate\Session\Middleware\StartSession::class, SetLocale::class);
         $middleware->alias(['role' => RoleMiddleware::class, 'permission' => \App\Http\Middleware\PermissionMiddleware::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

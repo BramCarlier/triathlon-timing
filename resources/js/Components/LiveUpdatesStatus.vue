@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '../i18n';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 const props = defineProps<{ raceId: number }>();
 const state = ref<'connecting' | 'live' | 'refresh'>('connecting');
@@ -7,7 +8,7 @@ let subscription: any;
 const subscribed = () => { state.value = 'live'; };
 const failed = (error?: any) => {
   state.value = 'refresh';
-  console.warn('Live race updates unavailable', { status: error?.status, code: error?.error?.data?.code, type: error?.type });
+  console.warn(tr('Live race updates unavailable'), { status: error?.status, code: error?.error?.data?.code, type: error?.type });
 };
 const changed = ({current}: {current: string}) => {
   state.value = current === 'connected' ? (subscription?.subscribed ? 'live' : 'connecting') : 'refresh';

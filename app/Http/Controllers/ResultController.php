@@ -61,24 +61,24 @@ class ResultController extends Controller
             ->orderBy('sequence')
             ->get();
 
-        $headers = ['Place', 'Bib', 'Type', 'Name', 'Category', 'Status'];
+        $headers = array_map('__', ['Place', 'Bib', 'Type', 'Name', 'Category', 'Status']);
         foreach ($checkpoints as $checkpoint) {
-            $headers[] = $checkpoint->name.' elapsed ms';
-            $headers[] = $checkpoint->name.' split ms';
+            $headers[] = __(':checkpoint elapsed ms', ['checkpoint'=>__($checkpoint->name)]);
+            $headers[] = __(':checkpoint split ms', ['checkpoint'=>__($checkpoint->name)]);
         }
-        $headers = [...$headers, 'Finished', 'Total ms'];
+        $headers = [...$headers, __('Finished'), __('Total ms')];
 
         return response()->streamDownload(function () use ($rows, $headers) {
             $out = fopen('php://output', 'wb');
             fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $headers));
 
             foreach ($rows as $row) {
-                $values = [$row['place'], $row['bib_number'], $row['type'], $row['name'], $row['category'], $row['result_status']];
+                $values = [$row['place'], $row['bib_number'], __($row['type']), $row['name'], $row['category'], __($row['result_status'])];
                 foreach ($row['splits'] as $split) {
                     $values[] = $split['elapsed_ms'];
                     $values[] = $split['split_ms'];
                 }
-                $values[] = $row['finished'] ? 'yes' : 'no';
+                $values[] = $row['finished'] ? __('yes') : __('no');
                 $values[] = $row['total_ms'];
                 fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $values));
             }
@@ -96,26 +96,26 @@ class ResultController extends Controller
             ->orderBy('sequence')
             ->get();
 
-        $headers = ['Place', 'Bib', 'Type', 'Name', 'Category', 'Status'];
+        $headers = array_map('__', ['Place', 'Bib', 'Type', 'Name', 'Category', 'Status']);
         foreach ($checkpoints as $checkpoint) {
-            $headers[] = $checkpoint->name.' elapsed ms';
-            $headers[] = $checkpoint->name.' split ms';
+            $headers[] = __(':checkpoint elapsed ms', ['checkpoint'=>__($checkpoint->name)]);
+            $headers[] = __(':checkpoint split ms', ['checkpoint'=>__($checkpoint->name)]);
         }
-        $headers = [...$headers, 'Finished', 'Total ms'];
+        $headers = [...$headers, __('Finished'), __('Total ms')];
 
         $spreadsheet = new Spreadsheet();
         $active = $spreadsheet->getActiveSheet();
-        $active->setTitle('Results');
+        $active->setTitle(__('Results'));
         foreach ($headers as $index => $header) $active->setCellValueExplicit([$index + 1, 1], $header, DataType::TYPE_STRING);
         $rowNumber = 2;
 
         foreach ($rows as $result) {
-            $values = [$result['place'], $result['bib_number'], $result['type'], $result['name'], $result['category'], $result['result_status']];
+            $values = [$result['place'], $result['bib_number'], __($result['type']), $result['name'], $result['category'], __($result['result_status'])];
             foreach ($result['splits'] as $split) {
                 $values[] = $split['elapsed_ms'];
                 $values[] = $split['split_ms'];
             }
-            $values[] = $result['finished'] ? 'yes' : 'no';
+            $values[] = $result['finished'] ? __('yes') : __('no');
             $values[] = $result['total_ms'];
             foreach ($values as $index => $value) {
                 if (is_string($value)) $active->setCellValueExplicit([$index + 1, $rowNumber], $value, DataType::TYPE_STRING);

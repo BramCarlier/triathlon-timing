@@ -181,7 +181,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
       <div v-if="!loading && results.length" class="mt-3 rounded-xl border border-outline bg-canvas p-2">
         <div class="flex items-center justify-between gap-3 px-2 pb-2">
           <p class="text-xs font-bold uppercase tracking-wider text-accent">{{ listTitle }}</p>
-          <span class="text-xs muted">{{ results.length }} shown</span>
+          <span class="text-xs muted">{{ results.length }} {{ $t("shown") }}</span>
         </div>
         <div class="max-h-52 space-y-1 overflow-y-auto pr-1">
           <button

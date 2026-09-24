@@ -66,7 +66,7 @@ class ParticipantImportService
 
                 $first = $group->first();
                 $isRelay = in_array(strtolower((string) ($first['type'] ?? 'solo')), ['relay', 'trio', 'team'], true);
-                $label = $bib !== null ? "bib {$bib}" : ($first['team_name'] ?? $first['first_name'] ?? 'without bib');
+                $label = $bib !== null ? __('bib :bib', ['bib'=>$bib]) : ($first['team_name'] ?? $first['first_name'] ?? __('without bib'));
                 if (!$isRelay && $group->count() !== 1) throw ValidationException::withMessages(['file' => __('Duplicate solo entry :label. Each solo athlete needs a separate row and a unique bib when supplied.', ['label'=>$label])]);
                 if ($group->contains(fn ($row) => in_array(strtolower((string) ($row['type'] ?? 'solo')), ['relay', 'trio', 'team'], true) !== $isRelay)) throw ValidationException::withMessages(['file' => __('Entry :label mixes solo and relay rows.', ['label'=>$label])]);
                 if ($isRelay && empty($first['team_name']) && empty($first['team'])) throw ValidationException::withMessages(['file' => __('Relay entries need a team_name.')]);

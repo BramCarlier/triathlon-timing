@@ -53,7 +53,7 @@ const roleLabel=(user:User)=>user.role==='admin'?tr('Organizer (admin)'):user.ro
         <form @submit.prevent="searchUsers" class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input v-model="search" class="field" :aria-label="$t('Search people')" :placeholder="$t('Search name or email')">
           <button class="btn-secondary shrink-0"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>{{ $t("Search") }}</button>
-          <span class="sm:ml-auto whitespace-nowrap text-sm muted">{{ users.total }} accounts</span>
+          <span class="sm:ml-auto whitespace-nowrap text-sm muted">{{ users.total }} {{ $t("accounts") }}</span>
         </form>
       </div>
       <div class="divide-y divide-outline">
@@ -62,10 +62,10 @@ const roleLabel=(user:User)=>user.role==='admin'?tr('Organizer (admin)'):user.ro
             <div class="flex flex-wrap items-center gap-2"><strong>{{ user.name }}</strong><span class="badge">{{ roleLabel(user) }}</span><span v-if="!user.is_active" class="badge !border-red-500/30 !text-error">{{ $t("Disabled") }}</span></div>
             <div class="mt-1 text-sm muted">{{ user.email }}</div>
             <div class="mt-1 text-xs muted">
-              <span v-if="user.athlete">Athlete: {{ user.athlete.first_name }} {{ user.athlete.last_name }}</span>
+              <span v-if="user.athlete">{{ $t("Athlete:") }} {{ user.athlete.first_name }} {{ user.athlete.last_name }}</span>
               <span v-if="user.athlete && user.races?.length"> · </span>
-              <span v-if="user.races?.length">{{ user.races.length }} race{{ user.races.length===1?'':'s' }}</span>
-              <span v-if="user.force_password_change"> · Setup pending</span>
+              <span v-if="user.races?.length">{{ user.races.length }} {{ $t("race") }}{{ user.races.length===1?'':'s' }}</span>
+              <span v-if="user.force_password_change"> {{ $t("· Setup pending") }}</span>
             </div>
           </div>
           <Link :href="`/users/${user.id}/edit`" class="btn-secondary !px-3"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ $t("Edit") }}</Link>
@@ -74,7 +74,7 @@ const roleLabel=(user:User)=>user.role==='admin'?tr('Organizer (admin)'):user.ro
       </div>
       <nav :aria-label="$t('People pages')" class="flex flex-wrap items-center justify-between gap-3 border-t border-outline p-4">
         <Link v-if="users.prev_page_url" :href="users.prev_page_url" class="btn-secondary" preserve-state><i class="fa-solid fa-chevron-left" aria-hidden="true"></i>{{ $t("Previous") }}</Link><span v-else></span>
-        <span class="text-sm muted">Page {{ users.current_page }} of {{ users.last_page }}</span>
+        <span class="text-sm muted">{{ $t("Page") }} {{ users.current_page }} {{ $t("of") }} {{ users.last_page }}</span>
         <Link v-if="users.next_page_url" :href="users.next_page_url" class="btn-secondary" preserve-state>{{ $t("Next") }}<i class="fa-solid fa-chevron-right" aria-hidden="true"></i></Link><span v-else></span>
       </nav>
     </section>
@@ -83,7 +83,7 @@ const roleLabel=(user:User)=>user.role==='admin'?tr('Organizer (admin)'):user.ro
       <summary class="font-bold"><i class="fa-solid fa-shield-halved mr-2" aria-hidden="true"></i>{{ $t("Official access presets") }}</summary>
       <p class="mt-3 text-sm muted">{{ $t("Most Officials can use the default access. Custom presets are only needed when someone should also export results or have another special permission.") }}</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
-        <div v-for="role in accessRoles" :key="role.id" class="rounded-xl border border-outline p-3"><strong>{{ role.name }}</strong><span v-if="role.is_default" class="badge ml-2">{{ $t("Default") }}</span><p class="mt-1 text-sm muted">{{ role.description || $t('Official access preset') }}</p></div>
+        <div v-for="role in accessRoles" :key="role.id" class="rounded-xl border border-outline p-3"><strong>{{ role.name }}</strong><span v-if="role.is_default" class="badge ml-2">{{ $t("Default") }}</span><p class="mt-1 text-sm muted">{{ role.description ? $t(role.description) : $t('Official access preset') }}</p></div>
       </div>
       <Link href="/admin/roles" class="btn-secondary mt-4"><i class="fa-solid fa-sliders" aria-hidden="true"></i>{{ $t("Manage advanced access") }}</Link>
     </details>

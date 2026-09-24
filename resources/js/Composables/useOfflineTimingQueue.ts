@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { jsonRequest } from '../lib';
 import { mayReplay, retryDisposition } from '../queuePolicy';
@@ -31,7 +32,7 @@ export function useOfflineTimingQueue(raceId:number,operatorId:number) {
   const scoped=async()=> (await all()).filter(i=>i.url===`/races/${raceId}/timings`).sort((a,b)=>a.queued_at.localeCompare(b.queued_at));
   const refresh=async()=>{
     try {const rows=await scoped();items.value=rows.filter(i=>mayReplay(i.operator_id,operatorId)).sort((a,b)=>a.queued_at.localeCompare(b.queued_at));foreignCount.value=rows.filter(i=>i.operator_id!==undefined&&!mayReplay(i.operator_id,operatorId)).length;legacy.value=rows.filter(i=>i.operator_id===undefined);error.value='';}
-    catch {error.value='Device storage is unavailable. Keep this page open; offline timing cannot be saved safely.';throw new Error(error.value);}
+    catch {error.value=tr('Device storage is unavailable. Keep this page open; offline timing cannot be saved safely.');throw new Error(error.value);}
   };
   const queue=async(url:string,payload:Record<string,unknown>,label:string,elapsed_ms:number)=>{
     await put({client_uuid:String(payload.client_uuid),url,payload:{...payload,source:'offline',operator_id:operatorId},operator_id:operatorId,label,elapsed_ms,queued_at:new Date().toISOString()});await refresh();
@@ -47,8 +48,8 @@ export function useOfflineTimingQueue(raceId:number,operatorId:number) {
           try {
             const {response,data}=await jsonRequest<{message?:string;warning?:boolean;timing?:{client_uuid:string}}>(item.url,{method:'POST',body:JSON.stringify(item.payload),signal:AbortSignal.timeout(12000)});
             if(response.ok&&data.timing?.client_uuid===item.client_uuid){await remove(item.client_uuid);changed=true;}
-            else {await put({...item,error:data.message??`Server response ${response.status}`,blocked:retryDisposition(response.status)==='review',warning:!!data.warning});if([401,403,419,429].includes(response.status)||response.status>=500)break;}
-          } catch {await put({...item,error:'Connection interrupted. Will retry automatically.'});break;}
+            else {await put({...item,error:data.message??tr('Server response :status', {status:response.status}),blocked:retryDisposition(response.status)==='review',warning:!!data.warning});if([401,403,419,429].includes(response.status)||response.status>=500)break;}
+          } catch {await put({...item,error:tr('Connection interrupted. Will retry automatically.')});break;}
         }
       };
       if(navigator.locks) await navigator.locks.request(`timing-sync-${raceId}-${operatorId}`,run);else await run();

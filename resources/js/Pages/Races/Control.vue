@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '../../i18n';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
@@ -25,7 +26,7 @@ const correction = useForm({
 const confirmingCorrection=ref(false);
 const oldTiming=computed(()=>props.entries.find(entry=>entry.id===Number(correction.entry_id))?.timings.find(timing=>timing.checkpoint_id===Number(correction.checkpoint_id))?.elapsed_ms);
 const proposedTime=computed(()=>Number(correction.hours)*3600000+Number(correction.minutes)*60000+Number(correction.seconds)*1000+Number(correction.millis));
-const correctionSummary=computed(()=>`${props.entries.find(entry=>entry.id===Number(correction.entry_id))?.name} · ${props.race.checkpoints.find(cp=>cp.id===Number(correction.checkpoint_id))?.name}: ${oldTiming.value==null?'No recorded time':formatDuration(oldTiming.value,3)} → ${formatDuration(proposedTime.value,3)}. The previous record remains in the audit history.`);
+const correctionSummary=computed(()=>`${props.entries.find(entry=>entry.id===Number(correction.entry_id))?.name} · ${tr(props.race.checkpoints.find(cp=>cp.id===Number(correction.checkpoint_id))?.name??'')}: ${oldTiming.value==null?tr('No recorded time'):formatDuration(oldTiming.value,3)} → ${formatDuration(proposedTime.value,3)}. ${tr('The previous record remains in the audit history.')}`);
 const submitCorrection = () => {
   correction.transform(data => ({
     entry_id:data.entry_id,
@@ -51,8 +52,8 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
 </script>
 
 <template>
-  <Head :title="`${race.name} corrections`"/>
-  <AppLayout :title="`${race.name} · Corrections & station health`">
+  <Head :title="`${race.name} · ${$t('Corrections & station health')}`"/>
+  <AppLayout :title="`${race.name} · ${$t('Corrections & station health')}`">
     <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p class="font-semibold">{{ $t("Use this page only when the normal Race workspace is not enough.") }}</p>
@@ -71,13 +72,13 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
       <section class="panel-pad">
         <div class="flex items-center justify-between gap-3">
           <div><h2 class="text-lg font-bold">{{ $t("Station health") }}</h2><p class="mt-1 text-sm muted">{{ $t("Stations seen in the last five minutes.") }}</p></div>
-          <span class="badge" :data-status="race.finished_at?'finished':race.started_at?'running':race.status">{{ race.finished_at?'Finished':race.started_at?'Live':'Not started' }}</span>
+          <span class="badge" :data-status="race.finished_at?'finished':race.started_at?'running':race.status">{{ race.finished_at?$t('Finished'):race.started_at?$t('Live'):$t('Not started') }}</span>
         </div>
         <div v-if="presence.length" class="mt-4 space-y-2">
           <div v-for="item in presence" :key="item.id" class="rounded-xl border border-outline p-3">
             <div class="flex items-center justify-between gap-3">
-              <div><strong>{{ item.checkpoint?.name ?? $t('Checkpoint') }}</strong><span class="mt-1 block text-sm muted">{{ item.user?.name ?? $t('Official') }}</span></div>
-              <span class="shrink-0 text-sm font-semibold" :class="item.pending_count?'text-warning':'text-success'">{{ item.pending_count? `${item.pending_count} pending`:$t('Synced') }}</span>
+              <div><strong>{{ $t(item.checkpoint?.name ?? 'Checkpoint') }}</strong><span class="mt-1 block text-sm muted">{{ item.user?.name ?? $t('Official') }}</span></div>
+              <span class="shrink-0 text-sm font-semibold" :class="item.pending_count?'text-warning':'text-success'">{{ item.pending_count? $t(':count pending', {count:item.pending_count}):$t('Synced') }}</span>
             </div>
           </div>
         </div>
@@ -92,7 +93,7 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
         <form class="mt-5 space-y-4" @submit.prevent="confirmingCorrection=true">
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="label">{{ $t("Participant") }}<select v-model="correction.entry_id" class="field" required><option :value="null">{{ $t("Choose participant") }}</option><option v-for="entry in entries" :key="entry.id" :value="entry.id">{{ bibLabel(entry.bib_number) }} · {{ entry.name }}</option></select></label>
-            <label class="label">{{ $t("Checkpoint") }}<select v-model="correction.checkpoint_id" class="field" required><option :value="null">{{ $t("Choose checkpoint") }}</option><option v-for="cp in race.checkpoints.filter(c=>c.kind!=='start')" :key="cp.id" :value="cp.id">{{ cp.name }}</option></select></label>
+            <label class="label">{{ $t("Checkpoint") }}<select v-model="correction.checkpoint_id" class="field" required><option :value="null">{{ $t("Choose checkpoint") }}</option><option v-for="cp in race.checkpoints.filter(c=>c.kind!=='start')" :key="cp.id" :value="cp.id">{{ $t(cp.name) }}</option></select></label>
           </div>
           <p class="rounded-xl bg-canvas p-3 text-sm">{{ $t("Current timing:") }} <strong class="font-mono">{{ oldTiming==null?$t('Not recorded'):formatDuration(oldTiming,3) }}</strong></p>
           <fieldset>
@@ -118,15 +119,15 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
       <div v-if="recentTimings.length" class="mt-3 divide-y divide-outline">
         <div v-for="timing in recentTimings" :key="timing.id" class="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
           <div><strong>{{ timing.entry.display_name }}</strong><span class="block text-xs muted">{{ bibLabel(timing.entry.bib_number) }}</span></div>
-          <div><span class="font-semibold">{{ timing.checkpoint.name }}</span><span class="block text-sm muted">{{ timing.operator?.name }}</span></div>
+          <div><span class="font-semibold">{{ $t(timing.checkpoint.name) }}</span><span class="block text-sm muted">{{ timing.operator?.name }}</span></div>
           <div class="font-mono font-semibold">{{ formatDuration(timing.elapsed_ms,2) }}</div>
         </div>
       </div>
       <p v-else class="mt-3 muted">{{ $t("No timings recorded yet.") }}</p>
     </details>
 
-    <ConfirmDialog v-if="confirmingCorrection" :title="$t('Save timing correction?')" :message="correctionSummary" confirm-label="Save correction" :busy="correction.processing" @cancel="confirmingCorrection=false" @confirm="submitCorrection">
-      <p class="mt-3 text-sm">Reason: {{ correction.notes }}</p>
+    <ConfirmDialog v-if="confirmingCorrection" :title="$t('Save timing correction?')" :message="correctionSummary" :confirm-label="$t('Save correction')" :busy="correction.processing" @cancel="confirmingCorrection=false" @confirm="submitCorrection">
+      <p class="mt-3 text-sm">{{ $t("Reason:") }} {{ correction.notes }}</p>
       <p v-if="Object.keys(correction.errors).length" role="alert" class="mt-3 text-error">{{ Object.values(correction.errors)[0] }}</p>
     </ConfirmDialog>
   </AppLayout>

@@ -2,11 +2,11 @@ import '../css/app.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { createApp, h } from 'vue';
 import type { DefineComponent } from 'vue';
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { jsonRequest } from './lib';
-import { tr } from './i18n';
+import { tr, setLocale, activeLocale } from './i18n';
 
 (window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
 
@@ -35,6 +35,12 @@ createInertiaApp({
   title: (title) => title ? `${title} · Triathlon Timing` : 'Triathlon Timing',
   resolve: (name) => pages[`./Pages/${name}.vue`],
   setup({ el, App, props, plugin }) {
+    setLocale(props.initialPage.props.locale === 'nl' ? 'nl' : 'en');
+    router.on('beforeUpdate', ({ detail }) => setLocale(detail.page.props.locale === 'nl' ? 'nl' : 'en'));
+    router.on('navigate', ({ detail }) => {
+      // History can contain server messages from before the language changed.
+      if (detail.page.props.locale !== activeLocale.value) router.reload();
+    });
     const app = createApp({ render: () => h(App, props) }).use(plugin);
     app.config.globalProperties.$t = tr;
     app.mount(el);

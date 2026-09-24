@@ -20,7 +20,7 @@ class ForgotPasswordController extends Controller
     {
         $request->validate(['email' => ['required', 'email']]);
         if(!app(\App\Services\AccountInvitationService::class)->configured()) {
-            return back()->withErrors(['email'=>'Email sending is not connected yet. Contact your organizer (admin) for a temporary password.']);
+            return back()->withErrors(['email'=>__('Email sending is not connected yet. Contact your organizer (admin) for a temporary password.')]);
         }
         try {
             Password::sendResetLink(['email'=>strtolower($request->string('email')->toString()),'is_active'=>true]);

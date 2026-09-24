@@ -61,7 +61,7 @@ class UserController extends Controller
 
     public function invite(User $user): RedirectResponse
     {
-        abort_unless($user->is_active && $user->force_password_change,422,'Only active accounts awaiting password setup can be invited.');
+        abort_unless($user->is_active && $user->force_password_change,422,__('Only active accounts awaiting password setup can be invited.'));
         $sent=app(\App\Services\AccountInvitationService::class)->send($user);
         return back()->with($sent?'success':'error',$sent?'Invitation accepted by the mail server. The previous setup link is no longer valid.':'Invitation could not be sent. Check email settings and retry.');
     }
