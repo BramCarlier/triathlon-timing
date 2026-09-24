@@ -8,5 +8,5 @@ const { elapsedMs } = useRaceClock(() => props.startedAt, () => props.serverNow,
 const text = computed(() => props.startedAt ? formatDuration(elapsedMs.value, props.milliseconds ?? true) : tr('NOT STARTED'));
 </script>
 <template>
-  <div role="timer" :aria-label="$t($t('Shared race clock'))" class="shrink-0 font-mono font-bold tabular-nums tracking-tight" :class="compact ? 'text-2xl' : 'race-clock'">{{ text }}</div>
+  <div role="timer" :aria-label="$t('Shared race clock')" class="shrink-0 font-mono font-bold tabular-nums tracking-tight" :class="compact ? 'text-2xl' : 'race-clock'">{{ text }}</div>
 </template>
