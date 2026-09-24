@@ -55,16 +55,12 @@ class RaceManagementTest extends TestCase
 
         $this->actingAs($admin)->post("/races/{$race->id}/official-assignments", [
             'checkpoint_id' => $checkpoint->id,
-            'mode' => 'existing',
             'user_id' => $athlete->id,
         ])->assertSessionHasErrors('user_id');
 
         $this->post("/races/{$race->id}/official-assignments", [
             'checkpoint_id' => $checkpoint->id,
-            'mode' => 'existing',
             'user_id' => $official->id,
-            'delivery' => 'manual',
-            'password' => '',
         ])->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('checkpoint_assignments', [
@@ -76,7 +72,6 @@ class RaceManagementTest extends TestCase
 
         $this->post("/races/{$race->id}/official-assignments", [
             'checkpoint_id' => $checkpoint->id,
-            'mode' => 'existing',
             'user_id' => $admin->id,
         ])->assertSessionHasNoErrors();
 
@@ -84,6 +79,30 @@ class RaceManagementTest extends TestCase
             'race_id' => $race->id,
             'checkpoint_id' => $checkpoint->id,
             'user_id' => $admin->id,
+        ]);
+
+        $this->post("/races/{$race->id}/official-assignments", [
+            'checkpoint_id' => $checkpoint->id,
+            'name' => 'Typed Existing Name',
+            'email' => $official->email,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(1, User::where('email', $official->email)->count());
+
+        $this->post("/races/{$race->id}/official-assignments", [
+            'checkpoint_id' => $checkpoint->id,
+            'name' => 'Brand New Official',
+            'email' => 'brand-new-official@example.test',
+            'delivery' => 'manual',
+            'password' => 'temporary-pass-123',
+        ])->assertSessionHasNoErrors();
+
+        $newOfficial = User::where('email', 'brand-new-official@example.test')->firstOrFail();
+        $this->assertSame(UserRole::Organizer, $newOfficial->role);
+        $this->assertDatabaseHas('checkpoint_assignments', [
+            'race_id' => $race->id,
+            'checkpoint_id' => $checkpoint->id,
+            'user_id' => $newOfficial->id,
         ]);
     }
 
@@ -102,7 +121,7 @@ class RaceManagementTest extends TestCase
         $raceTwo->organizers()->attach($admin);
 
         $payload = [
-            'bib_number' => null,
+            'bib_number' => '101',
             'type' => 'solo',
             'team_name' => null,
             'category' => 'Open',
@@ -117,17 +136,29 @@ class RaceManagementTest extends TestCase
         ];
 
         $this->actingAs($admin)->post("/races/{$raceOne->id}/participants", $payload)->assertSessionHasNoErrors();
+        $payload['bib_number'] = '202';
         $this->post("/races/{$raceTwo->id}/participants", $payload)->assertSessionHasNoErrors();
 
         $this->assertSame(2, $athlete->fresh()->memberships()->whereHas('entry', fn ($query) => $query->whereIn('race_id', [$raceOne->id, $raceTwo->id]))->distinct('entry_id')->count('entry_id'));
 
-        $this->post("/races/{$raceTwo->id}/participants", $payload)->assertSessionHasErrors('members');
+        $duplicate = $payload;
+        $duplicate['bib_number'] = '203';
+        $this->post("/races/{$raceTwo->id}/participants", $duplicate)->assertSessionHasErrors('members');
 
-        $this->getJson("/races/{$raceTwo->id}/athletes/search?q=Repeat")
+        $this->getJson("/races/{$raceTwo->id}/athletes/search")
+            ->assertOk()
+            ->assertJsonPath('athletes.0.id', $athlete->id);
+
+        $this->getJson("/races/{$raceTwo->id}/athletes/search?bib=101")
             ->assertOk()
             ->assertJsonPath('athletes.0.id', $athlete->id)
             ->assertJsonPath('athletes.0.already_in_race', true)
             ->assertJsonPath('athletes.0.race_count', 2);
+
+        $this->getJson("/races/{$raceTwo->id}/athletes/search?q=Repeat")
+            ->assertOk()
+            ->assertJsonPath('athletes.0.id', $athlete->id)
+            ->assertJsonPath('athletes.0.recent_bibs.0', '202');
 
         $athleteUser = User::factory()->create([
             'role' => UserRole::Athlete,
