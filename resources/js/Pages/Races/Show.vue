@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
@@ -8,6 +8,7 @@ import LiveUpdatesStatus from '../../Components/LiveUpdatesStatus.vue';
 import RaceAthletePicker from '../../Components/RaceAthletePicker.vue';
 import { usePermissions } from '../../Composables/usePermissions';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
+import { useOfflineTimingQueue } from '../../Composables/useOfflineTimingQueue';
 import { checkpointDistanceText } from '../../checkpointDistance';
 import { bibLabel, formatDuration, jsonRequest, uuid } from '../../lib';
 import type { Checkpoint, PageProps, Race, StationParticipant } from '../../types';
@@ -291,11 +292,16 @@ const filteredTimingParticipants = computed(() => {
     : timingParticipants.value;
   return rows.slice(0, 50);
 });
-const participantRecorded = (participant:StationParticipant) => !!selectedCheckpoint.value && participant.completed_checkpoint_ids.includes(selectedCheckpoint.value.id);
+const workspaceOnline = ref(navigator.onLine);
+const {items:workspaceQueued,pending:workspacePending,queue:queueWorkspaceTiming,flush:flushWorkspaceTiming,refresh:refreshWorkspaceQueue} = useOfflineTimingQueue(props.race.id, account.value!.id);
+const participantRecorded = (participant:StationParticipant) => !!selectedCheckpoint.value && (
+  participant.completed_checkpoint_ids.includes(selectedCheckpoint.value.id)
+  || workspaceQueued.value.some(item=>Number(item.payload.entry_id)===participant.id && Number(item.payload.checkpoint_id)===selectedCheckpoint.value!.id)
+);
 const timingSaving = ref(new Set<number>());
-const timingFeedback = ref<{type:'ok'|'error';message:string}|null>(null);
+const timingFeedback = ref<{type:'ok'|'error'|'offline';message:string}|null>(null);
 const timingConfirmation = ref<{participant:StationParticipant;clientUuid:string;message:string}|null>(null);
-const showTimingFeedback = (type:'ok'|'error', message:string) => {
+const showTimingFeedback = (type:'ok'|'error'|'offline', message:string) => {
   timingFeedback.value = {type,message};
   window.setTimeout(() => { if (timingFeedback.value?.message === message) timingFeedback.value = null; }, 4500);
 };
@@ -307,50 +313,53 @@ async function recordTiming(participant:StationParticipant, override=false, clie
   if (participant.status && participant.status !== 'registered') { showTimingFeedback('error',`${participant.name} is marked ${participant.status.toUpperCase()}.`); return; }
   if (participantRecorded(participant)) { showTimingFeedback('error',`${participant.name} is already recorded here.`); return; }
 
+  const checkpointId=selectedCheckpoint.value.id;
+  const payload={
+    operator_id:account.value!.id,
+    entry_id:participant.id,
+    checkpoint_id:checkpointId,
+    client_uuid:clientUuid,
+    observed_at:new Date().toISOString(),
+    source:'online',
+    workspace:true,
+    override_warning:override,
+  };
+  const elapsed=Math.max(0,Date.now()-new Date(props.race.started_at).getTime());
+  const saveOffline=async()=>{
+    await queueWorkspaceTiming(`/races/${props.race.id}/timings`,payload,participant.name,elapsed);
+    timingSearch.value='';
+    showTimingFeedback('offline',`${participant.name} saved on this device and will upload automatically.`);
+  };
+
   timingSaving.value.add(participant.id);
   try {
-    const {response,data} = await jsonRequest<{
-      timing?:Timing;
-      message?:string;
-      warning?:boolean;
-      missing_checkpoints?:string[];
-      auto_finished?:boolean;
-    }>(`/races/${props.race.id}/timings`, {
-      method:'POST',
-      body:JSON.stringify({
-        entry_id:participant.id,
-        checkpoint_id:selectedCheckpoint.value.id,
-        client_uuid:clientUuid,
-        observed_at:new Date().toISOString(),
-        source:'online',
-        workspace:true,
-        override_warning:override,
-      }),
-    });
+    if(!workspaceOnline.value){await saveOffline();return;}
+    let result;
+    try {
+      result=await jsonRequest<{timing?:Timing;message?:string;warning?:boolean;missing_checkpoints?:string[];auto_finished?:boolean}>(`/races/${props.race.id}/timings`, {
+        method:'POST',body:JSON.stringify(payload),signal:AbortSignal.timeout(12000),
+      });
+    } catch { await saveOffline(); return; }
 
+    const {response,data}=result;
     if (response.ok && data.timing) {
-      participant.completed_checkpoint_ids.push(selectedCheckpoint.value.id);
+      participant.completed_checkpoint_ids.push(checkpointId);
       recent.value.unshift(data.timing);
-      recent.value = recent.value.slice(0, 12);
-      if (selectedCheckpoint.value.kind === 'finish') localCompletedCount.value += 1;
-      timingSearch.value = '';
-      showTimingFeedback('ok', data.message ?? 'Time recorded.');
-      if (data.auto_finished) router.reload({only:['race','serverNow','completedCount']});
+      recent.value=recent.value.slice(0,12);
+      if(selectedCheckpoint.value?.kind==='finish')localCompletedCount.value+=1;
+      timingSearch.value='';
+      showTimingFeedback('ok',data.message??'Time recorded.');
+      if(data.auto_finished)router.reload({only:['race','serverNow','completedCount']});
       return;
     }
-
-    if (response.status === 409 && data.warning) {
-      timingConfirmation.value = {
-        participant,
-        clientUuid,
-        message:`${data.message ?? 'An earlier checkpoint is missing.'} ${(data.missing_checkpoints ?? []).join(', ')} Record anyway?`,
-      };
+    if(response.status===409&&data.warning){
+      timingConfirmation.value={participant,clientUuid,message:`${data.message??'An earlier checkpoint is missing.'} ${(data.missing_checkpoints??[]).join(', ')} Record anyway?`};
       return;
     }
-
-    showTimingFeedback('error', data.message ?? 'The time could not be recorded.');
+    if((response.ok&&!data.timing)||response.status>=500||[401,403,408,419,429].includes(response.status)){await saveOffline();return;}
+    showTimingFeedback('error',data.message??'The time could not be recorded.');
   } catch {
-    showTimingFeedback('error','The time could not be saved here. Open the full-screen timing station if the connection is unreliable.');
+    showTimingFeedback('error','Timing was NOT saved: device storage is unavailable. Open the full-screen timing station and check device storage.');
   } finally {
     timingSaving.value.delete(participant.id);
   }
@@ -360,6 +369,11 @@ const confirmTimingOverride = () => {
   timingConfirmation.value = null;
   if (item) void recordTiming(item.participant, true, item.clientUuid);
 };
+const syncWorkspaceQueue=async()=>{if(await flushWorkspaceTiming())router.reload({only:['participants','recentTimings','completedCount','race','serverNow']});};
+const handleWorkspaceOnline=()=>{workspaceOnline.value=true;void syncWorkspaceQueue();};
+const handleWorkspaceOffline=()=>{workspaceOnline.value=false;};
+onMounted(async()=>{window.addEventListener('online',handleWorkspaceOnline);window.addEventListener('offline',handleWorkspaceOffline);try{await refreshWorkspaceQueue();await syncWorkspaceQueue();}catch{/* full-screen timing exposes detailed storage recovery */}});
+onBeforeUnmount(()=>{window.removeEventListener('online',handleWorkspaceOnline);window.removeEventListener('offline',handleWorkspaceOffline);});
 
 const pendingClockAction = ref<'start'|'finish'|null>(null);
 const clockForm = useForm({});
@@ -646,7 +660,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 <div v-else class="rounded-xl bg-canvas p-3"><span class="text-xs font-bold uppercase tracking-wider text-accent">Assigned checkpoint</span><strong class="mt-1 block">{{ selectedCheckpoint.name }}</strong></div>
               </div>
               <div v-else class="rounded-xl bg-amber-500/10 p-4 text-warning"><strong>No checkpoint assigned.</strong><span class="mt-1 block text-sm">Ask the Organizer to assign this account before race day.</span></div>
-              <p v-if="timingFeedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="timingFeedback.type==='ok'?'bg-emerald-500/10 text-success':'bg-red-500/10 text-error'" role="status">{{ timingFeedback.message }}</p>
+              <p v-if="timingFeedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="timingFeedback.type==='ok'?'bg-emerald-500/10 text-success':timingFeedback.type==='offline'?'bg-amber-500/10 text-warning':'bg-red-500/10 text-error'" role="status">{{ timingFeedback.message }}</p><p v-if="workspacePending" class="mt-2 text-sm text-warning"><i class="fa-solid fa-cloud-arrow-up mr-1" aria-hidden="true"></i>{{ workspacePending }} timing{{ workspacePending===1?'':'s' }} waiting to upload automatically. <Link :href="`/races/${race.id}/station`" class="font-semibold underline">Review device sync</Link></p>
             </div>
 
             <div v-if="race.started_at && !race.finished_at && selectedCheckpoint" class="max-h-[58dvh] overflow-y-auto p-2">
