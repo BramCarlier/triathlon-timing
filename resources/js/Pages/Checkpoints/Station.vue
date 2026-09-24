@@ -57,7 +57,7 @@ async function record(participant: StationParticipant, override = false, clientU
   if (!props.checkpoint || saving.value.has(participant.id)) return;
   if (participant.status && participant.status!=='registered') {showFeedback('error','This entry is marked '+participant.status.toUpperCase()+'. Update its status in Participants before recording.');return;}
   if (!props.race.started_at) { showFeedback('error', 'The race clock has not started.'); return; }
-  if (props.race.finished_at) { showFeedback('error', 'This race is finished. Use Race control for corrections.'); return; }
+  if (props.race.finished_at) { showFeedback('error', 'This race is finished. Use Corrections & station health for corrections.'); return; }
   if (selected(participant)) { showFeedback('error', `${participant.name} (${bibLabel(participant.bib_number)}) is already recorded here.`); return; }
   const missing = priorRequiredIds.value.filter(id => !participant.completed_checkpoint_ids.includes(id));
   if (missing.length && !override) {
