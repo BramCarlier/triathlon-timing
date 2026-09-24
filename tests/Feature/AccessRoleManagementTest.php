@@ -9,7 +9,7 @@ class AccessRoleManagementTest extends TestCase
     use RefreshDatabase;
     public function test_only_admins_can_manage_roles_and_assigned_roles_cannot_be_deleted(): void {
         $admin=User::factory()->create(['role'=>UserRole::Admin]);
-        $official=User::factory()->create(['role'=>UserRole::Organizer]);
+        $official=User::factory()->create(['role'=>UserRole::Official]);
         $this->actingAs($official)->get('/admin/roles')->assertForbidden();
         $this->post('/admin/roles',['name'=>'Forbidden','permissions'=>[]])->assertForbidden();
         $this->actingAs($admin)->post('/admin/roles',['name'=>'Checkpoint official','permissions'=>['timings.record']])->assertSessionHasNoErrors();
@@ -26,7 +26,7 @@ class AccessRoleManagementTest extends TestCase
     }
     public function test_permissions_are_enforced_on_requests_and_still_require_race_assignment(): void {
         $role=AccessRole::create(['name'=>'Station only','permissions'=>['timings.record']]);
-        $official=User::factory()->create(['role'=>UserRole::Organizer,'access_role_id'=>$role->id]);
+        $official=User::factory()->create(['role'=>UserRole::Official,'access_role_id'=>$role->id]);
         $race=Race::create(['name'=>'Assigned','slug'=>'assigned','event_date'=>'2026-09-23','created_by'=>$official->id]); $other=Race::create(['name'=>'Other','slug'=>'other','event_date'=>'2026-09-23','created_by'=>$official->id]);
         $official->races()->attach($race);
         $this->actingAs($official)->get('/races/'.$race->id.'/station')->assertOk();
