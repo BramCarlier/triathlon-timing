@@ -26,7 +26,7 @@ const statusLabel=(race:Race)=>{
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div>
         <p class="font-semibold">{{ isAdmin?'Choose a race and continue in its guided workspace.':'Choose a race to open your assigned timing station.' }}</p>
-        <p class="mt-1 text-sm muted">{{ isAdmin?'Course setup, Officials, participants, the race clock and normal timing stay together.':'Your checkpoint assignment follows your account automatically.' }}</p>
+        <p class="mt-1 text-sm muted">{{ isAdmin?'Athletes, checkpoints, the shared race-day link and the race clock stay together. Official accounts are optional.':'Your checkpoint assignment follows your account automatically.' }}</p>
       </div>
       <Link v-if="can('races.create')" href="/races/create" class="btn-primary">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>Create race
