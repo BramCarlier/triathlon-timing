@@ -155,16 +155,16 @@ function confirmOverride(){
     <section class="panel overflow-hidden">
       <div class="border-b border-outline p-4">
         <div class="grid gap-4 md:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
-          <label class="label">
-            1. Checkpoint
-            <select v-model="checkpointId" class="field min-h-14 text-lg">
+          <div>
+            <label for="public-timing-checkpoint" class="label">1. Checkpoint</label>
+            <select id="public-timing-checkpoint" v-model="checkpointId" class="field min-h-14 text-lg">
               <option v-for="checkpoint in race.checkpoints" :key="checkpoint.id" :value="checkpoint.id">{{ checkpoint.name }}</option>
             </select>
-          </label>
-          <label class="label">
-            2. Find athlete
-            <input v-model="search" class="field min-h-14 text-lg" placeholder="Name or bib number" autocomplete="off">
-          </label>
+          </div>
+          <div>
+            <label for="public-timing-search" class="label">2. Find athlete</label>
+            <input id="public-timing-search" v-model="search" class="field min-h-14 text-lg" placeholder="Name or bib number" autocomplete="off">
+          </div>
         </div>
 
         <p v-if="selectedCheckpoint" class="mt-3 rounded-xl bg-canvas p-3 text-sm">
