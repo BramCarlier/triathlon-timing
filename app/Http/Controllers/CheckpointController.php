@@ -26,7 +26,7 @@ class CheckpointController extends Controller
         }
         $data = $this->validated($request, $race);
         $race->checkpoints()->create($data);
-        return back()->with('success', 'Checkpoint added.');
+        return back()->with('success', __('Checkpoint added.'));
     }
 
     public function update(Request $request, Race $race, Checkpoint $checkpoint): RedirectResponse
@@ -35,7 +35,7 @@ class CheckpointController extends Controller
         abort_unless(request()->user()->isAdmin(), 403);
         $this->ensureSetupUnlocked($race);
         $checkpoint->update($this->validated($request, $race, $checkpoint));
-        return back()->with('success', 'Checkpoint updated.');
+        return back()->with('success', __('Checkpoint updated.'));
     }
 
     public function destroy(Race $race, Checkpoint $checkpoint): RedirectResponse
@@ -43,10 +43,10 @@ class CheckpointController extends Controller
         Gate::authorize('manage-race', $race); abort_unless($checkpoint->race_id === $race->id, 404);
         abort_unless(request()->user()->isAdmin(), 403);
         $this->ensureSetupUnlocked($race);
-        if($checkpoint->kind===CheckpointKind::Start)throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>'The race start checkpoint cannot be deleted.']);
-        if($checkpoint->timings()->exists())throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>'A checkpoint with timings cannot be deleted. Disable it instead.']);
+        if($checkpoint->kind===CheckpointKind::Start)throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>__('The race start checkpoint cannot be deleted.')]);
+        if($checkpoint->timings()->exists())throw \Illuminate\Validation\ValidationException::withMessages(['checkpoint'=>__('A checkpoint with timings cannot be deleted. Disable it instead.')]);
         $checkpoint->delete();
-        return back()->with('success', 'Checkpoint deleted.');
+        return back()->with('success', __('Checkpoint deleted.'));
     }
 
     private function ensureSetupUnlocked(Race $race): void

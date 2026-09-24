@@ -58,7 +58,7 @@ class RaceController extends Controller
             ]);
             return $race;
         });
-        return redirect()->route('races.show', $race)->with('success', 'Race created with default triathlon checkpoints.');
+        return redirect()->route('races.show', $race)->with('success', __('Race created with default triathlon checkpoints.'));
     }
 
     public function show(Request $request, Race $race, AthleteLookupService $athletes, RaceReadinessService $readiness): Response|RedirectResponse
@@ -131,7 +131,7 @@ class RaceController extends Controller
         abort_unless($request->user()->isAdmin(), 403);
         if ($race->started_at) {
             throw ValidationException::withMessages([
-                'race' => 'Race setup is locked after the race starts.',
+                'race' => __('Race setup is locked after the race starts.'),
             ]);
         }
 
@@ -146,20 +146,20 @@ class RaceController extends Controller
             $race->update([...collect($data)->except(['swim_km','bike_km','run_km'])->all(),'settings'=>$settings]);
             foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code)if(array_key_exists($key,$data))$race->checkpoints()->where('code',$code)->update(['distance_km'=>$data[$key]]);
         });
-        return back()->with('success', 'Race settings updated.');
+        return back()->with('success', __('Race settings updated.'));
     }
 
     public function destroy(Request $request, Race $race): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403);
         $race->delete();
-        return redirect()->route('races.index')->with('success', 'Race moved to Deleted races. Its participants and timings are preserved and can be restored.');
+        return redirect()->route('races.index')->with('success', __('Race moved to Deleted races. Its participants and timings are preserved and can be restored.'));
     }
 
     public function restore(Request $request, Race $race): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403);
         $race->restore();
-        return redirect()->route('races.show', $race)->with('success', 'Race restored.');
+        return redirect()->route('races.show', $race)->with('success', __('Race restored.'));
     }
 }

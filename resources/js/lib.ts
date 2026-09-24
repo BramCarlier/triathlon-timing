@@ -1,3 +1,4 @@
+import { tr } from './i18n';
 import { csrfHeaders } from './csrf';
 export function csrfToken(): string {
   return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
@@ -21,5 +22,5 @@ export async function jsonRequest<T>(url: string, options: RequestInit = {}): Pr
 }
 
 export function bibLabel(bib: string | null | undefined): string {
-  return bib ? `#${bib}` : 'No bib';
+  return bib ? `#${bib}` : tr('No bib');
 }

@@ -1,4 +1,5 @@
 import type { Checkpoint } from './types/index';
+import { localeTag, tr } from './i18n.ts';
 
 type Course = { settings?: Record<string, unknown> };
 type Point = Pick<Checkpoint, 'kind'|'discipline'|'distance_km'>;
@@ -6,6 +7,9 @@ function distance(value: unknown): number | null {
   if(value===null || value===undefined || value==='')return null;
   const number=Number(value);
   return Number.isFinite(number)&&number>=0 ? number : null;
+}
+function number(value:number):string {
+  return new Intl.NumberFormat(localeTag(),{maximumFractionDigits:3}).format(value);
 }
 export function checkpointTotalKm(race: Course, checkpoint: Point): number | null {
   if(checkpoint.kind==='start')return 0;
@@ -19,10 +23,10 @@ export function checkpointTotalKm(race: Course, checkpoint: Point): number | nul
   return null;
 }
 export function checkpointDistanceText(race: Course, checkpoint: Point): string {
-  if(checkpoint.kind==='start')return '0 km total';
+  if(checkpoint.kind==='start')return tr(':total km total',{total:number(0)});
   const leg=distance(checkpoint.distance_km);
   const total=checkpointTotalKm(race,checkpoint);
-  const sport=checkpoint.discipline ? {swim:'Swim',bike:'Bike',run:'Run'}[checkpoint.discipline] : null;
-  const legText=leg!==null&&sport ? `${sport}: ${leg} km` : 'Leg distance not set';
-  return `${legText} · ${total===null?'Total distance unavailable':`${total} km total`}`;
+  const sport=checkpoint.discipline ? {swim:tr('Swim'),bike:tr('Bike'),run:tr('Run')}[checkpoint.discipline] : null;
+  const legText=leg!==null&&sport ? `${sport}: ${number(leg)} km` : tr('Leg distance not set');
+  return `${legText} · ${total===null?tr('Total distance unavailable'):tr(':total km total',{total:number(total)})}`;
 }

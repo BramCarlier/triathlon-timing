@@ -180,8 +180,8 @@ class PublicRaceController extends Controller
                     ],
                 ],
                 'auto_finished' => $autoFinished,
-                'message' => "{$label} recorded at {$timing->checkpoint->name}."
-                    .($autoFinished ? ' All active participants are finished, so the race was finished automatically.' : ''),
+                'message' => __(':label recorded at :checkpoint.', ['label'=>$label, 'checkpoint'=>__($timing->checkpoint->name)])
+                    .($autoFinished ? ' '.__('All active participants are finished, so the race was finished automatically.') : ''),
             ]);
         } catch (TimingWarningException $e) {
             return response()->json([

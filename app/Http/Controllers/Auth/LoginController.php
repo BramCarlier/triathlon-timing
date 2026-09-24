@@ -22,7 +22,7 @@ class LoginController extends Controller
         unset($credentials['remember']);
         $user = User::where('email', strtolower($credentials['email']))->first();
         if (!$user || !$user->is_active || !Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password']], $remember)) {
-            throw ValidationException::withMessages(['email' => 'The provided credentials are invalid.']);
+            throw ValidationException::withMessages(['email' => __('The provided credentials are invalid.')]);
         }
         $request->session()->regenerate();
         return redirect()->intended(route('dashboard'));

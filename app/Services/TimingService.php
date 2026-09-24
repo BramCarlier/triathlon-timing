@@ -23,8 +23,8 @@ class TimingService
     public function record(Race $race, Entry $entry, Checkpoint $checkpoint, ?User $operator, array $data): TimingRecord
     {
         if ($entry->race_id !== $race->id || $checkpoint->race_id !== $race->id) abort(404);
-        if (!$race->started_at) throw new TimingConflictException('The race clock has not started.');
-        if (!$checkpoint->is_active || $checkpoint->kind === CheckpointKind::Start) throw new TimingConflictException('This checkpoint cannot record timings.');
+        if (!$race->started_at) throw new TimingConflictException(__('The race clock has not started.'));
+        if (!$checkpoint->is_active || $checkpoint->kind === CheckpointKind::Start) throw new TimingConflictException(__('This checkpoint cannot record timings.'));
 
         $source = TimingSource::tryFrom((string) ($data['source'] ?? 'online')) ?? TimingSource::Online;
         $uuid = (string) $data['client_uuid'];
@@ -34,17 +34,17 @@ class TimingService
             $lockedEntry = Entry::query()->lockForUpdate()->findOrFail($entry->id);
             if ($existing = TimingRecord::where('client_uuid', $uuid)->first()) {
                 if ($existing->race_id !== $race->id || $existing->entry_id !== $entry->id || $existing->checkpoint_id !== $checkpoint->id || $existing->operator_id !== $operator?->id) {
-                    throw new TimingConflictException('This timing request identifier is already in use.');
+                    throw new TimingConflictException(__('This timing request identifier is already in use.'));
                 }
                 return $existing;
             }
-            if ($lockedEntry->status !== 'registered') throw new TimingConflictException('This participant is marked '.strtoupper($lockedEntry->status).'. Review their status before recording.');
+            if ($lockedEntry->status !== 'registered') throw new TimingConflictException(__('This participant is marked :status. Review their status before recording.', ['status'=>strtoupper($lockedEntry->status)]));
             $active = TimingRecord::query()
                 ->where('entry_id', $entry->id)
                 ->where('checkpoint_id', $checkpoint->id)
                 ->where('status', TimingStatus::Recorded->value)
                 ->first();
-            if ($active) throw new TimingConflictException('This participant is already recorded at this checkpoint.');
+            if ($active) throw new TimingConflictException(__('This participant is already recorded at this checkpoint.'));
 
             $priorRequired = Checkpoint::query()
                 ->where('race_id', $race->id)
@@ -60,16 +60,16 @@ class TimingService
                 ->pluck('checkpoint_id');
             $missingIds = $priorRequired->diff($recordedPrior)->values();
             if ($missingIds->isNotEmpty() && empty($data['override_warning'])) {
-                $missing = Checkpoint::whereIn('id', $missingIds)->orderBy('sequence')->pluck('name')->all();
-                throw new TimingWarningException('One or more earlier required checkpoints are missing.', ['missing_checkpoints' => $missing]);
+                $missing = Checkpoint::whereIn('id', $missingIds)->orderBy('sequence')->pluck('name')->map(fn ($name) => __($name))->all();
+                throw new TimingWarningException(__('One or more earlier required checkpoints are missing.'), ['missing_checkpoints' => $missing]);
             }
 
             $serverNow = CarbonImmutable::now('UTC');
             $observed = !empty($data['observed_at']) ? CarbonImmutable::parse($data['observed_at'])->utc() : $serverNow;
-            if ($observed->greaterThan($serverNow->addSeconds(10)) && $source !== TimingSource::Manual) throw new TimingConflictException('The device clock is too far ahead of the server clock.');
+            if ($observed->greaterThan($serverNow->addSeconds(10)) && $source !== TimingSource::Manual) throw new TimingConflictException(__('The device clock is too far ahead of the server clock.'));
             $started = CarbonImmutable::instance($race->started_at)->utc();
-            if ($observed->lessThan($started)) throw new TimingConflictException('The recorded time is before the race start.');
-            if ($race->finished_at && $source !== TimingSource::Manual && $observed->greaterThan(CarbonImmutable::instance($race->finished_at)->utc()->addSeconds(5))) throw new TimingConflictException('The race has already been finished.');
+            if ($observed->lessThan($started)) throw new TimingConflictException(__('The recorded time is before the race start.'));
+            if ($race->finished_at && $source !== TimingSource::Manual && $observed->greaterThan(CarbonImmutable::instance($race->finished_at)->utc()->addSeconds(5))) throw new TimingConflictException(__('The race has already been finished.'));
             if ($source === TimingSource::Online && abs($observed->diffInMilliseconds($serverNow, false)) > 10000) $observed = $serverNow;
 
             $member = $checkpoint->discipline
@@ -100,7 +100,7 @@ class TimingService
     public function correct(Race $race, Entry $entry, Checkpoint $checkpoint, User $operator, int $elapsedMs, ?string $notes = null): TimingRecord
     {
         if ($entry->race_id !== $race->id || $checkpoint->race_id !== $race->id) abort(404);
-        if (!$race->started_at || $checkpoint->kind === CheckpointKind::Start) throw new TimingConflictException('This checkpoint cannot be corrected.');
+        if (!$race->started_at || $checkpoint->kind === CheckpointKind::Start) throw new TimingConflictException(__('This checkpoint cannot be corrected.'));
 
         $voided = null;
         $timing = DB::transaction(function () use ($race, $entry, $checkpoint, $operator, $elapsedMs, $notes, &$voided) {

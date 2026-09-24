@@ -30,7 +30,7 @@ class RaceControlController extends Controller
         Gate::authorize('manage-race', $race);
         abort_unless(request()->user()->isAdmin(), 403);
         $clock->start($race);
-        return back()->with('success', 'Race clock started.');
+        return back()->with('success', __('Race clock started.'));
     }
 
     public function finish(Race $race, RaceClockService $clock): RedirectResponse
@@ -38,6 +38,6 @@ class RaceControlController extends Controller
         Gate::authorize('manage-race', $race);
         abort_unless(request()->user()->isAdmin(), 403);
         $clock->finish($race);
-        return back()->with('success', 'Race marked as finished.');
+        return back()->with('success', __('Race marked as finished.'));
     }
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EntryController;
 use App\Http\Controllers\GuideController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ParticipantImportController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PresenceController;
@@ -24,6 +25,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class);
 Route::get('/live/{token}', [ResultController::class,'publicIndex'])->middleware('throttle:120,1')->name('results.public');
 Route::get('/race/{token}', [PublicRaceController::class, 'show'])->middleware('throttle:1200,1')->name('race.public');
+Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
+// Keep the selected language for unknown URLs as well as application pages.
+Route::fallback(fn () => abort(404));
 Route::post('/race/{token}/timings', [PublicRaceController::class, 'record'])->middleware('throttle:1200,1')->name('race.public.timings');
 
 Route::middleware('guest')->group(function () {

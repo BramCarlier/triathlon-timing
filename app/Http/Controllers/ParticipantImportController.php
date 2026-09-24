@@ -20,7 +20,7 @@ class ParticipantImportController extends Controller
         Gate::authorize('manage-race', $race);
         abort_unless(request()->user()->isAdmin(), 403);
         if ($race->started_at) {
-            return redirect()->route('races.show', $race)->with('error', 'Participant registration is locked after the race starts.');
+            return redirect()->route('races.show', $race)->with('error', __('Participant registration is locked after the race starts.'));
         }
         return Inertia::render('Participants/Import', ['race' => $race]);
     }
@@ -50,7 +50,7 @@ class ParticipantImportController extends Controller
         $result = $importer->import($race, $rows);
         $batch->update(['status' => 'imported']);
         Storage::disk('local')->delete($batch->stored_path);
-        return redirect()->route('races.entries.index', $race)->with('success', "Imported {$result['entries']} entries and {$result['athletes']} new athletes.");
+        return redirect()->route('races.entries.index', $race)->with('success', __('Imported :entries entries and :athletes new athletes.', ['entries'=>$result['entries'], 'athletes'=>$result['athletes']]));
     }
 
 
@@ -58,7 +58,7 @@ class ParticipantImportController extends Controller
     {
         if ($race->started_at) {
             throw ValidationException::withMessages([
-                'race' => 'Participant registration is locked after the race starts.',
+                'race' => __('Participant registration is locked after the race starts.'),
             ]);
         }
     }

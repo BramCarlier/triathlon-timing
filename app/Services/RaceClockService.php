@@ -19,7 +19,7 @@ class RaceClockService
         $race = DB::transaction(function () use ($race) {
             $locked = Race::query()->lockForUpdate()->findOrFail($race->id);
             if ($locked->started_at) {
-                throw ValidationException::withMessages(['race' => 'This race has already been started.']);
+                throw ValidationException::withMessages(['race' => __('This race has already been started.')]);
             }
             $readiness = $this->readiness->for($locked);
             if (!$readiness['ready_to_start']) {
@@ -28,7 +28,7 @@ class RaceClockService
                     ->where('ready', false)
                     ->pluck('detail')
                     ->implode(' ');
-                throw ValidationException::withMessages(['race' => $missing ?: 'Finish the required race setup before starting.']);
+                throw ValidationException::withMessages(['race' => $missing ?: __('Finish the required race setup before starting.')]);
             }
             $locked->forceFill(['started_at' => now('UTC'), 'status' => RaceStatus::Running])->save();
             return $locked->fresh();
@@ -41,7 +41,7 @@ class RaceClockService
     {
         $race = DB::transaction(function () use ($race) {
             $locked = Race::query()->lockForUpdate()->findOrFail($race->id);
-            if (!$locked->started_at) throw ValidationException::withMessages(['race' => 'The race has not started.']);
+            if (!$locked->started_at) throw ValidationException::withMessages(['race' => __('The race has not started.')]);
             if ($locked->finished_at) return $locked;
             $locked->forceFill(['finished_at' => now('UTC'), 'status' => RaceStatus::Finished])->save();
             return $locked->fresh();
