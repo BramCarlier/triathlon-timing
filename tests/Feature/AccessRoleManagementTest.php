@@ -32,7 +32,7 @@ class AccessRoleManagementTest extends TestCase
         $this->actingAs($official)->get('/races/'.$race->id.'/station')->assertOk();
         $this->get('/races/'.$other->id.'/station')->assertForbidden();
         $this->get('/races/'.$race->id.'/results')->assertOk();
-        $this->get('/races/'.$race->id)->assertOk();
+        $this->get('/races/'.$race->id)->assertRedirect('/races/'.$race->id.'/station');
         foreach (['/races/create','/races/'.$race->id.'/participants','/races/'.$race->id.'/control','/races/'.$race->id.'/results.csv','/races/'.$race->id.'/results.xlsx','/users','/admin/health'] as $url) $this->get($url)->assertForbidden();
         foreach (['/races','/races/'.$race->id.'/start','/races/'.$race->id.'/finish','/races/'.$race->id.'/corrections','/races/'.$race->id.'/checkpoints','/races/'.$race->id.'/publication','/races/'.$race->id.'/participants'] as $url) $this->post($url,[])->assertForbidden();
         $this->put('/races/'.$race->id,[])->assertForbidden();
