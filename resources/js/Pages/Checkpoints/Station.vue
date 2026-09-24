@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '../../i18n';
 import { usePermissions } from '../../Composables/usePermissions';
 const can=usePermissions();
 import { checkpointDistanceText } from '../../checkpointDistance';
@@ -56,13 +57,13 @@ const showFeedback = (type:'ok'|'error'|'offline', message:string) => { feedback
 async function record(participant: StationParticipant, override = false, clientUuid = uuid()) {
   if (!props.checkpoint || saving.value.has(participant.id)) return;
   if (participant.status && participant.status!=='registered') {showFeedback('error','This entry is marked '+participant.status.toUpperCase()+'. Update its status in Participants before recording.');return;}
-  if (!props.race.started_at) { showFeedback('error', 'The race clock has not started.'); return; }
+  if (!props.race.started_at) { showFeedback('error', tr('The race clock has not started.')); return; }
   if (props.race.finished_at) { showFeedback('error', 'This race is finished. Use Corrections & station health for corrections.'); return; }
   if (selected(participant)) { showFeedback('error', `${participant.name} (${bibLabel(participant.bib_number)}) is already recorded here.`); return; }
   const missing = priorRequiredIds.value.filter(id => !participant.completed_checkpoint_ids.includes(id));
   if (missing.length && !override) {
     const names = props.checkpoints.filter(cp => missing.includes(cp.id)).map(cp => cp.name).join(', ');
-    confirmation.value={message:`Earlier required timing missing: ${names}. Record ${participant.name} here anyway?`,label:'Record anyway',action:()=>record(participant,true,clientUuid)};return;
+    confirmation.value={message:`Earlier required timing missing: ${names}. Record ${participant.name} here anyway?`,label:tr('Record anyway'),action:()=>record(participant,true,clientUuid)};return;
   }
 
   const payload = { operator_id:account.id, entry_id:participant.id, checkpoint_id:props.checkpoint.id, client_uuid:clientUuid, observed_at:new Date(serverNowMs()).toISOString(), source:online.value ? 'online' : 'offline', override_warning:override };
@@ -85,7 +86,7 @@ async function record(participant: StationParticipant, override = false, clientU
       showFeedback('ok',data.message??'Timing recorded.');query.value='';return;
     }
     if((response.ok&&!data.timing)||response.status>=500||[401,403,408,419,429].includes(response.status)){await saveOffline();return;}
-    if(response.status===409&&data.warning){confirmation.value={message:`${data.message} ${(data.missing_checkpoints??[]).join(', ')}`,label:'Record anyway',action:()=>record(participant,true,clientUuid)};return;}
+    if(response.status===409&&data.warning){confirmation.value={message:`${data.message} ${(data.missing_checkpoints??[]).join(', ')}`,label:tr('Record anyway'),action:()=>record(participant,true,clientUuid)};return;}
     showFeedback('error',data.message??'Timing could not be recorded.');
   } catch {showFeedback('error','Timing was NOT saved: device storage is unavailable. Use a backup stopwatch.');}
   finally {saving.value.delete(participant.id);}
@@ -151,8 +152,8 @@ onBeforeUnmount(() => {
   <section v-if="!checkpoint" class="mx-auto max-w-2xl panel-pad">
     <template v-if="account.role==='admin'">
       <h2 class="text-xl font-bold">Choose a checkpoint</h2>
-      <p class="mt-2 muted">As Organizer you can move between checkpoints when needed.</p>
-      <form class="mt-5" @submit.prevent="selectCheckpoint"><label class="label" for="choose-checkpoint">Checkpoint</label><select id="choose-checkpoint" v-model="selectForm.checkpoint_id" class="field"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ cp.sequence }} · {{ cp.name }} · {{ checkpointDistanceText(race, cp) }}</option></select><button class="btn-primary mt-4 w-full"><i class="fa-solid fa-play" aria-hidden="true"></i>Open checkpoint</button></form>
+      <p class="mt-2 muted">{{ $t("As Organizer you can move between checkpoints when needed.") }}</p>
+      <form class="mt-5" @submit.prevent="selectCheckpoint"><label class="label" for="choose-checkpoint">{{ $t("Checkpoint") }}</label><select id="choose-checkpoint" v-model="selectForm.checkpoint_id" class="field"><option v-for="cp in checkpoints" :key="cp.id" :value="cp.id">{{ cp.sequence }} · {{ cp.name }} · {{ checkpointDistanceText(race, cp) }}</option></select><button class="btn-primary mt-4 w-full"><i class="fa-solid fa-play" aria-hidden="true"></i>{{ $t("Open checkpoint") }}</button></form>
     </template>
     <template v-else>
       <h2 class="text-xl font-bold">No checkpoint assigned</h2>
