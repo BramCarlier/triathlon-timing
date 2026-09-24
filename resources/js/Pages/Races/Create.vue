@@ -22,7 +22,7 @@ const submit = () => form.post('/races');
           <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-cyan-400 font-bold text-slate-950">1</span>
           <div>
             <h2 class="font-bold">Start with the essentials</h2>
-            <p class="mt-1 text-sm muted">After creating the race you stay in one workspace to review checkpoints, add participants and run race day.</p>
+            <p class="mt-1 text-sm muted">After creating the race you stay in one workspace to review checkpoints, add athletes and run race day.</p>
           </div>
         </div>
       </div>
