@@ -5,6 +5,7 @@ use App\Enums\UserRole;
 use App\Models\Athlete;
 use App\Models\Race;
 use App\Models\User;
+use App\Services\AccountInvitationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -86,4 +87,51 @@ class UserController extends Controller
         });
         return redirect()->route($request->user()->id === $user->id && !$user->fresh()->isAdmin() ? 'dashboard' : 'users.index')->with('success', 'User account updated.');
     }
+
+    public function inviteAthlete(Athlete $athlete, AccountInvitationService $invitations): RedirectResponse
+    {
+        $email = strtolower(trim((string) $athlete->email));
+        if ($email === '') {
+            throw ValidationException::withMessages(['athlete' => 'Add an email address to this athlete before sending a results invitation.']);
+        }
+
+        $existing = $athlete->user;
+        if ($existing) {
+            if (!$existing->is_active) {
+                throw ValidationException::withMessages(['athlete' => 'This athlete already has a disabled account. Re-enable it from People.']);
+            }
+            if (!$existing->force_password_change) {
+                return back()->with('success', 'This athlete already has an active account for viewing results.');
+            }
+            if (!$invitations->configured()) {
+                throw ValidationException::withMessages(['athlete' => 'Email sending is not configured. Manage this account from People instead.']);
+            }
+            return back()->with($invitations->send($existing) ? 'success' : 'error', $invitations->send($existing)
+                ? 'A fresh results invitation was sent.'
+                : 'The results invitation could not be sent. Check email settings and retry.');
+        }
+
+        if (User::where('email', $email)->exists()) {
+            throw ValidationException::withMessages(['athlete' => 'That email already belongs to another account. Resolve it from People before inviting this athlete.']);
+        }
+        if (!$invitations->configured()) {
+            throw ValidationException::withMessages(['athlete' => 'Email sending is not configured. Manage this account from People instead.']);
+        }
+
+        $user = User::create([
+            'name' => $athlete->full_name,
+            'email' => $email,
+            'password' => Hash::make(\Illuminate\Support\Str::random(64)),
+            'role' => UserRole::Athlete,
+            'athlete_id' => $athlete->id,
+            'force_password_change' => true,
+        ]);
+
+        if (!$invitations->send($user)) {
+            return back()->with('error', 'Athlete account created, but the results invitation could not be sent. You can resend it from People.');
+        }
+
+        return back()->with('success', 'Athlete invited to view their races and results.');
+    }
+
 }
