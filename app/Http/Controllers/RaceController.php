@@ -111,6 +111,7 @@ class RaceController extends Controller
 
         return Inertia::render('Races/Show', [
             'race' => $race,
+            'publicTimingUrl' => $request->user()->isAdmin() ? route('race.public', $race->public_timing_token, false) : null,
             'officials' => $officials,
             'checkpointAssignments' => $assignments,
             'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
