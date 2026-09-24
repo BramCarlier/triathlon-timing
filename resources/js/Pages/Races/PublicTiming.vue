@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
+import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import RaceClock from '../../Components/RaceClock.vue';
 import { bibLabel, formatDuration, jsonRequest, uuid } from '../../lib';
 import type { Checkpoint, StationParticipant } from '../../types';
@@ -40,6 +41,10 @@ const props=defineProps<{
 const participants=ref(props.participants.map(item=>({...item,completed_checkpoint_ids:[...item.completed_checkpoint_ids]})));
 const recent=ref(props.recentTimings.map(item=>({...item})));
 const completedCount=ref(props.completedCount);
+watch(() => props.participants, value => { participants.value=value.map(item=>({...item,completed_checkpoint_ids:[...item.completed_checkpoint_ids]})); });
+watch(() => props.recentTimings, value => { recent.value=value.map(item=>({...item})); });
+watch(() => props.completedCount, value => { completedCount.value=value; });
+useRaceRefresh(() => ['race','participants','recentTimings','completedCount','serverNow']);
 const checkpointId=ref<number|null>(props.race.checkpoints[0]?.id??null);
 const selectedCheckpoint=computed(()=>props.race.checkpoints.find(cp=>cp.id===Number(checkpointId.value))??null);
 const search=ref('');
