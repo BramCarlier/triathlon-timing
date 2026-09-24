@@ -10,7 +10,9 @@ class RaceReadinessService
     public function for(Race $race): array
     {
         $settings = $race->settings ?? [];
-        $courseReady = collect(['swim_km', 'bike_km', 'run_km'])
+        $distanceKeys = ['swim_km', 'bike_km', 'run_km'];
+        $hasExplicitCourse = collect($distanceKeys)->contains(fn (string $key) => array_key_exists($key, $settings));
+        $courseReady = !$hasExplicitCourse || collect($distanceKeys)
             ->every(fn (string $key) => (float) ($settings[$key] ?? 0) > 0);
 
         $finishReady = $race->checkpoints()
@@ -38,7 +40,9 @@ class RaceReadinessService
                 'label' => 'Course',
                 'ready' => $courseReady,
                 'required' => true,
-                'detail' => $courseReady ? 'Distances are configured.' : 'Set the swim, bike and run distances.',
+                'detail' => $courseReady
+                    ? ($hasExplicitCourse ? 'Distances are configured.' : 'Course uses the checkpoint configuration.')
+                    : 'Set the swim, bike and run distances.',
             ],
             [
                 'key' => 'finish',
