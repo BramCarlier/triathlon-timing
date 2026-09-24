@@ -24,7 +24,7 @@ class RaceWorkspaceTest extends TestCase
 
     public function test_every_signed_in_role_has_its_own_guide(): void
     {
-        foreach ([UserRole::Admin, UserRole::Organizer, UserRole::Athlete] as $role) {
+        foreach ([UserRole::Admin, UserRole::Official, UserRole::Athlete] as $role) {
             $user = User::factory()->create(['role' => $role]);
 
             $this->actingAs($user)
@@ -52,7 +52,7 @@ class RaceWorkspaceTest extends TestCase
     public function test_race_workspace_contains_participants_assignments_and_live_timing_data(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $official = User::factory()->create(['role' => UserRole::Organizer]);
+        $official = User::factory()->create(['role' => UserRole::Official]);
         $race = Race::create([
             'name' => 'Workspace race',
             'slug' => 'workspace-race',
@@ -127,7 +127,7 @@ class RaceWorkspaceTest extends TestCase
     {
         Event::fake();
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $official = User::factory()->create(['role' => UserRole::Organizer]);
+        $official = User::factory()->create(['role' => UserRole::Official]);
         $race = $this->runningRace($admin);
         $race->organizers()->attach($official);
         $swim = $race->checkpoints()->create([
