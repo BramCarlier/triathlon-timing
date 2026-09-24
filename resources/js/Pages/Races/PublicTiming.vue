@@ -139,7 +139,7 @@ function confirmOverride(){
   <Head :title="`${race.name} · Race timing`"/>
   <AppLayout :title="race.name" public-view>
     <section class="panel-pad mb-5">
-      <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <div class="text-xs font-bold uppercase tracking-[.18em] text-accent">Race-day timing</div>
           <h2 class="mt-1 text-xl font-bold">Choose the checkpoint, then tap the athlete</h2>
