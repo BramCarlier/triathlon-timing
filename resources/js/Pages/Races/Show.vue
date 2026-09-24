@@ -181,7 +181,6 @@ const confirmCheckpointRemoval = () => {
 const assigningCheckpoint = ref<Checkpoint|null>(null);
 const officialForm = useForm({
   checkpoint_id: null as number|null,
-  mode: 'existing' as 'existing'|'new',
   user_id: null as number|null,
   name: '',
   email: '',
@@ -189,12 +188,36 @@ const officialForm = useForm({
   password: '',
 });
 const assignmentsFor = (checkpointId:number) => props.checkpointAssignments.filter(item => item.checkpoint_id === checkpointId);
+const assignmentForOfficial = (officialId:number) => props.checkpointAssignments.find(item => item.user_id === officialId);
+const officialFilterTokens = computed(() => `${officialForm.name} ${officialForm.email}`.trim().toLowerCase().split(/\s+/).filter(Boolean));
+const availableOfficials = computed(() => props.officials.filter(official => {
+  const haystack = `${official.name} ${official.email}`.toLowerCase();
+  return officialFilterTokens.value.every(token => haystack.includes(token));
+}));
+const selectedOfficial = computed(() => props.officials.find(official => official.id === officialForm.user_id) ?? null);
+const updateOfficialField = (field:'name'|'email', event:Event) => {
+  officialForm.user_id = null;
+  officialForm[field] = (event.target as HTMLInputElement).value;
+};
+const selectOfficial = (official:Official) => {
+  officialForm.user_id = official.id;
+  officialForm.name = official.name;
+  officialForm.email = official.email;
+  officialForm.password = '';
+  officialForm.clearErrors();
+};
+const clearOfficialSelection = () => {
+  officialForm.user_id = null;
+  officialForm.name = '';
+  officialForm.email = '';
+  officialForm.password = '';
+  officialForm.clearErrors();
+};
 const beginAssignOfficial = (cp:Checkpoint) => {
   closeCheckpointForm();
   officialForm.reset();
   officialForm.clearErrors();
   officialForm.checkpoint_id = cp.id;
-  officialForm.mode = 'existing';
   officialForm.delivery = props.mailConfigured ? 'email' : 'manual';
   assigningCheckpoint.value = cp;
 };
@@ -447,26 +470,50 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
 
                 <form v-if="assigningCheckpoint?.id===cp.id" class="mt-4 rounded-2xl border border-cyan-400/30 bg-canvas p-4" @submit.prevent="assignOfficial">
                   <div class="flex items-center justify-between gap-3"><div><h4 class="font-bold">Assign Official</h4><p class="mt-1 text-sm muted">{{ cp.name }}</p></div><button type="button" class="btn-icon" aria-label="Close official form" @click="closeOfficialForm"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
-                  <div class="mt-4 grid grid-cols-2 gap-2">
-                    <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='existing'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='existing'">Existing Official</button>
-                    <button type="button" class="rounded-xl border p-3 font-semibold" :class="officialForm.mode==='new'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="officialForm.mode='new'">New Official</button>
+                  <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <label class="label">Name<input :value="officialForm.name" class="field" autocomplete="off" placeholder="Official name" required @input="updateOfficialField('name',$event)"></label>
+                    <label class="label">Email<input :value="officialForm.email" type="email" class="field" autocomplete="off" placeholder="official@example.com" required @input="updateOfficialField('email',$event)"></label>
                   </div>
-                  <div v-if="officialForm.mode==='existing'" class="mt-4">
-                    <label class="label" :for="`official-user-${cp.id}`">Official</label>
-                    <select :id="`official-user-${cp.id}`" v-model="officialForm.user_id" class="field" required>
-                      <option :value="null">Choose Official</option>
-                      <option v-for="official in officials" :key="official.id" :value="official.id">{{ official.name }} · {{ official.email }}{{ official.role==='admin'?' · Organizer (admin)':'' }}</option>
-                    </select>
-                    <p class="mt-2 text-xs muted">Organizers (admin) can also be assigned to a checkpoint as an Official.</p>
+                  <p class="mt-2 text-xs muted">Available Officials are shown below. Typing a name or email filters the list. If you do not select an existing account, a new Official is created from these details.</p>
+
+                  <div v-if="selectedOfficial" class="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-success">Existing Official selected</span>
+                        <strong class="mt-1 block">{{ selectedOfficial.name }}</strong>
+                        <span class="mt-1 block text-sm muted">{{ selectedOfficial.email }}{{ selectedOfficial.role==='admin'?' · Organizer (admin)':'' }}</span>
+                        <span v-if="assignmentForOfficial(selectedOfficial.id)" class="mt-1 block text-xs muted">Currently assigned to {{ assignmentForOfficial(selectedOfficial.id)?.checkpoint?.name }}</span>
+                      </div>
+                      <button type="button" class="btn-secondary !px-3" @click="clearOfficialSelection"><i class="fa-solid fa-rotate" aria-hidden="true"></i>Change</button>
+                    </div>
                   </div>
-                  <div v-else class="mt-4 space-y-3">
-                    <label class="label">Name<input v-model="officialForm.name" class="field" required></label>
-                    <label class="label">Email<input v-model="officialForm.email" type="email" class="field" required></label>
+
+                  <div v-else-if="availableOfficials.length" class="mt-3 rounded-xl border border-cyan-400/30 bg-canvas p-2">
+                    <div class="flex items-center justify-between gap-3 px-2 pb-2">
+                      <p class="text-xs font-bold uppercase tracking-wider text-accent">{{ officialFilterTokens.length ? 'Matching officials' : 'Available officials' }}</p>
+                      <span class="text-xs muted">{{ availableOfficials.length }} shown</span>
+                    </div>
+                    <div class="max-h-60 space-y-1 overflow-y-auto pr-1">
+                      <button v-for="official in availableOfficials" :key="official.id" type="button" class="w-full rounded-xl border border-outline p-3 text-left hover:border-cyan-400 hover:bg-raised" @click="selectOfficial(official)">
+                        <span class="flex flex-wrap items-center justify-between gap-2">
+                          <strong>{{ official.name }}</strong>
+                          <span v-if="official.role==='admin'" class="badge">Organizer (admin)</span>
+                        </span>
+                        <span class="mt-1 block text-sm muted">{{ official.email }}</span>
+                        <span v-if="assignmentForOfficial(official.id)" class="mt-1 block text-xs muted">Assigned to {{ assignmentForOfficial(official.id)?.checkpoint?.name }}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <p v-else class="mt-3 rounded-xl bg-canvas p-3 text-sm muted">No existing Official matches these details. Complete the form below to create and assign a new Official.</p>
+
+                  <div v-if="!officialForm.user_id" class="mt-4 space-y-3">
                     <label class="label">Account setup<select v-model="officialForm.delivery" class="field"><option value="email" :disabled="!mailConfigured">Send password setup email</option><option value="manual">Use a temporary password</option></select></label>
                     <label v-if="officialForm.delivery==='manual'" class="label">Temporary password<input v-model="officialForm.password" type="password" minlength="12" class="field" required></label>
                   </div>
+                  <p class="mt-2 text-xs muted">Organizers (admin) are included in the Official list and can be assigned to a checkpoint.</p>
                   <p v-if="Object.keys(officialForm.errors).length" class="mt-3 text-sm text-error">{{ Object.values(officialForm.errors)[0] }}</p>
-                  <button class="btn-primary mt-4" :disabled="officialForm.processing"><i class="fa-solid fa-user-check" aria-hidden="true"></i>Assign to checkpoint</button>
+                  <button class="btn-primary mt-4" :disabled="officialForm.processing"><i class="fa-solid fa-user-check" aria-hidden="true"></i>{{ officialForm.user_id?'Assign to checkpoint':'Create & assign Official' }}</button>
                 </form>
               </article>
             </div>
@@ -508,6 +555,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 :key="member.discipline"
                 v-model="participantForm.members[index]"
                 :race-id="race.id"
+                :bib-number="participantForm.bib_number"
                 :title="participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline)"
               />
             </div>
