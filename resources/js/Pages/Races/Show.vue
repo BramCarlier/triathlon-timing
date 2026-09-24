@@ -41,6 +41,9 @@ interface AthleteChoice {
   recent_bibs: string[];
 }
 
+interface ReadinessCheck { key:string; label:string; ready:boolean; required:boolean; detail:string }
+interface Readiness { ready_to_start:boolean; checks:ReadinessCheck[]; participant_count:number; unassigned_checkpoint_count:number }
+
 interface Timing {
   id?: number;
   client_uuid?: string;
@@ -60,6 +63,7 @@ const props = defineProps<{
   allowedTimingCheckpointIds: number[];
   mailConfigured: boolean;
   athleteOptions: AthleteChoice[];
+  readiness: Readiness;
   participants: StationParticipant[];
   recentTimings: Timing[];
   completedCount: number;
@@ -80,16 +84,13 @@ const activeTimingCheckpoints = computed(() => orderedCheckpoints.value.filter(c
   && cp.kind !== 'start'
   && props.allowedTimingCheckpointIds.includes(cp.id)
 ));
-const hasFinish = computed(() => orderedCheckpoints.value.some(cp => cp.is_active && cp.kind === 'finish'));
-const distancesReady = computed(() => ['swim_km','bike_km','run_km'].every(key => Number(props.race.settings?.[key] ?? 0) > 0));
-const setupReady = computed(() => hasFinish.value && distancesReady.value);
-const participantsReady = computed(() => (props.race.entries_count ?? 0) > 0);
+const requiredSetupReady = computed(() => props.readiness.checks.filter(check => check.required && check.key !== 'participants').every(check => check.ready));
+const participantsReady = computed(() => props.readiness.participant_count > 0);
 
 const initialStep = ():Step => {
   if (props.race.finished_at) return 'finish';
-  if (!isAdmin.value) return 'race-day';
   if (props.race.started_at) return 'race-day';
-  if (!setupReady.value || props.checkpointAssignments.length === 0) return 'prepare';
+  if (!requiredSetupReady.value) return 'prepare';
   if (!participantsReady.value) return 'participants';
   return 'race-day';
 };
@@ -101,12 +102,13 @@ watch([() => props.race.started_at, () => props.race.finished_at], ([started, fi
 });
 
 const workflowState = computed(() => {
-  if (props.race.finished_at) return { title:'Race finished', detail:'Review the results or correct a genuine timing mistake.', icon:'fa-solid fa-flag-checkered' };
-  if (props.race.started_at) return { title:'Race is live', detail:isAdmin.value ? 'Record timings here or switch checkpoints when needed.' : 'Record athletes at your assigned checkpoint.', icon:'fa-solid fa-stopwatch' };
-  if (!isAdmin.value) return { title:'Waiting for the race to start', detail:activeTimingCheckpoints.value.length ? `Your checkpoint: ${activeTimingCheckpoints.value[0].name}` : 'No checkpoint has been assigned to you yet.', icon:'fa-solid fa-location-dot' };
-  if (!setupReady.value || props.checkpointAssignments.length === 0) return { title:'Next: checkpoints & officials', detail:'Review the course and assign Officials to their checkpoints.', icon:'fa-solid fa-route' };
-  if (!participantsReady.value) return { title:'Next: add athletes', detail:'Add athletes or relay teams before starting the race.', icon:'fa-solid fa-users' };
-  return { title:'Ready to start', detail:'Setup is complete. Start the shared clock when the race begins.', icon:'fa-solid fa-play' };
+  if (props.race.finished_at) return { title:'Race finished', detail:'Review results or open Corrections & station health for a genuine timing correction.', icon:'fa-solid fa-flag-checkered' };
+  if (props.race.started_at) return { title:'Race is live', detail:'Record timings here and switch checkpoints when needed.', icon:'fa-solid fa-stopwatch' };
+  const missingRequired = props.readiness.checks.find(check => check.required && !check.ready);
+  if (missingRequired?.key === 'participants') return { title:'Next: add participants', detail:missingRequired.detail, icon:'fa-solid fa-users' };
+  if (missingRequired) return { title:'Next: finish course setup', detail:missingRequired.detail, icon:'fa-solid fa-route' };
+  if (props.readiness.unassigned_checkpoint_count > 0) return { title:'Ready to start', detail:'Required setup is complete. Some checkpoints still need an Official, or you can cover them as Organizer.', icon:'fa-solid fa-play' };
+  return { title:'Ready to start', detail:'Required setup is complete. Start the shared clock when the race begins.', icon:'fa-solid fa-play' };
 });
 
 const raceForm = useForm({
@@ -118,7 +120,8 @@ const raceForm = useForm({
   bike_km: Number(props.race.settings?.bike_km ?? 35),
   run_km: Number(props.race.settings?.run_km ?? 8),
 });
-const saveRace = () => raceForm.put(`/races/${props.race.id}`, { preserveScroll:true });
+const editingRaceDetails = ref(false);
+const saveRace = () => raceForm.put(`/races/${props.race.id}`, { preserveScroll:true, onSuccess:()=>{editingRaceDetails.value=false;} });
 
 const checkpointFormOpen = ref(false);
 const editingCheckpoint = ref<Checkpoint|null>(null);
