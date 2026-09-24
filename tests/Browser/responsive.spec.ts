@@ -251,9 +251,8 @@ test.describe('responsive layouts', () => {
 
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto('/users/9001/edit');
-        await page.getByLabel('Account type', { exact: true }).selectOption('athlete');
-        await expect(page.getByLabel('Athlete', { exact: true })).toBeVisible();
-        await atSizes(page, 'athlete picker', representativeSizes);
+        await expect(page.getByRole('heading', { name: 'Edit person & access', exact: true })).toBeVisible();
+        await atSizes(page, 'person access editor', representativeSizes);
 
         await page.goto('/races/9002/participants/import');
         await page.getByLabel('Participant file').setInputFiles({

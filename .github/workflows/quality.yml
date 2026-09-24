@@ -30,7 +30,7 @@ jobs:
       - run: corepack enable
       - run: composer validate --strict --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: yarn install --immutable
+      - run: yarn install --immutable || (sleep 2 && yarn install --immutable)
       - run: bash -n deploy/forge-deploy.sh
       - run: python3 -m unittest discover -s tests/Deployment -v
       - run: cp .env.example .env && php artisan key:generate
@@ -62,20 +62,21 @@ jobs:
           node-version: '24'
       - run: corepack enable
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: yarn install --immutable
+      - run: yarn install --immutable || (sleep 2 && yarn install --immutable)
       - run: yarn playwright install --with-deps chromium
       - run: cp .env.example .env && php artisan key:generate && touch /tmp/triathlon-browser.sqlite && php artisan migrate --force && php tests/Browser/seed.php
       - run: yarn build
       - run: yarn test:browser
       - name: Browser failure context
         if: failure()
-        run: find test-results -name error-context.md -exec cat {} \;
+        run: find test-results -name error-context.md -exec cat {} \; || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: browser-smoke-failure-traces
           path: test-results/
           retention-days: 7
+          if-no-files-found: ignore
 
   responsive:
     runs-on: ubuntu-latest
@@ -100,7 +101,7 @@ jobs:
           node-version: '24'
       - run: corepack enable
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: yarn install --immutable
+      - run: yarn install --immutable || (sleep 2 && yarn install --immutable)
       - run: yarn playwright install --with-deps chromium
       - run: cp .env.example .env && php artisan key:generate && touch /tmp/triathlon-browser.sqlite && php artisan migrate --force && php tests/Browser/seed.php
       - run: yarn build
@@ -114,13 +115,14 @@ jobs:
           retention-days: 7
       - name: Responsive failure context
         if: failure()
-        run: find test-results -name error-context.md -exec cat {} \;
+        run: find test-results -name error-context.md -exec cat {} \; || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: responsive-failure-traces
           path: test-results/
           retention-days: 7
+          if-no-files-found: ignore
 
   webkit-responsive:
     if: github.event_name == 'workflow_dispatch'
@@ -146,7 +148,7 @@ jobs:
           node-version: '24'
       - run: corepack enable
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: yarn install --immutable
+      - run: yarn install --immutable || (sleep 2 && yarn install --immutable)
       - run: yarn playwright install --with-deps webkit
       - run: cp .env.example .env && php artisan key:generate && touch /tmp/triathlon-browser.sqlite && php artisan migrate --force && php tests/Browser/seed.php
       - run: yarn build
