@@ -83,7 +83,13 @@ class UserController extends Controller
             $account->athlete_id = $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null;
             if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; $account->invitation_sent_at=null; \Illuminate\Support\Facades\Password::deleteToken($account); }
             $account->save();
-            if ($account->role === UserRole::Official) $account->races()->sync($data['race_ids'] ?? []); elseif ($account->role === UserRole::Athlete) $account->races()->detach();
+            if ($account->role === UserRole::Official) {
+                $assignedRaceIds = $account->checkpointAssignments()->pluck('race_id')->map(fn ($id) => (int) $id)->all();
+                $account->races()->sync(array_values(array_unique([...($data['race_ids'] ?? []), ...$assignedRaceIds])));
+            } elseif ($account->role === UserRole::Athlete) {
+                $account->checkpointAssignments()->delete();
+                $account->races()->detach();
+            }
         });
         return redirect()->route($request->user()->id === $user->id && !$user->fresh()->isAdmin() ? 'dashboard' : 'users.index')->with('success', 'User account updated.');
     }
