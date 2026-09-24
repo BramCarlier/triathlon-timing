@@ -24,7 +24,7 @@ class TimingServiceTest extends TestCase
     private function setupRace(): array
     {
         Event::fake();
-        $operator = User::factory()->create(['role' => UserRole::Organizer]);
+        $operator = User::factory()->create(['role' => UserRole::Official]);
         $race = Race::create(['name'=>'Test','slug'=>'test','event_date'=>'2026-10-01','timezone'=>'Europe/Brussels','status'=>RaceStatus::Running,'started_at'=>now()->subHour(),'created_by'=>$operator->id]);
         $operator->races()->attach($race);
         $race->checkpoints()->create(['name'=>'Start','code'=>'START','sequence'=>0,'kind'=>CheckpointKind::Start,'is_required'=>true]);
