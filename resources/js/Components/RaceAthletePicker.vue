@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { jsonRequest } from '../lib';
 
 interface AthleteChoice {
@@ -12,6 +12,7 @@ interface AthleteChoice {
   race_count: number;
   already_in_race: boolean;
   races: Array<{ id:number; name:string; event_date:string }>;
+  recent_bibs: string[];
 }
 
 export interface AthleteMemberValue {
@@ -27,35 +28,35 @@ const props = defineProps<{
   raceId: number;
   modelValue: AthleteMemberValue;
   title: string;
+  bibNumber?: string|null;
+  initialOptions: AthleteChoice[];
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: AthleteMemberValue];
 }>();
 
-const mode = ref<'new'|'existing'>(props.modelValue.athlete_id ? 'existing' : 'new');
-const query = ref('');
-const results = ref<AthleteChoice[]>([]);
+const results = ref<AthleteChoice[]>([...props.initialOptions]);
 const selected = ref<AthleteChoice|null>(null);
 const loading = ref(false);
 const error = ref('');
 let searchTimer:number|undefined;
 let requestNumber = 0;
 
-const setMode = (value:'new'|'existing') => {
-  mode.value = value;
-  error.value = '';
-  if (value === 'new') {
-    selected.value = null;
-    query.value = '';
-    results.value = [];
-    emit('update:modelValue', { ...props.modelValue, athlete_id:null });
-  }
-};
+const textLookup = computed(() => [
+  props.modelValue.first_name,
+  props.modelValue.last_name,
+  props.modelValue.email,
+].map(value => value?.trim()).filter(Boolean).join(' ').trim());
+
+const bibLookup = computed(() => (props.bibNumber ?? '').trim());
+const hasLookup = computed(() => textLookup.value.length >= 2 || bibLookup.value.length > 0);
+const listTitle = computed(() => hasLookup.value ? 'Matching athletes' : 'Available athletes');
 
 const selectAthlete = (athlete:AthleteChoice) => {
   if (athlete.already_in_race) return;
   selected.value = athlete;
+  results.value = [];
   emit('update:modelValue', {
     ...props.modelValue,
     athlete_id: athlete.id,
@@ -68,34 +69,51 @@ const selectAthlete = (athlete:AthleteChoice) => {
 
 const clearSelection = () => {
   selected.value = null;
-  emit('update:modelValue', { ...props.modelValue, athlete_id:null, first_name:'', last_name:'', email:'', club:'' });
+  results.value = [];
+  emit('update:modelValue', {
+    ...props.modelValue,
+    athlete_id:null,
+    first_name:'',
+    last_name:'',
+    email:'',
+    club:'',
+  });
 };
 
 const updateField = (field:'first_name'|'last_name'|'email'|'club', event:Event) => {
   const target = event.target as HTMLInputElement;
-  emit('update:modelValue', { ...props.modelValue, [field]:target.value });
+  emit('update:modelValue', { ...props.modelValue, athlete_id:null, [field]:target.value });
 };
 
 watch(() => props.modelValue.athlete_id, athleteId => {
   if (!athleteId) selected.value = null;
 });
 
-watch(query, value => {
+watch([textLookup, bibLookup], ([text, bib]) => {
   requestNumber += 1;
   clearTimeout(searchTimer);
-  const term = value.trim();
-  if (mode.value !== 'existing' || term.length < 2) {
+  error.value = '';
+
+  if (props.modelValue.athlete_id) {
     results.value = [];
     loading.value = false;
-    error.value = '';
     return;
   }
+
+  if (text.length < 2 && !bib) {
+    results.value = [...props.initialOptions];
+    loading.value = false;
+    return;
+  }
+
   const currentRequest = requestNumber;
   loading.value = true;
-  error.value = '';
   searchTimer = window.setTimeout(async () => {
     try {
-      const { response, data } = await jsonRequest<{ athletes:AthleteChoice[] }>(`/races/${props.raceId}/athletes/search?q=${encodeURIComponent(term)}`, { method:'GET' });
+      const params = new URLSearchParams();
+      if (text.length >= 2) params.set('q', text);
+      if (bib) params.set('bib', bib);
+      const { response, data } = await jsonRequest<{ athletes:AthleteChoice[] }>(`/races/${props.raceId}/athletes/search?${params.toString()}`, { method:'GET' });
       if (currentRequest !== requestNumber) return;
       if (!response.ok) throw new Error('search failed');
       results.value = data.athletes ?? [];
@@ -108,6 +126,10 @@ watch(query, value => {
       if (currentRequest === requestNumber) loading.value = false;
     }
   }, 220);
+}, { immediate:true });
+
+watch(() => props.initialOptions, options => {
+  if (!props.modelValue.athlete_id && !hasLookup.value) results.value = [...options];
 });
 
 onBeforeUnmount(() => clearTimeout(searchTimer));
@@ -117,43 +139,42 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
   <div class="rounded-xl border border-outline p-3">
     <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
       <strong>{{ title }}</strong>
-      <span class="text-xs muted">Reuse an athlete to keep all race results together.</span>
+      <span class="text-xs muted">Existing athletes are found automatically.</span>
     </div>
 
-    <div class="grid grid-cols-2 gap-2">
-      <button type="button" class="rounded-xl border p-3 text-sm font-semibold" :class="mode==='new'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="setMode('new')">
-        <i class="fa-solid fa-user-plus mr-1" aria-hidden="true"></i>New athlete
-      </button>
-      <button type="button" class="rounded-xl border p-3 text-sm font-semibold" :class="mode==='existing'?'border-cyan-400 bg-cyan-400/10':'border-outline'" @click="setMode('existing')">
-        <i class="fa-solid fa-magnifying-glass mr-1" aria-hidden="true"></i>Existing athlete
-      </button>
-    </div>
-
-    <div v-if="mode==='new'" class="mt-4 grid grid-cols-2 gap-2">
-      <label class="label">First name<input :value="modelValue.first_name" class="field" placeholder="First name" required @input="updateField('first_name',$event)"></label>
-      <label class="label">Last name<input :value="modelValue.last_name" class="field" placeholder="Last name" required @input="updateField('last_name',$event)"></label>
-      <label class="label col-span-2">Email (optional)<input :value="modelValue.email" class="field" type="email" placeholder="Email (optional)" @input="updateField('email',$event)"></label>
-      <label class="label col-span-2">Club (optional)<input :value="modelValue.club" class="field" placeholder="Club (optional)" @input="updateField('club',$event)"></label>
-      <p class="col-span-2 text-xs muted">If this email already belongs to an athlete, the existing profile is reused automatically.</p>
-    </div>
-
-    <div v-else class="mt-4">
-      <div v-if="selected" class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <strong class="block">{{ selected.full_name }}</strong>
-            <span class="mt-1 block text-sm muted">{{ selected.email || 'No email' }}<span v-if="selected.club"> · {{ selected.club }}</span></span>
-            <span class="mt-1 block text-xs muted">{{ selected.race_count }} previous {{ selected.race_count===1?'race':'races' }}</span>
-          </div>
-          <button type="button" class="btn-secondary !px-3" @click="clearSelection"><i class="fa-solid fa-rotate" aria-hidden="true"></i>Change</button>
+    <div v-if="selected" class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-success">Existing athlete selected</span>
+          <strong class="mt-1 block">{{ selected.full_name }}</strong>
+          <span class="mt-1 block text-sm muted">{{ selected.email || 'No email' }}<span v-if="selected.club"> · {{ selected.club }}</span></span>
+          <span class="mt-1 block text-xs muted">{{ selected.race_count }} previous {{ selected.race_count===1?'race':'races' }}</span>
         </div>
+        <button type="button" class="btn-secondary !px-3" @click="clearSelection"><i class="fa-solid fa-rotate" aria-hidden="true"></i>Change</button>
       </div>
-      <template v-else>
-        <label class="label">Search by name or email<input v-model="query" class="field" type="search" autocomplete="off" placeholder="Start typing an athlete name or email"></label>
-        <p v-if="query.trim().length<2" class="mt-2 text-xs muted">Enter at least 2 characters.</p>
-        <p v-else-if="loading" class="mt-2 text-sm muted"><i class="fa-solid fa-spinner fa-spin mr-1" aria-hidden="true"></i>Searching athletes…</p>
-        <p v-if="error" class="mt-2 text-sm text-error" role="alert">{{ error }}</p>
-        <div v-if="!loading && results.length" class="mt-3 space-y-2">
+    </div>
+
+    <template v-else>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="label">First name<input :value="modelValue.first_name" class="field" placeholder="First name" required @input="updateField('first_name',$event)"></label>
+        <label class="label">Last name<input :value="modelValue.last_name" class="field" placeholder="Last name" required @input="updateField('last_name',$event)"></label>
+        <label class="label col-span-2">Email (optional)<input :value="modelValue.email" class="field" type="email" placeholder="Email (optional)" @input="updateField('email',$event)"></label>
+        <label class="label col-span-2">Club (optional)<input :value="modelValue.club" class="field" placeholder="Club (optional)" @input="updateField('club',$event)"></label>
+      </div>
+
+      <p class="mt-2 text-xs muted">
+        The list below is always available. Typing a name or email<span v-if="bibNumber">, or entering bib {{ bibNumber }}</span>, narrows it automatically. If you do not select an existing athlete, a new profile is created when you add the participant.
+      </p>
+
+      <p v-if="loading" class="mt-3 text-sm muted"><i class="fa-solid fa-spinner fa-spin mr-1" aria-hidden="true"></i>Loading athletes…</p>
+      <p v-if="error" class="mt-3 text-sm text-error" role="alert">{{ error }}</p>
+
+      <div v-if="!loading && results.length" class="mt-3 rounded-xl border border-cyan-400/30 bg-canvas p-2">
+        <div class="flex items-center justify-between gap-3 px-2 pb-2">
+          <p class="text-xs font-bold uppercase tracking-wider text-accent">{{ listTitle }}</p>
+          <span class="text-xs muted">{{ results.length }} shown</span>
+        </div>
+        <div class="max-h-64 space-y-1 overflow-y-auto pr-1">
           <button
             v-for="athlete in results"
             :key="athlete.id"
@@ -169,11 +190,15 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
               <span v-else class="text-xs muted">{{ athlete.race_count }} previous {{ athlete.race_count===1?'race':'races' }}</span>
             </span>
             <span class="mt-1 block text-sm muted">{{ athlete.email || 'No email' }}<span v-if="athlete.club"> · {{ athlete.club }}</span></span>
-            <span v-if="athlete.races.length" class="mt-1 block text-xs muted">Recent: {{ athlete.races.map(race=>race.name).join(' · ') }}</span>
+            <span v-if="athlete.recent_bibs.length" class="mt-1 block text-xs muted">Previous bibs: {{ athlete.recent_bibs.join(', ') }}</span>
+            <span v-if="athlete.races.length" class="mt-1 block text-xs muted">Recent races: {{ athlete.races.map(race=>race.name).join(' · ') }}</span>
           </button>
         </div>
-        <p v-else-if="!loading && query.trim().length>=2 && !error" class="mt-3 text-sm muted">No matching athlete found. Switch to “New athlete” to create one.</p>
-      </template>
-    </div>
+      </div>
+
+      <p v-else-if="!loading && !error" class="mt-3 rounded-xl bg-canvas p-3 text-sm muted">
+        {{ hasLookup ? 'No existing athlete matches. Complete the details to create a new profile.' : 'No existing athletes are available yet. Complete the details to create the first one.' }}
+      </p>
+    </template>
   </div>
 </template>

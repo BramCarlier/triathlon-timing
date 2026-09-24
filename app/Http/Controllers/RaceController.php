@@ -7,6 +7,7 @@ use App\Enums\RaceStatus;
 use App\Enums\TimingStatus;
 use App\Models\Race;
 use App\Models\User;
+use App\Services\AthleteLookupService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -59,7 +60,7 @@ class RaceController extends Controller
         return redirect()->route('races.show', $race)->with('success', 'Race created with default triathlon checkpoints.');
     }
 
-    public function show(Request $request, Race $race): Response
+    public function show(Request $request, Race $race, AthleteLookupService $athletes): Response
     {
         Gate::authorize('manage-race', $race);
         $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence')])->loadCount('entries');
@@ -112,6 +113,7 @@ class RaceController extends Controller
             'checkpointAssignments' => $assignments,
             'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
             'mailConfigured' => app(\App\Services\AccountInvitationService::class)->configured(),
+            'athleteOptions' => $request->user()->isAdmin() ? $athletes->options($race) : [],
             'participants' => $participants,
             'recentTimings' => $recentTimings,
             'completedCount' => $completedCount,
