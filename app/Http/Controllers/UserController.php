@@ -43,7 +43,7 @@ class UserController extends Controller
         $emailInvite=($data['delivery']??(empty($data['password'])?'email':'manual'))==='email';
         if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>'Email sending is not configured. Connect email sending first, or choose a temporary password and share it yourself.']);
         $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($emailInvite ? \Illuminate\Support\Str::random(64) : $data['password']), 'role' => $data['role'], 'access_role_id'=>$data['role']==='organizer'?($data['access_role_id']??null):null, 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
-        if ($user->role === UserRole::Organizer) $user->races()->sync($data['race_ids'] ?? []);
+        if ($user->role === UserRole::Official) $user->races()->sync($data['race_ids'] ?? []);
         if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error','Account created, but the invitation could not be sent. Check email settings and use Resend invitation.');
         return back()->with('success', $emailInvite ? 'Account created. Invitation accepted by the mail server; ask the recipient to check their inbox and spam folder.' : 'Account created. Share the temporary password privately; it must be changed at first login.');
     }
@@ -83,7 +83,7 @@ class UserController extends Controller
             $account->athlete_id = $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null;
             if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; $account->invitation_sent_at=null; \Illuminate\Support\Facades\Password::deleteToken($account); }
             $account->save();
-            if ($account->role === UserRole::Organizer) $account->races()->sync($data['race_ids'] ?? []); elseif ($account->role === UserRole::Athlete) $account->races()->detach();
+            if ($account->role === UserRole::Official) $account->races()->sync($data['race_ids'] ?? []); elseif ($account->role === UserRole::Athlete) $account->races()->detach();
         });
         return redirect()->route($request->user()->id === $user->id && !$user->fresh()->isAdmin() ? 'dashboard' : 'users.index')->with('success', 'User account updated.');
     }
