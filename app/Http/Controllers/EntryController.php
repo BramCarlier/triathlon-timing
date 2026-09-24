@@ -89,8 +89,12 @@ class EntryController extends Controller
     public function edit(Race $race, Entry $entry): Response
     {
         Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);abort_unless(request()->user()->isAdmin(),403);
-        return Inertia::render('Participants/Edit',['race'=>$race,'entry'=>$entry->load('members.athlete'),
-            'changes'=>EntryChange::where('entry_id',$entry->id)->with('user:id,name')->latest('id')->limit(50)->get()]);
+        return Inertia::render('Participants/Edit',[
+            'race'=>$race,
+            'entry'=>$entry->load('members.athlete.user:id,athlete_id,email,is_active,force_password_change'),
+            'mailConfigured'=>app(\App\Services\AccountInvitationService::class)->configured(),
+            'changes'=>EntryChange::where('entry_id',$entry->id)->with('user:id,name')->latest('id')->limit(50)->get(),
+        ]);
     }
 
     public function update(Request $request,Race $race,Entry $entry): RedirectResponse
