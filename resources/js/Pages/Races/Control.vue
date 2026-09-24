@@ -55,15 +55,15 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
   <AppLayout :title="`${race.name} · Corrections & station health`">
     <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p class="font-semibold">Use this page only when the normal Race workspace is not enough.</p>
-        <p class="mt-1 text-sm muted">Start and end the race from the Race workspace. Here you can check station connectivity and correct recorded times.</p>
+        <p class="font-semibold">{{ $t("Use this page only when the normal Race workspace is not enough.") }}</p>
+        <p class="mt-1 text-sm muted">{{ $t("Start and end the race from the Race workspace. Here you can check station connectivity and correct recorded times.") }}</p>
       </div>
-      <Link :href="`/races/${race.id}`" class="btn-secondary self-start"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Back to Race workspace</Link>
+      <Link :href="`/races/${race.id}`" class="btn-secondary self-start"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>{{ $t("Back to Race workspace") }}</Link>
     </div>
 
     <section class="mb-5 grid gap-3 sm:grid-cols-3">
       <div class="panel-pad"><div class="text-2xl font-bold">{{ race.entries_count }}</div><div class="mt-1 text-sm muted">{{ $t("Participants") }}</div></div>
-      <div class="panel-pad"><div class="text-2xl font-bold">{{ completedCount }}</div><div class="mt-1 text-sm muted">Finished</div></div>
+      <div class="panel-pad"><div class="text-2xl font-bold">{{ completedCount }}</div><div class="mt-1 text-sm muted">{{ $t("Finished") }}</div></div>
       <div class="panel-pad"><div class="text-2xl font-bold">{{ presence.length }}</div><div class="mt-1 text-sm muted">{{ $t("Active stations") }}</div></div>
     </section>
 
@@ -103,12 +103,12 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
               <label class="label">{{ $t("Seconds") }}<input v-model="correction.seconds" class="field" type="number" min="0" max="59" required></label>
               <label class="label">{{ $t("Milliseconds") }}<input v-model="correction.millis" class="field" type="number" min="0" max="999" required></label>
             </div>
-            <p class="mt-2 text-sm muted">Preview: <strong class="font-mono">{{ formatDuration(proposedTime,3) }}</strong></p>
+            <p class="mt-2 text-sm muted">{{ $t("Preview:") }} <strong class="font-mono">{{ formatDuration(proposedTime,3) }}</strong></p>
           </fieldset>
           <label class="label">{{ $t("Reason") }}<input v-model="correction.notes" class="field" :placeholder="$t('For example: finish camera review')" maxlength="1000" required></label>
           <p v-if="Object.keys(correction.errors).length" class="text-sm text-error">{{ Object.values(correction.errors)[0] }}</p>
           <button class="btn-primary" :disabled="correction.processing || !race.started_at"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>{{ $t("Review correction") }}</button>
-          <p v-if="!race.started_at" class="text-sm muted">Corrections become available after the race starts.</p>
+          <p v-if="!race.started_at" class="text-sm muted">{{ $t("Corrections become available after the race starts.") }}</p>
         </form>
       </section>
     </div>
