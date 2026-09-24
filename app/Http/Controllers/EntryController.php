@@ -124,9 +124,6 @@ class EntryController extends Controller
                 if($email&&Athlete::where('email',$email)->where('id','!=',$person['id'])->exists())throw ValidationException::withMessages(['athletes'=>'That email belongs to another athlete.']);
                 $athlete=Athlete::lockForUpdate()->findOrFail($person['id']);
                 $athlete->fill(['first_name'=>$person['first_name'],'last_name'=>$person['last_name'],'email'=>$email,'club'=>$person['club']??null]);
-                if($athlete->isDirty()&&!$request->user()->isAdmin()&&$athlete->memberships()->whereHas('entry.race',fn($query)=>$query->whereDoesntHave('organizers',fn($users)=>$users->whereKey($request->user()->id)))->exists()) {
-                    throw ValidationException::withMessages(['athletes'=>'This athlete also belongs to another official’s race. Ask an organizer (admin) to change their shared profile. You can still edit this entry’s bib, category and status.']);
-                }
                 $athlete->save();
             }
             $entry->update(collect($data)->only(['bib_number','team_name','category','status'])->all());
