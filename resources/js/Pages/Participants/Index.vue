@@ -39,7 +39,7 @@ const disciplineLabel = (d:string) => d.charAt(0).toUpperCase()+d.slice(1);
       </div>
 
       <div class="mt-4">
-        <label for="participant-bib" class="label">{{ $t("Bib number") }} <span class="font-normal muted">(optional)</span></label>
+        <label for="participant-bib" class="label">{{ $t("Bib number") }} <span class="font-normal muted">{{ $t("(optional)") }}</span></label>
         <input id="participant-bib" v-model="form.bib_number" class="field" maxlength="32" :placeholder="$t('Leave blank if you do not use bibs')">
       </div>
 
@@ -55,7 +55,7 @@ const disciplineLabel = (d:string) => d.charAt(0).toUpperCase()+d.slice(1);
           <label v-if="form.type==='relay'" for="participants-index-field-2" class="label">{{ $t("Team name") }}
             <input id="participants-index-field-2" v-model="form.team_name" class="field" required>
           </label>
-          <label for="participants-index-field-3" class="label">{{ $t("Category") }} <span class="font-normal muted">(optional)</span>
+          <label for="participants-index-field-3" class="label">{{ $t("Category") }} <span class="font-normal muted">{{ $t("(optional)") }}</span>
             <input id="participants-index-field-3" v-model="form.category" class="field" :placeholder="$t('For example: Open')">
           </label>
         </div>
