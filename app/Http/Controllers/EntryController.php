@@ -78,12 +78,12 @@ class EntryController extends Controller
             } else {
                 foreach ([Discipline::Swim, Discipline::Bike, Discipline::Run] as $index => $discipline) {
                     $person = $members->firstWhere('discipline', $discipline->value);
-                    abort_unless($person, 422, "Relay needs a {$discipline->value} athlete.");
+                    abort_unless($person, 422, __('Relay needs a :discipline athlete.', ['discipline'=>__($discipline->label())]));
                     $entry->members()->create(['athlete_id' => $this->athlete($person, $race)->id, 'discipline' => $discipline, 'position' => $index + 1]);
                 }
             }
         });
-        return back()->with('success', 'Participant added.');
+        return back()->with('success', __('Participant added.'));
     }
 
     public function edit(Race $race, Entry $entry): Response
@@ -117,8 +117,8 @@ class EntryController extends Controller
             $before=$snapshot();
             $ids=$entry->members()->pluck('athlete_id')->unique()->sort()->values()->all();
             $provided=collect($data['athletes'])->pluck('id')->map(fn($id)=>(int)$id)->sort()->values()->all();
-            if($ids!==$provided)throw ValidationException::withMessages(['athletes'=>'Edit the existing athletes; changing relay membership requires official review.']);
-            if($data['status']==='dns'&&$entry->timings()->exists())throw ValidationException::withMessages(['status'=>'This participant has timing history. Use DNF or disqualification instead of DNS.']);
+            if($ids!==$provided)throw ValidationException::withMessages(['athletes'=>__('Edit the existing athletes; changing relay membership requires official review.')]);
+            if($data['status']==='dns'&&$entry->timings()->exists())throw ValidationException::withMessages(['status'=>__('This participant has timing history. Use DNF or disqualification instead of DNS.')]);
             foreach($data['athletes'] as $person){
                 $email=empty($person['email'])?null:strtolower($person['email']);
                 if($email&&Athlete::where('email',$email)->where('id','!=',$person['id'])->exists())throw ValidationException::withMessages(['athletes'=>'That email belongs to another athlete.']);
@@ -129,16 +129,16 @@ class EntryController extends Controller
             $entry->update(collect($data)->only(['bib_number','team_name','category','status'])->all());
             EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>$data['reason'] ?: 'Participant details updated']);
         });
-        return back()->with('success','Participant updated. The change is saved in the history.');
+        return back()->with('success',__('Participant updated. The change is saved in the history.'));
     }
 
     public function destroy(Race $race, Entry $entry): RedirectResponse
     {
         Gate::authorize('manage-race', $race); abort_unless($entry->race_id === $race->id, 404); abort_unless(request()->user()->isAdmin(),403);
         $this->ensureRegistrationOpen($race);
-        if($entry->timings()->exists())throw ValidationException::withMessages(['entry'=>'Entries with timings cannot be deleted. Use a result status to retain their history.']);
+        if($entry->timings()->exists())throw ValidationException::withMessages(['entry'=>__('Entries with timings cannot be deleted. Use a result status to retain their history.')]);
         $entry->delete();
-        return back()->with('success', 'Participant removed.');
+        return back()->with('success', __('Participant removed.'));
     }
 
 
