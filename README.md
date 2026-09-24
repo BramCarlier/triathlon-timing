@@ -16,7 +16,7 @@ A race-day web application for organizers and athletes. It supports a shared rac
 
 The race has one authoritative `started_at` timestamp stored by the server. Browsers derive the displayed chronometer from that timestamp and a server-time anchor; they do not increment an independent stopwatch. Timestamps are serialized in UTC with an explicit timezone marker, so the clock starts at zero in every browser timezone. A browser reload does not reset the clock. After finishing, the clock displays the fixed difference between `finished_at` and `started_at`.
 
-Each organizer chooses a checkpoint for the current browser session. Every participant tap is then recorded against that checkpoint automatically. The backend validates race/checkpoint/entry relationships and warns when required earlier checkpoints are missing.
+The normal race-day flow uses an unguessable share link. Anyone with that link can open the race without an account, choose an active checkpoint or finish, and tap the correct athlete to record the current race time. The backend validates race/checkpoint/entry relationships and warns when required earlier checkpoints are missing. Authenticated timing stations remain available as an optional advanced mode for named Officials and offline recovery.
 
 ### Default checkpoint order
 
@@ -40,33 +40,25 @@ This means timing is always attached to the race entry while the app can still a
 
 ## Accounts and roles
 
-### Administrator
+Only the Organizer account is required for normal setup. The race-day timing link is intentionally account-free: people helping at transitions or the finish open the link, choose the checkpoint and tap athletes.
 
-- create/configure races, move them to Deleted races and restore them with their participants and timings intact
-- create organizer and athlete accounts
-- edit user names, email addresses, roles, active status, linked athletes and race assignments
-- assign organizers to races
-- import/manage participants
+### Organizer (admin)
+
+- create/configure races
+- add or import athletes
 - start/finish race clocks
-- use any checkpoint station
-- void/re-record timings
-- export results
+- share the race-day timing link
+- correct timings and export/publish results
+- optionally create and assign Official or Athlete accounts
+- manage roles and advanced access
 
-### Organizer
+### Official — optional
 
-- sees assigned races
-- selects their own checkpoint for the current session/device
-- records participants with one tap
-- sees recent taps and can undo their own timings
-- imports/manages participants and race setup for assigned races
-- sees race control and results
+A named Official account can be assigned to a checkpoint when you want account-specific permissions, audit identity, exports or the authenticated offline timing station. It is not required for normal timing from the shared link.
 
-### Athlete
+### Athlete — optional
 
-- signs in with an account linked to an athlete profile
-- can request a password-reset email if they forget their password
-- sees their bib/team, teammates, live race clock and recorded splits
-- can view race results
+Athletes do not need accounts to be entered in a race. A linked Athlete account is only needed when that athlete should sign in to see a personal race dashboard/history.
 
 There is no public organizer/admin registration. Create the first administrator from the command line.
 
@@ -188,18 +180,16 @@ See [`deploy/FORGE.md`](deploy/FORGE.md). It covers:
 
 ## Race-day checklist
 
-1. Import participants and resolve import warnings.
-2. Verify names, any assigned bib numbers, and relay disciplines.
-3. Configure every checkpoint in correct sequence.
-4. Assign organizer accounts to the race.
-5. Sign in on each checkpoint device and select its station.
-6. Confirm every device appears in Race Control with `Synced` status.
-7. Start the race from Race Control once the starter gives the signal.
-8. Operators tap/search athlete names, team names or bibs at their own checkpoint only.
-9. Use recent-tap Undo immediately for mistakes.
-10. Watch Race Control for offline devices and queued timings.
-11. Finish the race only after the final participants have completed.
-12. Review/export results.
+1. Add or import the athletes. A name is enough for a normal solo entry; bibs and other details are optional.
+2. Check the default transition/finish checkpoints and adjust only if needed.
+3. Open or copy the race-day link and share it with the people timing the race.
+4. On each device, open that link and select the correct transition/checkpoint or finish.
+5. Start the shared race clock when the race begins.
+6. Tap/search the correct athlete as they cross the selected timing point.
+7. The race finishes automatically when the last active athlete receives a finish time, or the Organizer can end it manually.
+8. Review and export/publish results.
+
+For poor-connectivity events, optionally create named Official accounts and use the authenticated full-screen timing station with its offline queue and recovery tools.
 
 ## Navigation and account management
 
