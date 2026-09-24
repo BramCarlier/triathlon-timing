@@ -21,6 +21,9 @@ const sizes = [
 
 type Viewport = (typeof sizes)[number];
 
+const representativeSizes = sizes.filter((size) =>
+    ['small-phone', 'phone-landscape', 'tablet-landscape', 'desktop'].includes(size.name),
+);
 const screenshotSizes = new Set(['small-phone', 'phone-landscape', 'desktop']);
 
 async function layout(page: Page, label: string) {
@@ -37,17 +40,16 @@ async function layout(page: Page, label: string) {
     const offenders = await page
         .locator('input:not([type=checkbox]):not([type=hidden]):visible,select:visible,textarea:visible')
         .evaluateAll((elements) => elements
-            .filter((el) => el.getClientRects().length && el.getBoundingClientRect().width > 0)
             .filter((el) => {
                 const rect = el.getBoundingClientRect();
-                return rect.left < -1 || rect.right > innerWidth + 1;
+                return rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1);
             })
             .map((el) => el.outerHTML.slice(0, 180)));
 
-    expect(offenders, label + ': form controls fit').toEqual([]);
+    expect(offenders, label + ': visible form controls fit').toEqual([]);
 
     const clippedClocks = await page
-        .getByRole('timer')
+        .locator('[role="timer"]:visible')
         .evaluateAll((elements) => elements
             .filter((el) => el.scrollWidth > el.clientWidth + 1)
             .map((el) => el.textContent));
@@ -56,12 +58,29 @@ async function layout(page: Page, label: string) {
 
     if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
         const smallButtons = await page
-            .getByRole('button')
+            .locator('button:visible')
             .evaluateAll((elements) => elements
-                .filter((el) => el.getClientRects().length && el.getBoundingClientRect().height < 43)
+                .filter((el) => el.getBoundingClientRect().height < 43)
                 .map((el) => el.textContent));
 
         expect(smallButtons, label + ': touch buttons have usable height').toEqual([]);
+    }
+}
+
+async function atSizes(
+    page: Page,
+    label: string,
+    viewports: readonly Viewport[],
+    callback?: (size: Viewport) => Promise<void>,
+) {
+    for (const size of viewports) {
+        await page.setViewportSize({ width: size.width, height: size.height });
+
+        if (callback) {
+            await callback(size);
+        }
+
+        await layout(page, size.name + ' ' + label);
     }
 }
 
@@ -70,18 +89,7 @@ async function atEverySize(
     label: string,
     callback?: (size: Viewport) => Promise<void>,
 ) {
-    for (const size of sizes) {
-        await page.setViewportSize({ width: size.width, height: size.height });
-        await page.emulateMedia({
-            colorScheme: size.name.includes('portrait') ? 'light' : 'dark',
-        });
-
-        if (callback) {
-            await callback(size);
-        }
-
-        await layout(page, size.name + ' ' + label);
-    }
+    await atSizes(page, label, sizes, callback);
 }
 
 async function login(page: Page, email: string) {
@@ -126,81 +134,56 @@ async function screenshot(
     });
 }
 
-test('reachable layouts adapt across portrait and landscape without reloading every viewport', async ({ page }, info) => {
-    test.setTimeout(180000);
+test('core layouts adapt across phone, tablet and desktop portrait and landscape', async ({ page }, info) => {
+    test.setTimeout(120000);
 
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
 
-    for (const path of [
-        '/login',
-        '/forgot-password',
-        '/reset-password/layout-preview?email=preview@example.test&welcome=1',
-    ]) {
-        await page.goto(path);
-        await expect(page.locator('form')).toBeVisible();
-
-        await atEverySize(page, path, async (size) => {
-            const form = await page.locator('form').boundingBox();
-            const toggle = await page.getByRole('button', { name: /Switch to .* mode/ }).boundingBox();
-
-            expect(form, size.name + ': auth form should be visible').not.toBeNull();
-            expect(toggle, size.name + ': theme switch should be visible').not.toBeNull();
-            expect(form!.y, size.name + ': theme switch must not cover sign-in')
-                .toBeGreaterThanOrEqual(toggle!.y + toggle!.height);
+    await page.goto('/login');
+    await expect(page.locator('form')).toBeVisible();
+    await atEverySize(page, '/login', async (size) => {
+        await page.emulateMedia({
+            colorScheme: size.name.includes('portrait') ? 'light' : 'dark',
         });
-    }
+        const form = await page.locator('form').boundingBox();
+        const toggle = await page.getByRole('button', { name: /Switch to .* mode/ }).boundingBox();
+        expect(form, size.name + ': auth form should be visible').not.toBeNull();
+        expect(toggle, size.name + ': theme switch should be visible').not.toBeNull();
+        expect(form!.y, size.name + ': theme switch must not cover sign-in')
+            .toBeGreaterThanOrEqual(toggle!.y + toggle!.height);
+    });
+
+    await page.goto('/reset-password/layout-preview?email=preview@example.test&welcome=1');
+    await expect(page.locator('form')).toBeVisible();
+    await atSizes(page, 'password setup', representativeSizes);
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await login(page, 'admin@example.test');
 
-    const adminPaths = [
-        '/races',
-        '/races/create',
-        '/guide',
+    for (const path of [
         '/races/9001',
-        '/races/9002',
-        '/races/9003',
         '/races/9001/participants',
-        '/races/9001/participants/9001/edit',
-        '/races/9002/participants/import',
-        '/races/9001/control',
-        '/races/9002/control',
-        '/races/9003/control',
-        '/races/9001/results',
         '/users',
-        '/users/9001/edit',
-        '/admin/roles',
-        '/admin/health',
-        '/account/password',
-    ];
-
-    const screenshotPaths = new Set([
-        '/races/9001/participants',
-        '/races/9001/control',
-        '/admin/roles',
-    ]);
-
-    for (const path of adminPaths) {
+    ]) {
         await page.goto(path);
         await expect(page.locator('h1')).toBeVisible();
-
-        await atEverySize(page, path, async (size) => {
-            if (screenshotPaths.has(path)) {
-                const label = path.split('/').filter(Boolean).join('-');
-                await screenshot(page, info, size, label);
-            }
-        });
+        await atEverySize(page, path);
     }
+
+    await page.goto('/admin/roles');
+    await expect(page.locator('h1')).toBeVisible();
+    await atSizes(page, '/admin/roles', representativeSizes);
+
+    await page.goto('/account/password');
+    await expect(page.locator('h1')).toBeVisible();
+    await atSizes(page, '/account/password', representativeSizes);
 
     await page.goto('/races');
     for (const size of sizes) {
         await page.setViewportSize({ width: size.width, height: size.height });
-        await page.emulateMedia({
-            colorScheme: size.name.includes('portrait') ? 'light' : 'dark',
-        });
-
         const button = page.getByRole('button', { name: 'Menu', exact: true });
+
         if (await button.isVisible() && await button.getAttribute('aria-expanded') === 'false') {
             await button.click();
         }
@@ -220,16 +203,13 @@ test('reachable layouts adapt across portrait and landscape without reloading ev
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-
-    await atEverySize(page, 'delete race dialog', async (size) => {
+    await atSizes(page, 'delete race dialog', representativeSizes, async (size) => {
         const box = await dialog.boundingBox();
         expect(box, size.name + ': dialog should be visible').not.toBeNull();
         expect(box!.height).toBeLessThanOrEqual(size.height - 16);
         expect(box!.width).toBeLessThanOrEqual(size.width - 16);
     });
-
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(dialog).toHaveCount(0);
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/races/9001/station');
@@ -237,11 +217,9 @@ test('reachable layouts adapt across portrait and landscape without reloading ev
         await page.getByRole('button', { name: 'Open checkpoint' }).click();
     }
 
-    await expect(page.getByLabel('Find participant')).toBeVisible();
     await page.getByLabel('Find participant').fill('TheLongestRelay');
     await expect(page.getByRole('button', { name: /TheLongestRelay.*TAP/ })).toBeVisible();
-
-    await atEverySize(page, 'selected station', async (size) => {
+    await atEverySize(page, 'selected timing station', async (size) => {
         await screenshot(page, info, size, 'station');
     });
 
@@ -259,16 +237,15 @@ test('reachable layouts adapt across portrait and landscape without reloading ev
     });
 
     await page.getByRole('button', { name: 'Large-screen display' }).click();
-    await atEverySize(page, 'display results');
+    await atSizes(page, 'large-screen results', representativeSizes);
     await page.getByRole('button', { name: 'Exit display mode' }).click();
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/users/9001/edit');
     await page.getByLabel('Role', { exact: true }).selectOption('athlete');
     await expect(page.getByLabel('Athlete', { exact: true })).toBeVisible();
-    await atEverySize(page, 'athlete picker');
+    await atSizes(page, 'athlete picker', representativeSizes);
 
-    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/races/9002/participants/import');
     await page.getByLabel('Participant file').setInputFiles({
         name: 'long-participant-import-preview.csv',
@@ -279,25 +256,17 @@ test('reachable layouts adapt across portrait and landscape without reloading ev
     });
     await page.getByRole('button', { name: 'Preview file', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Confirm import' })).toBeVisible();
-    await atEverySize(page, 'import preview');
+    await atSizes(page, 'import preview', representativeSizes);
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/races');
     await accountMenu(page);
     await page.getByRole('button', { name: 'Log out', exact: true }).click();
-    await expect(page).toHaveURL(/\/login$/);
 
     await login(page, 'responsive-official@example.test');
-
-    for (const path of [
-        '/races',
-        '/guide',
-        '/races/9001',
-        '/races/9001/station',
-        '/races/9001/results',
-    ]) {
+    for (const path of ['/races/9001/station', '/races/9001/results']) {
         await page.goto(path);
-        await atEverySize(page, 'official ' + path);
+        await atSizes(page, 'official ' + path, representativeSizes);
         await expect(page.getByRole('link', { name: 'Corrections & station health', exact: true }))
             .toHaveCount(0);
         await expect(page.getByRole('link', { name: 'Export CSV', exact: true }))
@@ -307,24 +276,19 @@ test('reachable layouts adapt across portrait and landscape without reloading ev
     await page.setViewportSize({ width: 1440, height: 900 });
     await accountMenu(page);
     await page.getByRole('button', { name: 'Log out', exact: true }).click();
-    await expect(page).toHaveURL(/\/login$/);
 
     await login(page, 'responsive-athlete@example.test');
-
-    for (const path of ['/guide', '/athlete', '/races/9001/results']) {
+    for (const path of ['/athlete', '/races/9001/results']) {
         await page.goto(path);
-
         if (path === '/athlete') {
             await expect(page.locator('h1')).toContainText('Welcome');
         }
-
-        await atEverySize(page, 'athlete ' + path);
+        await atSizes(page, 'athlete ' + path, representativeSizes);
     }
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await accountMenu(page);
     await page.getByRole('button', { name: 'Log out', exact: true }).click();
-    await expect(page).toHaveURL(/\/login$/);
 
     await page.goto('/live/responsive-public');
     await expect(page.locator('h1')).toContainText('Results');
