@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ThemeToggle from '../../Components/ThemeToggle.vue';
+import LocaleSwitcher from '../../Components/LocaleSwitcher.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps<{ token: string; email: string; welcome?:boolean }>();
@@ -7,8 +8,8 @@ const form = useForm({ token: props.token, email: props.email, password: '', pas
 const submit = () => form.post('/reset-password');
 </script>
 
-<template><div class="auth-theme fixed right-4 top-4 z-30"><ThemeToggle /></div>
-  <Head :title="$t($t('Reset password'))" />
+<template><div class="auth-theme fixed right-4 top-4 z-30 flex items-center gap-2"><LocaleSwitcher /><ThemeToggle /></div>
+  <Head :title="$t('Reset password')" />
   <main class="auth-screen mx-auto flex min-h-screen max-w-md items-center px-4 py-20">
     <form class="panel-pad w-full" @submit.prevent="submit">
       <div class="mb-6">
