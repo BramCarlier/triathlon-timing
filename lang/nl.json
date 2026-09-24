@@ -711,5 +711,11 @@
   ":discipline athlete": ":discipline-atleet",
   "Swim athlete": "Zwemmer",
   "Bike athlete": "Fietser",
-  "Run athlete": "Loper"
+  "Run athlete": "Loper",
+  "Email sending is not configured. Connect email sending first, or choose a temporary password and share it yourself.": "E-mailverzending is niet ingesteld. Stel eerst e-mailverzending in, of kies een tijdelijk wachtwoord en deel het zelf.",
+  "Only active accounts awaiting password setup can be invited.": "Alleen actieve accounts die nog een wachtwoord moeten instellen kunnen worden uitgenodigd.",
+  "Invitation could not be sent. Check email settings and retry.": "De uitnodiging kon niet worden verstuurd. Controleer de e-mailinstellingen en probeer opnieuw.",
+  "This athlete already has an active account for viewing results.": "Deze atleet heeft al een actief account om resultaten te bekijken.",
+  "The results invitation could not be sent. Check email settings and retry.": "De resultatenuitnodiging kon niet worden verstuurd. Controleer de e-mailinstellingen en probeer opnieuw.",
+  "That email already belongs to another account. Resolve it from People before inviting this athlete.": "Dat e-mailadres hoort al bij een ander account. Los dit op via Gebruikers voordat je deze atleet uitnodigt."
 }
