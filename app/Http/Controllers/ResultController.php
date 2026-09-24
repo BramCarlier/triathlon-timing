@@ -36,7 +36,7 @@ class ResultController extends Controller
         abort_unless($request->user()->isAdmin(), 403);
         $data=$request->validate(['published'=>['required','boolean']]);
         $race->update(['results_published_at'=>$data['published']?now():null,'public_results_token'=>$data['published']?($race->public_results_token??(string)\Illuminate\Support\Str::uuid()):null]);
-        return back()->with('success',$data['published']?'Public leaderboard published. Anyone with the link can view participant names and results.':'Public leaderboard unpublished. The old link no longer works.');
+        return back()->with('success',$data['published']?__('Public leaderboard published. Anyone with the link can view participant names and results.'):__('Public leaderboard unpublished. The old link no longer works.'));
     }
 
     public function publicIndex(Request $request,string $token, ResultsService $results): \Symfony\Component\HttpFoundation\Response
