@@ -121,7 +121,7 @@ const workflowState = computed(() => {
   if (props.race.finished_at) return { title:'Race finished', detail:'Review results or open Corrections & station health for a genuine timing correction.', icon:'fa-solid fa-flag-checkered' };
   if (props.race.started_at) return { title:'Race is live', detail:'Record timings here and switch checkpoints when needed.', icon:'fa-solid fa-stopwatch' };
   const missingRequired = props.readiness.checks.find(check => check.required && !check.ready);
-  if (missingRequired?.key === 'participants') return { title:'Next: add participants', detail:missingRequired.detail, icon:'fa-solid fa-users' };
+  if (missingRequired?.key === 'participants') return { title:'Next: add athletes', detail:missingRequired.detail, icon:'fa-solid fa-users' };
   if (missingRequired) return { title:'Next: finish course setup', detail:missingRequired.detail, icon:'fa-solid fa-route' };
   return { title:'Ready to start', detail:'The course and athletes are ready. Start the shared clock when the race begins.', icon:'fa-solid fa-play' };
 });
@@ -648,7 +648,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
           </form>
 
           <section class="rounded-2xl border border-outline overflow-hidden">
-            <div class="border-b border-outline p-4"><h3 class="font-bold">Added participants</h3></div>
+            <div class="border-b border-outline p-4"><h3 class="font-bold">Added athletes & teams</h3></div>
             <div v-if="participants.length" class="divide-y divide-outline">
               <div v-for="participant in participants.slice(0,10)" :key="participant.id" class="flex items-center gap-3 p-4">
                 <span class="max-w-24 shrink-0 rounded-xl bg-raised px-3 py-2 font-mono font-bold">{{ bibLabel(participant.bib_number) }}</span>
@@ -656,7 +656,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 <Link :href="`/races/${race.id}/participants/${participant.id}/edit`" class="btn-secondary"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>Edit</Link>
               </div>
             </div>
-            <div v-else class="p-6 text-center muted">No participants yet.</div>
+            <div v-else class="p-6 text-center muted">No athletes or teams yet.</div>
             <div v-if="participants.length>10" class="border-t border-outline p-4"><Link :href="`/races/${race.id}/participants`" class="font-semibold text-accent underline">View all {{ participants.length }}</Link></div>
           </section>
         </div>
