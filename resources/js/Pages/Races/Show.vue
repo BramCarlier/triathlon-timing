@@ -28,6 +28,19 @@ interface CheckpointAssignment {
   checkpoint?: { id:number; name:string };
 }
 
+interface AthleteChoice {
+  id: number;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  club: string | null;
+  race_count: number;
+  already_in_race: boolean;
+  races: Array<{ id:number; name:string; event_date:string }>;
+  recent_bibs: string[];
+}
+
 interface Timing {
   id?: number;
   client_uuid?: string;
@@ -46,6 +59,7 @@ const props = defineProps<{
   checkpointAssignments: CheckpointAssignment[];
   allowedTimingCheckpointIds: number[];
   mailConfigured: boolean;
+  athleteOptions: AthleteChoice[];
   participants: StationParticipant[];
   recentTimings: Timing[];
   completedCount: number;
@@ -559,6 +573,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
                 v-model="participantForm.members[index]"
                 :race-id="race.id"
                 :bib-number="participantForm.bib_number"
+                :initial-options="athleteOptions"
                 :title="participantForm.type==='solo'?'Athlete':disciplineLabel(member.discipline)"
               />
             </div>
