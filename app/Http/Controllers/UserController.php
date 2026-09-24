@@ -44,8 +44,8 @@ class UserController extends Controller
         if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>'Email sending is not configured. Connect email sending first, or choose a temporary password and share it yourself.']);
         $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($emailInvite ? \Illuminate\Support\Str::random(64) : $data['password']), 'role' => $data['role'], 'access_role_id'=>$data['role']==='organizer'?($data['access_role_id']??null):null, 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
         if ($user->role === UserRole::Official) $user->races()->sync($data['race_ids'] ?? []);
-        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error','Account created, but the invitation could not be sent. Check email settings and use Resend invitation.');
-        return back()->with('success', $emailInvite ? 'Account created. Invitation accepted by the mail server; ask the recipient to check their inbox and spam folder.' : 'Account created. Share the temporary password privately; it must be changed at first login.');
+        if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error',__('Account created, but the invitation could not be sent. Check email settings and use Resend invitation.'));
+        return back()->with('success', $emailInvite ? __('Account created. Invitation accepted by the mail server; ask the recipient to check their inbox and spam folder.') : __('Account created. Share the temporary password privately; it must be changed at first login.'));
     }
 
     public function edit(User $user): Response
@@ -76,7 +76,7 @@ class UserController extends Controller
             $account = User::lockForUpdate()->findOrFail($user->id);
             if ($account->isAdmin() && $account->is_active && ($data['role'] !== UserRole::Admin->value || !$data['is_active'])
                 && !$admins->contains(fn ($admin) => $admin->id !== $account->id && $admin->is_active)) {
-                throw ValidationException::withMessages(['role' => 'Keep at least one active organizer (admin). Create or enable another organizer (admin) before changing this account.']);
+                throw ValidationException::withMessages(['role' => __('Keep at least one active organizer (admin). Create or enable another organizer (admin) before changing this account.')]);
             }
             $account->fill(collect($data)->except(['race_ids','password'])->all());
             $account->access_role_id = $data['role']==='organizer'?($data['access_role_id']??null):null;
@@ -91,14 +91,14 @@ class UserController extends Controller
                 $account->races()->detach();
             }
         });
-        return redirect()->route($request->user()->id === $user->id && !$user->fresh()->isAdmin() ? 'dashboard' : 'users.index')->with('success', 'User account updated.');
+        return redirect()->route($request->user()->id === $user->id && !$user->fresh()->isAdmin() ? 'dashboard' : 'users.index')->with('success', __('User account updated.'));
     }
 
     public function inviteAthlete(Athlete $athlete, AccountInvitationService $invitations): RedirectResponse
     {
         $email = strtolower(trim((string) $athlete->email));
         if ($email === '') {
-            throw ValidationException::withMessages(['athlete' => 'Add an email address to this athlete before sending a results invitation.']);
+            throw ValidationException::withMessages(['athlete' => __('Add an email address to this athlete before sending a results invitation.')]);
         }
 
         $existing = $athlete->user;
@@ -135,10 +135,10 @@ class UserController extends Controller
         ]);
 
         if (!$invitations->send($user)) {
-            return back()->with('error', 'Athlete account created, but the results invitation could not be sent. You can resend it from People.');
+            return back()->with('error', __('Athlete account created, but the results invitation could not be sent. You can resend it from People.'));
         }
 
-        return back()->with('success', 'Athlete invited to view their races and results.');
+        return back()->with('success', __('Athlete invited to view their races and results.'));
     }
 
 }
