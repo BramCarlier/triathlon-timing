@@ -6,6 +6,7 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { jsonRequest } from './lib';
+import { tr } from './i18n';
 
 (window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
 
@@ -34,7 +35,9 @@ createInertiaApp({
   title: (title) => title ? `${title} · Triathlon Timing` : 'Triathlon Timing',
   resolve: (name) => pages[`./Pages/${name}.vue`],
   setup({ el, App, props, plugin }) {
-    createApp({ render: () => h(App, props) }).use(plugin).mount(el);
+    const app = createApp({ render: () => h(App, props) }).use(plugin);
+    app.config.globalProperties.$t = tr;
+    app.mount(el);
   },
   progress: { color: '#22d3ee' },
 });
