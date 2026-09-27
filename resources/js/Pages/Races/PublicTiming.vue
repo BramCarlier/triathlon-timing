@@ -55,8 +55,9 @@ const feedback=ref<{type:'ok'|'error';message:string}|null>(null);
 
 const filtered=computed(()=>{
   const term=search.value.trim().toLowerCase();
-  if(!term)return participants.value;
-  return participants.value.filter(participant=>
+  const visible=participants.value.filter(participant=>participant.status!=='dns');
+  if(!term)return visible;
+  return visible.filter(participant=>
     (participant.bib_number??'').toLowerCase().includes(term)
     || participant.name.toLowerCase().includes(term)
     || participant.members.some(member=>member.name.toLowerCase().includes(term))

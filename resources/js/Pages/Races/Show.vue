@@ -303,12 +303,13 @@ const selectedCheckpoint = computed(() => activeTimingCheckpoints.value.find(cp 
 const timingSearch = ref('');
 const filteredTimingParticipants = computed(() => {
   const term = timingSearch.value.trim().toLowerCase();
+  const visible = timingParticipants.value.filter(participant => participant.status !== 'dns');
   const rows = term
-    ? timingParticipants.value.filter(p =>
+    ? visible.filter(p =>
         (p.bib_number ?? '').toLowerCase().includes(term)
         || p.name.toLowerCase().includes(term)
         || p.members.some(member => member.name.toLowerCase().includes(term)))
-    : timingParticipants.value;
+    : visible;
   return rows.slice(0, 50);
 });
 const workspaceOnline = ref(navigator.onLine);

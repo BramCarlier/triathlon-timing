@@ -43,3 +43,48 @@ test('offline recovery, account isolation, audited edits, filtered results and f
   await expect(page.getByText('No timings recorded yet.',{exact:true})).toBeVisible();
 
 });
+
+test('DNS participants disappear from all checkpoint pickers and return when competing again',async({page,context})=>{
+  await login(page);
+  await page.goto('/races/create');
+  await page.getByPlaceholder('Halle Triathlon 2027').fill('DNS picker check');
+  await page.getByRole('button',{name:'Create and continue',exact:true}).click();
+  await expect(page).toHaveURL(/\/races\/\d+$/);
+  const racePath=new URL(page.url()).pathname;
+  await page.getByRole('button',{name:/Athletes/}).first().click();
+  const athleteForm=page.locator('form').filter({has:page.getByRole('heading',{name:'Add athlete',exact:true})});
+  await athleteForm.getByLabel('Name',{exact:true}).fill('Absent Runner');
+  await athleteForm.getByRole('button',{name:'Add athlete',exact:true}).click();
+  await expect(page.getByText('Participant added.',{exact:true})).toBeVisible();
+  await page.locator('#race-day > button').click();
+  const publicPath=await page.getByRole('link',{name:'Open race-day view',exact:true}).getAttribute('href');
+  await page.getByRole('button',{name:'Start race',exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Start race',exact:true}).click();
+  await expect(page.getByRole('timer')).not.toHaveText('NOT STARTED');
+  await page.goto(`${racePath}/participants`);
+  await page.getByRole('link',{name:'Edit',exact:true}).click();
+  await expect(page).toHaveURL(/\/participants\/\d+\/edit$/);
+  const editPath=new URL(page.url()).pathname;
+  await page.getByLabel('Result status').selectOption('dns');
+  await page.getByRole('button',{name:'Save participant'}).click();
+  await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();
+  await page.goto(racePath);
+  await expect(page.locator('#race-day').getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
+  await page.getByLabel('Find athlete or team',{exact:true}).fill('Absent');
+  await expect(page.locator('#race-day').getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'Live standings table',exact:true})).toContainText('Absent Runner');
+  await page.goto(`${racePath}/station`);
+  if(await page.getByRole('button',{name:'Open checkpoint',exact:true}).isVisible())await page.getByRole('button',{name:'Open checkpoint',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
+  await expect(page.getByText('No matching participant.',{exact:true})).toBeVisible();
+  const publicPage=await context.newPage();
+  await publicPage.goto(new URL(publicPath!,page.url()).toString());
+  await expect(publicPage.getByRole('heading',{name:'Choose the checkpoint, then tap the athlete',exact:true})).toBeVisible();
+  await expect(publicPage.getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
+  await page.goto(editPath);
+  await page.getByLabel('Result status').selectOption('registered');
+  await page.getByRole('button',{name:'Save participant'}).click();
+  await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();
+  await expect(publicPage.getByRole('button',{name:/Absent Runner.*TAP/})).toBeVisible({timeout:15000});
+  await publicPage.close();
+});

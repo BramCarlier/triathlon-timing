@@ -46,8 +46,9 @@ localStorage.setItem('triathlon-device-uuid', deviceUuid);
 
 const filtered = computed(() => {
   const term = query.value.trim().toLowerCase();
-  if (!term) return participants.value.slice(0, 40);
-  return participants.value.filter(p => (p.bib_number ?? '').toLowerCase().includes(term) || p.name.toLowerCase().includes(term) || p.members.some(m => m.name.toLowerCase().includes(term))).slice(0, 40);
+  const visible = participants.value.filter(participant => participant.status !== 'dns');
+  if (!term) return visible.slice(0, 40);
+  return visible.filter(p => (p.bib_number ?? '').toLowerCase().includes(term) || p.name.toLowerCase().includes(term) || p.members.some(m => m.name.toLowerCase().includes(term))).slice(0, 40);
 });
 const selected = (p:StationParticipant) => !!props.checkpoint && (p.completed_checkpoint_ids.includes(props.checkpoint.id) || queuedItems.value.some(i=>i.payload.entry_id===p.id && i.payload.checkpoint_id===props.checkpoint!.id));
 const selectCheckpoint = () => selectForm.post(`/races/${props.race.id}/checkpoint-selection`);
