@@ -70,7 +70,7 @@ class AthleteEditingTest extends TestCase
             $race->update(['finished_at' => $finished ? now() : null, 'status' => $finished ? 'finished' : 'running']);
             $bib = $finished ? '042' : '007';
             $this->put("/races/{$race->id}/participants/{$entry->id}", [
-                'bib_number' => $bib, 'status' => 'registered', 'reason' => 'Bib corrected at check-in',
+                'bib_number' => $bib, 'status' => 'registered',
                 'athletes' => [['id' => $athlete->id, 'first_name' => 'Ignored']],
             ])->assertSessionHasNoErrors();
             $this->assertSame($bib, $entry->fresh()->bib_number);
@@ -84,6 +84,8 @@ class AthleteEditingTest extends TestCase
         $change = EntryChange::latest('id')->first();
         $this->assertSame('007', $change->before['entry']['bib_number']);
         $this->assertSame('042', $change->after['entry']['bib_number']);
+        $this->assertSame('Participant details updated', $change->reason);
+        $this->assertSame($admin->id, $change->user_id);
     }
 
     public function test_duplicate_bibs_are_rejected_before_and_after_start(): void

@@ -105,7 +105,7 @@ class EntryController extends Controller
             'bib_number'=>['nullable','string','max:32',Rule::unique('entries')->where('race_id',$race->id)->ignore($entry->id)],
             'team_name'=>[$entry->type===EntryType::Relay?'required':'nullable','string','max:255'],
             'category'=>['nullable','string','max:100'],'status'=>['required',Rule::in(['registered','dns','dnf','dsq'])],
-            'reason'=>['nullable','string','min:3','max:1000'],
+            'reason'=>['nullable','string','max:1000'],
             'athletes'=>['required','array'],'athletes.*.id'=>['required','integer','distinct'],
             'athletes.*.first_name'=>['required','string','max:100'],'athletes.*.last_name'=>['nullable','string','max:100'],
             'athletes.*.email'=>['nullable','email','max:255'],'athletes.*.club'=>['nullable','string','max:255'],
@@ -147,7 +147,7 @@ class EntryController extends Controller
         $data = $request->validate([
             'bib_number' => ['sometimes','nullable','string','max:32',Rule::unique('entries')->where('race_id', $race->id)->ignore($entry->id)],
             'status' => ['required', Rule::in(['registered','dns','dnf','dsq'])],
-            'reason' => ['required','string','min:3','max:1000'],
+            'reason' => ['nullable','string','max:1000'],
         ]);
 
         DB::transaction(function () use ($request, $entry, $data) {
@@ -170,7 +170,7 @@ class EntryController extends Controller
                 'user_id' => $request->user()->id,
                 'before' => $before,
                 'after' => $snapshot(),
-                'reason' => $data['reason'],
+                'reason' => ($data['reason'] ?? null) ?: 'Participant details updated',
             ]);
         });
 
