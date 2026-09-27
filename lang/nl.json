@@ -923,5 +923,10 @@
   "Deleted on :date": "Verwijderd op :date",
   "Restore :name": ":name herstellen",
   "No deleted races.": "Geen verwijderde wedstrijden.",
-  "Deleted race pages": "Pagina’s met verwijderde wedstrijden"
+  "Deleted race pages": "Pagina’s met verwijderde wedstrijden",
+  "Too many login attempts. Please try again in :seconds seconds.": "Te veel aanmeldpogingen. Probeer het over :seconds seconden opnieuw.",
+  "Results view": "Resultatenweergave",
+  "Table": "Tabel",
+  "Cards": "Kaarten",
+  "Select a column header to sort; select it again to reverse the order.": "Selecteer een kolomkop om te sorteren; selecteer opnieuw om de volgorde om te keren."
 }
