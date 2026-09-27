@@ -18,6 +18,7 @@ const props=defineProps<{race:Race & {checkpoints:Checkpoint[]};results:Row[];ca
 const page=usePage<PageProps>();
 const precision=ref<2|3>(2);
 const expanded=ref<number[]>([]);
+const view=ref<'table'|'cards'>('table');
 const display=ref(false), rotate=ref(true), pageNumber=ref(0);
 const filters=ref({type:props.filters.type??'',category:props.filters.category??'',status:props.filters.status??''});
 watch(filters,()=>router.get(page.url.split('?')[0],filters.value,{preserveState:true,preserveScroll:true,replace:true}),{deep:true});
@@ -43,6 +44,10 @@ useRaceRefresh(()=>['race','results','categories']);
   <p v-if="screenError" role="status" class="mb-4 text-warning">{{ screenError }}</p>
   <section v-show="!display" class="panel-pad mb-4 grid gap-3 sm:grid-cols-3" :aria-label="$t('Result filters')"><label class="label">{{ $t("Participant type") }}<select v-model="filters.type" class="field"><option value="">{{ $t("All types") }}</option><option value="solo">{{ $t("Solo") }}</option><option value="relay">{{ $t("Relay") }}</option></select></label><label class="label">{{ $t("Category") }}<select v-model="filters.category" class="field"><option value="">{{ $t("All categories") }}</option><option v-for="category in categories" :key="category">{{ category }}</option></select></label><label class="label">{{ $t("Result status") }}<select v-model="filters.status" class="field"><option value="">{{ $t("All statuses") }}</option><option value="FINISHED">{{ $t('FINISHED') }}</option><option value="IN PROGRESS">{{ $t('IN PROGRESS') }}</option><option>DNS</option><option>DNF</option><option>DSQ</option></select></label><p class="muted text-xs sm:col-span-3">{{ $t("Places and gaps apply to the selected group. Equal total milliseconds share a place (1, 1, 3). DNS has no recorded times. DNF and DSQ keep their timings but receive no place.") }}</p></section>
   <div v-if="!display" class="mb-4 flex flex-wrap gap-2">
+    <div class="flex gap-2 self-start" role="group" :aria-label="$t('Results view')">
+      <button type="button" :class="view==='table'?'btn-primary':'btn-secondary'" :aria-pressed="view==='table'" @click="view='table'"><i class="fa-solid fa-table" aria-hidden="true"></i>{{ $t('Table') }}</button>
+      <button type="button" :class="view==='cards'?'btn-primary':'btn-secondary'" :aria-pressed="view==='cards'" @click="view='cards'"><i class="fa-solid fa-list" aria-hidden="true"></i>{{ $t('Cards') }}</button>
+    </div>
     <details class="rounded-xl border border-outline bg-surface p-2">
       <summary class="btn-secondary list-none"><i class="fa-solid fa-display" aria-hidden="true"></i>{{ $t("Display options") }}</summary>
       <div class="mt-3 w-full max-w-sm space-y-3 p-2">
@@ -59,21 +64,21 @@ useRaceRefresh(()=>['race','results','categories']);
   </div>
   <div v-else class="mb-4 flex flex-wrap items-center gap-3"><label class="flex items-center gap-2"><input v-model="rotate" type="checkbox">{{ $t("Rotate pages every 15 seconds") }}</label><span class="text-sm muted">{{ $t("Timing precision:") }} {{ precision===3?'milliseconds':'hundredths' }}</span></div>
   <p v-if="display" class="mb-3 text-lg font-semibold">{{ filters.category||$t('All categories') }} · {{ filters.type?$t(filters.type):$t('All participant types') }} · {{ filters.status?$t(filters.status):$t('All statuses') }}</p>
-  <div v-if="!display" class="mb-4 flex items-end gap-2 sm:hidden">
-    <label class="label min-w-0 flex-1">{{ $t('Sort results by') }}
-      <select v-model="sortKey" class="field">
+  <div v-if="!display&&view==='cards'" class="mb-4 flex flex-wrap items-end gap-2">
+    <div class="min-w-0 flex-1"><label for="results-sort" class="label">{{ $t('Sort results by') }}</label>
+      <select id="results-sort" v-model="sortKey" class="field">
         <option value="place">{{ $t('Place') }}</option><option value="bib_number">{{ $t('Bib number') }}</option><option value="name">{{ $t('Name') }}</option>
         <option value="total_ms">{{ $t('Total time') }}</option><option value="gap_ms">{{ $t('Gap to leader') }}</option>
         <option v-for="checkpoint in checkpoints" :key="checkpoint.id" :value="`checkpoint:${checkpoint.id}`">{{ $t(checkpoint.name) }}</option>
       </select>
-    </label>
+    </div>
     <button type="button" class="btn-secondary shrink-0" :aria-label="sortDirection==='asc'?$t('Sort descending'):$t('Sort ascending')" @click="sortDirection=sortDirection==='asc'?'desc':'asc'">
       <i :class="sortDirection==='asc'?'fa-solid fa-arrow-up':'fa-solid fa-arrow-down'" aria-hidden="true"></i>{{ sortDirection==='asc'?$t('Ascending'):$t('Descending') }}
     </button>
   </div>
-  <section v-if="!display" class="space-y-3 sm:hidden" :aria-label="$t('Race results')"><article v-for="row in visibleRows" :key="row.id" class="panel-pad"><div class="flex items-start gap-3"><div class="shrink-0 text-center"><span class="block text-xs muted">{{ $t("Place") }}</span><strong class="text-2xl">{{ row.place??'—' }}</strong></div><div class="min-w-0"><h2 class="font-bold">{{ row.name }}</h2><p class="mt-1 text-sm muted">{{ bibLabel(row.bib_number) }} · {{ row.category }} · {{ $t(row.result_status) }}</p></div></div><dl class="mt-4 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2"><div><dt class="text-xs muted">{{ $t("Total time") }}</dt><dd class="font-mono text-lg font-bold tabular-nums" :class="row.finished?'text-success':'text-muted'">{{ formatDuration(row.total_ms,precision) }}</dd></div><div><dt class="text-xs muted">{{ $t("Gap to leader") }}</dt><dd class="font-mono tabular-nums">{{ row.gap_ms===0?$t('Leader'):row.gap_ms==null?'—':'+'+formatDuration(row.gap_ms,precision) }}</dd></div></dl><button class="btn-secondary mt-4 w-full" :aria-expanded="expanded.includes(row.id)" :aria-controls="`mobile-splits-${row.id}`" @click="toggleRow(row.id)"><i :class="expanded.includes(row.id)?'fa-solid fa-eye-slash':'fa-solid fa-eye'" aria-hidden="true"></i>{{ expanded.includes(row.id)?$t('Hide splits'):$t('View splits') }}</button><div v-if="expanded.includes(row.id)" :id="`mobile-splits-${row.id}`" class="mt-3"><ResultSplits :race="race" :checkpoints="checkpoints" :splits="row.splits" :precision="precision"/><p v-if="row.type==='relay'" class="mt-3 text-sm muted">{{ row.members.map(member=>`${$t(member.discipline)}: ${member.name}`).join(' · ') }}</p></div></article><p v-if="!results.length" class="panel-pad muted">{{ $t("No participants match these results yet.") }}</p></section>
-  <p v-if="display" class="mb-2 text-sm muted sm:hidden">{{ $t("Swipe the results table sideways to see all columns.") }}</p>
-  <div class="scroll-region panel overflow-x-auto" :class="display?'':'hidden sm:block'" tabindex="0" role="region" :aria-label="$t('Results table')">
+  <section v-if="!display&&view==='cards'" class="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3" :aria-label="$t('Race results')"><article v-for="row in visibleRows" :key="row.id" class="panel-pad"><div class="flex items-start gap-3"><div class="shrink-0 text-center"><span class="block text-xs muted">{{ $t("Place") }}</span><strong class="text-2xl">{{ row.place??'—' }}</strong></div><div class="min-w-0"><h2 class="font-bold">{{ row.name }}</h2><p class="mt-1 text-sm muted">{{ bibLabel(row.bib_number) }} · {{ row.category }} · {{ $t(row.result_status) }}</p></div></div><dl class="mt-4 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2"><div><dt class="text-xs muted">{{ $t("Total time") }}</dt><dd class="font-mono text-lg font-bold tabular-nums" :class="row.finished?'text-success':'text-muted'">{{ formatDuration(row.total_ms,precision) }}</dd></div><div><dt class="text-xs muted">{{ $t("Gap to leader") }}</dt><dd class="font-mono tabular-nums">{{ row.gap_ms===0?$t('Leader'):row.gap_ms==null?'—':'+'+formatDuration(row.gap_ms,precision) }}</dd></div></dl><button class="btn-secondary mt-4 w-full" :aria-expanded="expanded.includes(row.id)" :aria-controls="`mobile-splits-${row.id}`" @click="toggleRow(row.id)"><i :class="expanded.includes(row.id)?'fa-solid fa-eye-slash':'fa-solid fa-eye'" aria-hidden="true"></i>{{ expanded.includes(row.id)?$t('Hide splits'):$t('View splits') }}</button><div v-if="expanded.includes(row.id)" :id="`mobile-splits-${row.id}`" class="mt-3"><ResultSplits :race="race" :checkpoints="checkpoints" :splits="row.splits" :precision="precision"/><p v-if="row.type==='relay'" class="mt-3 text-sm muted">{{ row.members.map(member=>`${$t(member.discipline)}: ${member.name}`).join(' · ') }}</p></div></article><p v-if="!results.length" class="panel-pad muted">{{ $t("No participants match these results yet.") }}</p></section>
+  <p v-if="display||view==='table'" class="mb-2 text-sm muted">{{ $t('Select a column header to sort; select it again to reverse the order.') }} <span class="sm:hidden">{{ $t("Swipe the results table sideways to see all columns.") }}</span></p>
+  <div v-if="display||view==='table'" class="scroll-region panel overflow-x-auto" tabindex="0" role="region" :aria-label="$t('Results table')">
     <table class="w-full min-w-[620px] text-left" :class="display?'text-xl':'text-sm'">
       <caption class="sr-only">{{ $t('Race results. Select a column header to sort; select it again to reverse the order. Official places do not change.') }}</caption>
       <thead class="bg-surface text-xs text-muted"><tr>
