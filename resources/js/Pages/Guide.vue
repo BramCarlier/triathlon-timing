@@ -51,7 +51,7 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
 
         <article class="panel-pad lg:col-span-2">
           <div class="mb-3 flex items-center gap-3"><span class="badge">5</span><h2 class="text-lg font-bold">{{ $t("End the race") }}</h2></div>
-          <p class="muted">{{ $t("There is no automatic-finish setting to configure. The backend closes the race when the last active athlete receives a finish time. If the event needs to end earlier, use") }} <strong>{{ $t("End race now") }}</strong>.</p>
+          <p class="muted">{{ $t("There is no automatic-finish setting to configure. The backend closes the race when the last active athlete receives a finish time. If the event needs to end earlier, use") }} <strong>{{ $t("End race now") }}</strong>. {{ $t("Competing athletes without a finish time will automatically be marked DNF. DNS and disqualified statuses stay unchanged.") }}</p>
         </article>
       </section>
 
