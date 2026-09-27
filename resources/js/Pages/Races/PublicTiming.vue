@@ -6,8 +6,9 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import RaceClock from '../../Components/RaceClock.vue';
+import LiveStandings from '../../Components/LiveStandings.vue';
 import { bibLabel, formatDuration, jsonRequest, uuid } from '../../lib';
-import type { Checkpoint, StationParticipant } from '../../types';
+import type { LiveStanding, Checkpoint, StationParticipant } from '../../types';
 
 interface PublicRace {
   id:number;
@@ -36,6 +37,7 @@ const props=defineProps<{
   participants:StationParticipant[];
   recentTimings:Timing[];
   completedCount:number;
+  standings: LiveStanding[];
   serverNow:string;
 }>();
 
@@ -45,7 +47,7 @@ const completedCount=ref(props.completedCount);
 watch(() => props.participants, value => { participants.value=value.map(item=>({...item,completed_checkpoint_ids:[...item.completed_checkpoint_ids]})); });
 watch(() => props.recentTimings, value => { recent.value=value.map(item=>({...item})); });
 watch(() => props.completedCount, value => { completedCount.value=value; });
-useRaceRefresh(() => ['race','participants','recentTimings','completedCount','serverNow']);
+useRaceRefresh(() => ['race','participants','recentTimings', 'standings','completedCount','serverNow']);
 const checkpointId=ref<number|null>(props.race.checkpoints[0]?.id??null);
 const selectedCheckpoint=computed(()=>props.race.checkpoints.find(cp=>cp.id===Number(checkpointId.value))??null);
 const search=ref('');
@@ -107,7 +109,7 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
       if(selected.kind==='finish')completedCount.value+=1;
       search.value='';
       showFeedback('ok',data.message??tr('Time recorded.'));
-      if(data.auto_finished)router.reload({only:['race','completedCount','serverNow']});
+      router.reload({only:['standings', ...(data.auto_finished ? ['race','completedCount','serverNow'] : [])]});
       return;
     }
 
@@ -199,6 +201,8 @@ function confirmOverride(){
         <p class="mt-2 muted">{{ race.finished_at?$t('Recorded results remain available from the organizer.'):$t('You can leave this page open and start tapping athletes once the race begins.') }}</p>
       </div>
     </section>
+
+    <LiveStandings :standings="standings" :checkpoints="race.checkpoints" :started="!!race.started_at" :finished="!!race.finished_at" class="mt-5"/>
 
     <section class="panel mt-5 overflow-hidden">
       <div class="border-b border-outline p-4">
