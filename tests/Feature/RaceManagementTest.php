@@ -26,7 +26,9 @@ class RaceManagementTest extends TestCase
         $this->delete("/races/{$race->id}")->assertRedirect('/races');
         $this->assertSoftDeleted($race);
         $this->get("/races/{$race->id}/station")->assertNotFound();
-        $this->get('/races')->assertInertia(fn (Assert $page) => $page->has('races', 0)->has('deletedRaces', 1));
+        $this->get('/races')->assertInertia(fn (Assert $page) => $page->has('races', 0)->missing('deletedRaces'));
+        $this->get('/admin/deleted-races')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/DeletedRaces')->has('deletedRaces.data', 1)->where('deletedRaces.data.0.id', $race->id));
         $this->post("/races/{$race->id}/restore")->assertRedirect("/races/{$race->id}");
         $this->assertNotNull(Race::find($race->id));
         $this->assertDatabaseHas('entries', ['id' => $entry->id, 'race_id' => $race->id]);
@@ -42,6 +44,70 @@ class RaceManagementTest extends TestCase
         $this->actingAs($organizer)->delete("/races/{$race->id}")->assertForbidden();
         $race->delete();
         $this->post("/races/{$race->id}/restore")->assertForbidden();
+    }
+
+    public function test_deleted_races_are_visible_only_on_the_admin_page(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $official = User::factory()->create(['role' => UserRole::Official]);
+        $athlete = User::factory()->create(['role' => UserRole::Athlete]);
+        $active = Race::create(['name' => 'Active race', 'slug' => 'active-race', 'event_date' => '2026-09-27', 'created_by' => $admin->id]);
+        $active->staff()->attach($official);
+        for ($i = 1; $i <= 26; $i++) {
+            $race = Race::create(['name' => "Deleted $i", 'slug' => "deleted-$i", 'event_date' => '2026-09-27', 'created_by' => $admin->id]);
+            $race->delete();
+        }
+
+        $this->get('/admin/deleted-races')->assertRedirect('/login');
+        foreach ([$official, $athlete] as $user) {
+            $this->actingAs($user)->get('/admin/deleted-races')->assertForbidden();
+        }
+        foreach ([$admin, $official] as $user) {
+            $this->actingAs($user)->get('/races')->assertInertia(fn (Assert $page) => $page
+                ->has('races', 1)->where('races.0.id', $active->id)->missing('deletedRaces'));
+        }
+        $this->actingAs($admin)->get('/admin/deleted-races')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/DeletedRaces')->has('deletedRaces.data', 25)->where('deletedRaces.total', 26)
+            ->where('deletedRaces.data.0.id', $race->id)->missing('deletedRaces.data.0.public_results_token'));
+        $this->get('/admin/deleted-races?page=2')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('deletedRaces.data', 1)->where('deletedRaces.current_page', 2));
+    }
+
+    public function test_deleting_finished_test_races_preserves_all_timings_and_the_other_race(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $races = collect(['Koko Loco Challenge', 'test 1', 'test 2'])->map(function ($name) use ($admin) {
+            $race = Race::create([
+                'name' => $name, 'slug' => \Illuminate\Support\Str::slug($name), 'event_date' => '2026-09-27',
+                'created_by' => $admin->id, 'status' => 'finished', 'started_at' => now()->subHour(), 'finished_at' => now(),
+                'public_results_token' => \Illuminate\Support\Str::uuid(), 'results_published_at' => now(),
+            ]);
+            $entry = $race->entries()->create(['type' => 'solo']);
+            $checkpoint = $race->checkpoints()->create(['name' => 'Finish', 'code' => 'FINISH', 'sequence' => 50, 'kind' => 'finish']);
+            $race->timings()->create([
+                'client_uuid' => \Illuminate\Support\Str::uuid(), 'entry_id' => $entry->id, 'checkpoint_id' => $checkpoint->id,
+                'elapsed_ms' => 3600000, 'recorded_at' => now(), 'status' => 'recorded', 'source' => 'online',
+            ]);
+            return $race;
+        });
+        $protected = $races->first();
+        $original = $protected->fresh()->getAttributes();
+        $timings = \App\Models\TimingRecord::orderBy('id')->get()->toArray();
+
+        $this->actingAs($admin);
+        foreach ($races->skip(1) as $race) {
+            $this->delete("/races/{$race->id}")->assertRedirect('/races');
+            $this->assertSoftDeleted($race);
+            $this->assertSame(1, $race->entries()->count());
+            $this->assertSame(1, $race->checkpoints()->count());
+            $this->get("/race/{$race->public_timing_token}")->assertNotFound();
+            $this->get("/live/{$race->public_results_token}")->assertNotFound();
+        }
+        $this->assertSame($original, $protected->fresh()->getAttributes());
+        $this->assertSame($timings, \App\Models\TimingRecord::orderBy('id')->get()->toArray());
+        $this->get('/races')->assertInertia(fn (Assert $page) => $page
+            ->has('races', 1)->where('races.0.id', $protected->id)->missing('deletedRaces'));
+        $this->get('/admin/deleted-races')->assertInertia(fn (Assert $page) => $page->has('deletedRaces.data', 2));
     }
 
     public function test_only_official_accounts_can_be_assigned_to_checkpoints(): void

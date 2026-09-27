@@ -28,7 +28,19 @@ class RaceController extends Controller
         if (!$request->user()->isAdmin()) $query->whereHas('staff', fn ($q) => $q->whereKey($request->user()->id));
         return Inertia::render('Races/Index', [
             'races' => $query->get(), 'serverNow'=>now('UTC')->toISOString(),
-            'deletedRaces' => $request->user()->isAdmin() ? Race::onlyTrashed()->latest('deleted_at')->get() : [],
+        ]);
+    }
+
+    public function deleted(Request $request): Response
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+
+        return Inertia::render('Admin/DeletedRaces', [
+            'deletedRaces' => Race::onlyTrashed()
+                ->select('id', 'name', 'event_date', 'deleted_at')
+                ->withCount('entries')
+                ->latest('deleted_at')->orderByDesc('id')
+                ->paginate(25),
         ]);
     }
 

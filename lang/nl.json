@@ -918,5 +918,10 @@
   "Download all participants and checkpoints in landscape format.": "Download alle deelnemers en controlepunten in liggend formaat.",
   "Generated :time": "Gegenereerd op :time",
   "Participants: :count": "Deelnemers: :count",
-  "All participants and checkpoints. Times include milliseconds; checkpoint places use the complete field.": "Alle deelnemers en controlepunten. Tijden inclusief milliseconden; posities per controlepunt gelden voor alle deelnemers."
+  "All participants and checkpoints. Times include milliseconds; checkpoint places use the complete field.": "Alle deelnemers en controlepunten. Tijden inclusief milliseconden; posities per controlepunt gelden voor alle deelnemers.",
+  "Only organizers (admins) can view this page. Restore a race to return it to the race list with its participants and timings.": "Alleen organisatoren (admins) kunnen deze pagina bekijken. Herstel een wedstrijd om die met alle deelnemers en tijden terug in de wedstrijdlijst te plaatsen.",
+  "Deleted on :date": "Verwijderd op :date",
+  "Restore :name": ":name herstellen",
+  "No deleted races.": "Geen verwijderde wedstrijden.",
+  "Deleted race pages": "Pagina’s met verwijderde wedstrijden"
 }
