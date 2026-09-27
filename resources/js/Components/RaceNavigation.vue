@@ -24,6 +24,15 @@ const primaryHref = isAdmin ? `/races/${props.race.id}` : `/races/${props.race.i
         <i :class="isAdmin?'fa-solid fa-gauge-high':'fa-solid fa-stopwatch'" class="mr-2" aria-hidden="true"></i>{{ isAdmin?$t('Race workspace'):$t('Timing station') }}
       </Link>
       <Link
+        v-if="isAdmin"
+        :href="`/races/${props.race.id}/participants`"
+        :aria-current="page.url.split('?')[0].startsWith(`/races/${props.race.id}/participants`) ? 'page' : undefined"
+        class="min-h-11 rounded-xl px-3 py-3 text-sm font-semibold transition-colors"
+        :class="page.url.split('?')[0].startsWith(`/races/${props.race.id}/participants`) ? 'bg-cyan-400 text-slate-950' : 'text-secondary hover:bg-raised'"
+      >
+        <i class="fa-solid fa-users mr-2" aria-hidden="true"></i>{{ $t("Athletes") }}
+      </Link>
+      <Link
         :href="`/races/${props.race.id}/results`"
         :aria-current="active(`/races/${props.race.id}/results`) ? 'page' : undefined"
         class="min-h-11 rounded-xl px-3 py-3 text-sm font-semibold transition-colors"

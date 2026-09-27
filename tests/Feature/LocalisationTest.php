@@ -60,7 +60,7 @@ class LocalisationTest extends TestCase
         $this->assertSame('Swim Exit', $race->checkpoints()->where('code','SWIM_FINISH')->first()->name);
         $csv=$this->get("/races/{$race->id}/results.csv")->assertOk()->streamedContent();
         $this->assertStringContainsString('Plaats', $csv);
-        $this->assertStringContainsString('Zwemuitgang', $csv);
+        $this->assertStringContainsString(__('Swim Exit'), $csv);
         $this->post('/logout');
         $race->update(['public_results_token'=>'locale-results','results_published_at'=>now()]);
         $this->withSession(['locale'=>'nl'])->get("/race/{$race->public_timing_token}")
