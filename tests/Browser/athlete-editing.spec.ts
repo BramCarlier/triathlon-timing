@@ -13,7 +13,9 @@ test('organizer can find athletes and assign bibs before and after the start on 
   await expect(page).toHaveURL(/\/races\/\d+$/);
   const racePath = new URL(page.url()).pathname;
   await page.getByRole('link', { name: 'Athletes', exact: true }).click();
+  await expect(page).toHaveURL(`${racePath}/participants`);
   await page.getByLabel('Name', { exact: true }).fill('Alex');
+  await expect(page.getByText(/No existing athlete matches|Matching athletes/)).toBeVisible();
   await page.getByRole('button', { name: 'Add athlete', exact: true }).click();
   await expect(page.getByText('Participant added.', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Edit', exact: true }).click();
@@ -24,6 +26,7 @@ test('organizer can find athletes and assign bibs before and after the start on 
   await page.reload();
   await expect(page.getByLabel('Bib number (optional)')).toHaveValue('007');
   await page.getByRole('link', { name: 'Race workspace', exact: true }).click();
+  await expect(page).toHaveURL(racePath);
   const start = page.getByRole('button', { name: 'Start race', exact: true });
   if (!(await start.isVisible())) await page.locator('#race-day > button').click();
   await start.click();

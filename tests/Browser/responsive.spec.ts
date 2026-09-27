@@ -141,7 +141,7 @@ function collectPageErrors(page: Page) {
 test.describe('responsive layouts', () => {
     test.describe.configure({ mode: 'parallel' });
 
-    test('auth, navigation and core admin layouts', async ({ page }) => {
+    test('auth, navigation and core admin layouts', async ({ page }, info) => {
         test.setTimeout(90000);
         const errors = collectPageErrors(page);
 
@@ -169,7 +169,18 @@ test.describe('responsive layouts', () => {
         for (const path of ['/races/9001', '/races/9001/participants', '/users']) {
             await page.goto(path);
             await expect(page.locator('h1')).toBeVisible();
-            await atEverySize(page, path);
+            if (path === '/races/9001') {
+                await page.locator('#participants > button').click();
+                await expect(page.getByRole('heading', { name: 'Added athletes & teams', exact: true })).toBeVisible();
+            }
+            await atEverySize(page, path, async (size) => {
+                if (path === '/races/9001') {
+                    const clippedNames = await page.locator('#participants strong').evaluateAll(elements =>
+                        elements.filter(el => el.scrollWidth > el.clientWidth + 1 || getComputedStyle(el).textOverflow === 'ellipsis').map(el => el.textContent));
+                    expect(clippedNames, size.name + ': full athlete and team names remain readable').toEqual([]);
+                    await screenshot(page, info, size, 'athletes');
+                }
+            });
         }
 
         await page.goto('/admin/roles');

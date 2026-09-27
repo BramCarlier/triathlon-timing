@@ -651,10 +651,10 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
           <section class="rounded-2xl border border-outline overflow-hidden">
             <div class="border-b border-outline p-4"><h3 class="font-bold">{{ $t("Added athletes & teams") }}</h3><p class="mt-1 text-sm muted">{{ $t("Use Edit to add or change a bib number and update athlete details.") }}</p></div>
             <div v-if="participants.length" class="divide-y divide-outline">
-              <div v-for="participant in participants.slice(0,10)" :key="participant.id" class="flex items-center gap-3 p-4">
-                <span class="max-w-24 shrink-0 rounded-xl bg-raised px-3 py-2 font-mono font-bold">{{ bibLabel(participant.bib_number) }}</span>
-                <div class="min-w-0 flex-1"><strong class="block truncate">{{ participant.name }}</strong><span class="text-sm muted">{{ participant.type==='relay'?$t('Relay team'):$t('Solo athlete') }}</span></div>
-                <Link :href="`/races/${race.id}/participants/${participant.id}/edit`" class="btn-secondary"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ $t("Edit") }}</Link>
+              <div v-for="participant in participants.slice(0,10)" :key="participant.id" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:p-4">
+                <span class="max-w-16 break-all rounded-lg bg-raised px-2 py-1 font-mono text-sm font-semibold sm:max-w-24">{{ bibLabel(participant.bib_number) }}</span>
+                <div class="min-w-0"><strong class="block break-words text-sm [overflow-wrap:anywhere] sm:text-base">{{ participant.name }}</strong><span class="text-xs muted">{{ participant.type==='relay'?$t('Relay team'):$t('Solo athlete') }}</span></div>
+                <Link :href="`/races/${race.id}/participants/${participant.id}/edit`" class="btn-secondary col-start-2 justify-self-start !px-3 !py-1.5 !text-xs sm:col-start-3 sm:row-start-1 sm:self-center"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ $t("Edit") }}</Link>
               </div>
             </div>
             <div v-else class="p-6 text-center muted">{{ $t("No athletes or teams yet.") }}</div>
