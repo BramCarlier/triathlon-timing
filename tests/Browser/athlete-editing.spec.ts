@@ -19,6 +19,7 @@ test('organizer can find athletes and assign bibs before and after the start on 
   await page.getByRole('button', { name: 'Add athlete', exact: true }).click();
   await expect(page.getByText('Participant added.', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Edit', exact: true }).click();
+  await expect(page).toHaveURL(/\/participants\/\d+\/edit$/);
   await page.getByLabel('Bib number (optional)').fill('007');
   await expect(page.getByLabel('Last name (optional)')).toHaveValue('');
   await page.getByRole('button', { name: 'Save participant', exact: true }).click();
