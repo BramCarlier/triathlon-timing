@@ -18,11 +18,13 @@ use App\Http\Controllers\RaceControlController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceOfficialController;
 use App\Http\Controllers\ResultController;
+use App\Http\Controllers\ResultsPdfController;
 use App\Http\Controllers\TimingController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class);
+Route::get('/live/{token}/results.pdf', [ResultsPdfController::class, 'publicDownload'])->middleware('throttle:10,1')->name('results.public.pdf');
 Route::get('/live/{token}', [ResultController::class,'publicIndex'])->middleware('throttle:120,1')->name('results.public');
 Route::get('/race/{token}', [PublicRaceController::class, 'show'])->middleware('throttle:1200,1')->name('race.public');
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
@@ -85,6 +87,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/races/{race}/timings/{timing}/void', [TimingController::class, 'void'])->middleware('permission:timings.record,races.control')->name('races.timings.void');
         Route::post('/races/{race}/presence', [PresenceController::class, 'ping'])->middleware('permission:timings.record')->name('races.presence');
 
+        Route::get('/races/{race}/results.pdf', [ResultsPdfController::class, 'download'])->middleware(['permission:results.export', 'throttle:10,1'])->name('races.results.pdf');
         Route::get('/races/{race}/results.csv', [ResultController::class, 'csv'])->middleware('permission:results.export')->name('races.results.csv');
         Route::get('/races/{race}/results.xlsx', [ResultController::class, 'xlsx'])->middleware('permission:results.export')->name('races.results.xlsx');
     });

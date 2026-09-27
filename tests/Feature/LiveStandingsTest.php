@@ -154,7 +154,8 @@ class LiveStandingsTest extends TestCase
         $this->actingAs($race->creator)->get("/races/{$race->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Races/Show')->where('standings.0.place', 1));
         $this->get("/races/{$race->id}", [
-            'X-Inertia' => 'true', 'X-Inertia-Partial-Component' => 'Races/Show',
+            'X-Inertia' => 'true', 'X-Inertia-Version' => \Inertia\Inertia::getVersion(),
+            'X-Inertia-Partial-Component' => 'Races/Show',
             'X-Inertia-Partial-Data' => 'standings',
         ])->assertOk()->assertJsonPath('props.standings.0.latest_elapsed_ms', 12345)->assertJsonMissingPath('props.participants');
         $race->update(['started_at' => null, 'status' => 'ready']);
