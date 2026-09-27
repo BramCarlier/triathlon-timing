@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 use App\Enums\CheckpointKind;
 use App\Enums\TimingStatus;
 use App\Exceptions\TimingConflictException;
-use App\Exceptions\TimingWarningException;
 use App\Models\Checkpoint;
 use App\Models\Entry;
 use App\Models\Race;
@@ -107,8 +106,6 @@ class TimingController extends Controller
                 'auto_finished' => $autoFinished,
                 'message' => __(':label recorded at :checkpoint.', ['label'=>$label, 'checkpoint'=>__($timing->checkpoint->name)]).($autoFinished ? ' '.__('All active participants are finished, so the race was finished automatically.') : ''),
             ]);
-        } catch (TimingWarningException $e) {
-            return response()->json(['warning' => true, 'message' => $e->getMessage(), ...$e->context], 409);
         } catch (TimingConflictException $e) {
             return response()->json(['conflict' => true, 'message' => $e->getMessage()], 409);
         }

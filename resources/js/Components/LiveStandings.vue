@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import SortableHeader from './SortableHeader.vue';
+import CheckpointTime from './CheckpointTime.vue';
 import { useResultSorting } from '../Composables/useResultSorting';
 import { bibLabel, formatDuration } from '../lib';
 import type { Checkpoint, LiveStanding } from '../types';
@@ -64,7 +65,7 @@ const rows = computed(() => {
               <strong class="mt-1 block whitespace-nowrap font-mono tabular-nums">{{ formatDuration(row.latest_elapsed_ms, 2) }}</strong>
             </td>
             <td v-for="checkpoint in checkpoints" :key="checkpoint.id" class="whitespace-nowrap p-3 align-top font-mono tabular-nums" :class="checkpoint.kind === 'finish' && row.finished ? 'font-bold text-success' : ''">
-              {{ formatDuration(row.splits.find(split => split.checkpoint_id === checkpoint.id)?.elapsed_ms ?? null, 2) }}
+              <CheckpointTime :split="row.splits.find(split => split.checkpoint_id === checkpoint.id)" :precision="2"/>
             </td>
           </tr>
           <tr v-if="!rows.length"><td :colspan="checkpoints.length + 4" class="p-6 muted">{{ search ? $t('No matching athlete.') : $t('No participants yet. Standings will appear here when athletes are added.') }}</td></tr>

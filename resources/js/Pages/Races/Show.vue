@@ -303,12 +303,13 @@ const selectedCheckpoint = computed(() => activeTimingCheckpoints.value.find(cp 
 const timingSearch = ref('');
 const filteredTimingParticipants = computed(() => {
   const term = timingSearch.value.trim().toLowerCase();
+  const visible = timingParticipants.value.filter(participant => participant.status !== 'dns');
   const rows = term
-    ? timingParticipants.value.filter(p =>
+    ? visible.filter(p =>
         (p.bib_number ?? '').toLowerCase().includes(term)
         || p.name.toLowerCase().includes(term)
         || p.members.some(member => member.name.toLowerCase().includes(term)))
-    : timingParticipants.value;
+    : visible;
   return rows.slice(0, 50);
 });
 const workspaceOnline = ref(navigator.onLine);
@@ -319,13 +320,12 @@ const participantRecorded = (participant:StationParticipant) => !!selectedCheckp
 );
 const timingSaving = ref(new Set<number>());
 const timingFeedback = ref<{type:'ok'|'error'|'offline';message:string}|null>(null);
-const timingConfirmation = ref<{participant:StationParticipant;clientUuid:string;message:string}|null>(null);
 const showTimingFeedback = (type:'ok'|'error'|'offline', message:string) => {
   timingFeedback.value = {type,message};
   window.setTimeout(() => { if (timingFeedback.value?.message === message) timingFeedback.value = null; }, 4500);
 };
 
-async function recordTiming(participant:StationParticipant, override=false, clientUuid=uuid()) {
+async function recordTiming(participant:StationParticipant, clientUuid=uuid()) {
   if (!selectedCheckpoint.value || timingSaving.value.has(participant.id)) return;
   if (!props.race.started_at) { showTimingFeedback('error',tr('Start the race before recording times.')); return; }
   if (props.race.finished_at) { showTimingFeedback('error',tr('The race is finished.')); return; }
@@ -341,7 +341,6 @@ async function recordTiming(participant:StationParticipant, override=false, clie
     observed_at:new Date().toISOString(),
     source:'online',
     workspace:true,
-    override_warning:override,
   };
   const elapsed=Math.max(0,Date.now()-new Date(props.race.started_at).getTime());
   const saveOffline=async()=>{
@@ -355,7 +354,7 @@ async function recordTiming(participant:StationParticipant, override=false, clie
     if(!workspaceOnline.value){await saveOffline();return;}
     let result;
     try {
-      result=await jsonRequest<{timing?:Timing;message?:string;warning?:boolean;missing_checkpoints?:string[];auto_finished?:boolean}>(`/races/${props.race.id}/timings`, {
+      result=await jsonRequest<{timing?:Timing;message?:string;auto_finished?:boolean}>(`/races/${props.race.id}/timings`, {
         method:'POST',body:JSON.stringify(payload),signal:AbortSignal.timeout(12000),
       });
     } catch { await saveOffline(); return; }
@@ -371,10 +370,6 @@ async function recordTiming(participant:StationParticipant, override=false, clie
       router.reload({only:['standings', ...(data.auto_finished ? ['race','serverNow','completedCount'] : [])]});
       return;
     }
-    if(response.status===409&&data.warning){
-      timingConfirmation.value={participant,clientUuid,message:[data.message??tr('An earlier checkpoint is missing.'), (data.missing_checkpoints??[]).join(', '), tr('Record anyway?')].filter(Boolean).join(' ')};
-      return;
-    }
     if((response.ok&&!data.timing)||response.status>=500||[401,403,408,419,429].includes(response.status)){await saveOffline();return;}
     showTimingFeedback('error',data.message??tr('The time could not be recorded.'));
   } catch {
@@ -383,11 +378,6 @@ async function recordTiming(participant:StationParticipant, override=false, clie
     timingSaving.value.delete(participant.id);
   }
 }
-const confirmTimingOverride = () => {
-  const item = timingConfirmation.value;
-  timingConfirmation.value = null;
-  if (item) void recordTiming(item.participant, true, item.clientUuid);
-};
 const syncWorkspaceQueue=async()=>{if(await flushWorkspaceTiming())router.reload({only:['participants','recentTimings', 'standings','completedCount','race','serverNow']});};
 const handleWorkspaceOnline=()=>{workspaceOnline.value=true;void syncWorkspaceQueue();};
 const handleWorkspaceOffline=()=>{workspaceOnline.value=false;};
@@ -805,14 +795,6 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       <p v-if="Object.keys(clockForm.errors).length" class="mt-3 text-error">{{ Object.values(clockForm.errors)[0] }}</p>
     </ConfirmDialog>
 
-    <ConfirmDialog
-      v-if="timingConfirmation"
-      :title="$t('Record this time?')"
-      :message="timingConfirmation.message"
-      :confirm-label="$t('Record anyway')"
-      @cancel="timingConfirmation=null"
-      @confirm="confirmTimingOverride"
-    />
 
     <ConfirmDialog
       v-if="removingCheckpoint"

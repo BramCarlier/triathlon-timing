@@ -98,6 +98,47 @@ class LiveStandingsTest extends TestCase
         $this->assertNull($service->live($race)[1]['place']);
     }
 
+    public function test_each_checkpoint_has_independent_places_with_ties_filters_and_missing_times(): void
+    {
+        $race = $this->race();
+        $swim = $this->checkpoint($race, 10);
+        $bike = $this->checkpoint($race, 30);
+        $a = $race->entries()->create(['type' => 'solo', 'category' => 'Open']);
+        $b = $race->entries()->create(['type' => 'relay', 'category' => 'Open', 'team_name' => 'Trio']);
+        $c = $race->entries()->create(['type' => 'solo', 'category' => 'Masters']);
+        $waiting = $race->entries()->create(['type' => 'solo']);
+        $aTime = $this->timing($race, $a, $swim, 10000);
+        $this->timing($race, $b, $swim, 10000);
+        $this->timing($race, $c, $swim, 10001);
+        $this->timing($race, $a, $bike, 30000);
+        $this->timing($race, $b, $bike, 20000);
+        $unranked = [];
+        foreach (['dns', 'dnf', 'dsq'] as $status) {
+            $entry = $race->entries()->create(['type' => 'solo', 'status' => $status]);
+            $unranked[] = $entry;
+            $this->timing($race, $entry, $swim, 1);
+        }
+        $service = app(ResultsService::class);
+        $place = fn ($rows, $entry, $checkpoint) => collect(collect($rows)->firstWhere('id', $entry->id)['splits'])->firstWhere('checkpoint_id', $checkpoint->id)['place'];
+        foreach ([$service->live($race), $service->filtered($race)] as $rows) {
+            $this->assertSame(1, $place($rows, $a, $swim));
+            $this->assertSame(1, $place($rows, $b, $swim));
+            $this->assertSame(3, $place($rows, $c, $swim));
+            $this->assertSame(2, $place($rows, $a, $bike));
+            $this->assertSame(1, $place($rows, $b, $bike));
+            $this->assertNull($place($rows, $c, $bike));
+            $this->assertNull($place($rows, $waiting, $swim));
+            foreach ($unranked as $entry) $this->assertNull($place($rows, $entry, $swim));
+        }
+        $this->assertSame(2, $place($service->filtered($race, ['type' => 'solo']), $c, $swim));
+        $this->assertSame(1, $place($service->filtered($race, ['category' => 'Masters']), $c, $swim));
+        $aTime->update(['elapsed_ms' => 10002]);
+        $this->assertSame(3, $place($service->live($race), $a, $swim));
+        $aTime->update(['status' => 'voided']);
+        $this->assertNull($place($service->filtered($race), $a, $swim));
+        $this->assertSame(2, $place($service->filtered($race), $c, $swim));
+    }
+
     public function test_both_race_pages_expose_refreshable_standings_without_private_athlete_data(): void
     {
         $race = $this->race();
@@ -108,7 +149,7 @@ class LiveStandingsTest extends TestCase
         $this->timing($race, $entry, $checkpoint, 12345);
         $this->get("/race/{$race->public_timing_token}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Races/PublicTiming')->has('standings', 1)
-            ->where('standings.0.place', 1)->where('standings.0.latest_elapsed_ms', 12345)
+            ->where('standings.0.place', 1)->where('standings.0.latest_elapsed_ms', 12345)->where('standings.0.splits.0.place', 1)
             ->where('standings.0.name', 'Alex Runner')->missing('standings.0.members.0.email'));
         $this->actingAs($race->creator)->get("/races/{$race->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Races/Show')->where('standings.0.place', 1));

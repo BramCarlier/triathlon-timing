@@ -57,12 +57,18 @@ class PublicRaceTimingTest extends TestCase
                 ->has('participants', 1)
                 ->has('race.checkpoints', 1));
 
+        $skipped = $race->checkpoints()->create([
+            'name' => 'Swim Exit', 'code' => 'SWIM_EXIT', 'sequence' => 5,
+            'kind' => 'transition', 'is_required' => true, 'is_active' => true,
+        ]);
         $this->postJson("/race/{$race->public_timing_token}/timings", [
             'entry_id' => $entry->id,
             'checkpoint_id' => $checkpoint->id,
             'client_uuid' => (string) Str::uuid(),
             'observed_at' => now()->toISOString(),
-        ])->assertOk()->assertJsonPath('timing.entry.id', $entry->id);
+        ])->assertOk()->assertJsonPath('timing.entry.id', $entry->id)->assertJsonMissingPath('warning');
+        $this->assertDatabaseMissing('timing_records', ['checkpoint_id' => $skipped->id]);
+        $this->assertDatabaseCount('timing_records', 1);
 
         $this->assertDatabaseHas('timing_records', [
             'race_id' => $race->id,

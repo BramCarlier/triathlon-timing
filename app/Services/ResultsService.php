@@ -21,7 +21,8 @@ class ResultsService
             if($row['total_ms']!==$previous)$place=$index+1;
             $row['place']=$place;$previous=$row['total_ms'];
         }
-        return $rows;
+        unset($row);
+        return $this->withCheckpointPlaces($rows);
     }
 
     /** Provisional places use course progress first, then elapsed time at that checkpoint. */
@@ -50,7 +51,7 @@ class ResultsService
 
         $previous = null;
         $place = null;
-        return $rows->map(function ($row, $index) use (&$previous, &$place) {
+        return $this->withCheckpointPlaces($rows->map(function ($row, $index) use (&$previous, &$place) {
             if ($row['_rankable']) {
                 if ($row['_sort'] !== $previous) $place = $index + 1;
                 $row['place'] = $place;
@@ -58,7 +59,7 @@ class ResultsService
             }
             unset($row['_rankable'], $row['_sort']);
             return $row;
-        })->all();
+        })->all());
     }
 
     public function rows(Race $race, bool $activeOnly = false): array
@@ -95,4 +96,42 @@ class ResultsService
             ];
         })->sortBy(fn ($row) => $row['finished'] ? ($row['total_ms'] ?? PHP_INT_MAX) : PHP_INT_MAX)->values()->all();
     }
+
+    /** Rank each checkpoint independently within the displayed result group. */
+    private function withCheckpointPlaces(array $rows): array
+    {
+        $times = [];
+        foreach ($rows as $row) {
+            if ($row['status'] !== 'registered') continue;
+            foreach ($row['splits'] as $split) {
+                if ($split['elapsed_ms'] !== null) {
+                    $times[$split['checkpoint_id']][$row['id']] = $split['elapsed_ms'];
+                }
+            }
+        }
+
+        $places = [];
+        foreach ($times as $checkpointId => $checkpointTimes) {
+            asort($checkpointTimes, SORT_NUMERIC);
+            $position = 0;
+            $previous = null;
+            $place = null;
+            foreach ($checkpointTimes as $entryId => $elapsedMs) {
+                $position++;
+                if ($elapsedMs !== $previous) $place = $position;
+                $places[$checkpointId][$entryId] = $place;
+                $previous = $elapsedMs;
+            }
+        }
+
+        foreach ($rows as &$row) {
+            foreach ($row['splits'] as &$split) {
+                $split['place'] = $places[$split['checkpoint_id']][$row['id']] ?? null;
+            }
+            unset($split);
+        }
+        unset($row);
+        return $rows;
+    }
+
 }

@@ -38,7 +38,7 @@ const recoveryNeedsAttention = computed(() => !!storageError.value || foreignCou
 const confirmation=ref<{message:string;label:string;action:()=>void|Promise<void>}|null>(null);
 const confirmAction=async()=>{const action=confirmation.value?.action;confirmation.value=null;await action?.();};
 const refreshRace = useRaceRefresh(() => ['race', 'serverNow', ...(pending.value===0 && saving.value.size===0 ? ['participants','recentTimings'] : [])]);
-const retryPending=async(id:string,override=false)=>{try{await retry(id,override);refreshRace();}catch{showFeedback('error',tr('Unable to access pending timings.'));}};
+const retryPending=async(id:string)=>{try{await retry(id);refreshRace();}catch{showFeedback('error',tr('Unable to access pending timings.'));}};
 const removePending=(id:string)=>{confirmation.value={message:tr('Discard this unsynchronized timing? Export a backup first if it may be needed.'),label:tr('Discard timing'),action:async()=>{await discard(id);refreshRace();}};};
 const exportPending=()=>{const rows=[...queuedItems.value,...(account.role==='admin'?legacy.value:[])];const url=URL.createObjectURL(new Blob([JSON.stringify(rows,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download=`race-${props.race.id}-pending-timings.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 const deviceUuid = localStorage.getItem('triathlon-device-uuid') ?? uuid();
@@ -46,27 +46,21 @@ localStorage.setItem('triathlon-device-uuid', deviceUuid);
 
 const filtered = computed(() => {
   const term = query.value.trim().toLowerCase();
-  if (!term) return participants.value.slice(0, 40);
-  return participants.value.filter(p => (p.bib_number ?? '').toLowerCase().includes(term) || p.name.toLowerCase().includes(term) || p.members.some(m => m.name.toLowerCase().includes(term))).slice(0, 40);
+  const visible = participants.value.filter(participant => participant.status !== 'dns');
+  if (!term) return visible.slice(0, 40);
+  return visible.filter(p => (p.bib_number ?? '').toLowerCase().includes(term) || p.name.toLowerCase().includes(term) || p.members.some(m => m.name.toLowerCase().includes(term))).slice(0, 40);
 });
-const priorRequiredIds = computed(() => props.checkpoint ? props.checkpoints.filter(cp => cp.is_required && cp.sequence < props.checkpoint!.sequence).map(cp => cp.id) : []);
 const selected = (p:StationParticipant) => !!props.checkpoint && (p.completed_checkpoint_ids.includes(props.checkpoint.id) || queuedItems.value.some(i=>i.payload.entry_id===p.id && i.payload.checkpoint_id===props.checkpoint!.id));
 const selectCheckpoint = () => selectForm.post(`/races/${props.race.id}/checkpoint-selection`);
 const showFeedback = (type:'ok'|'error'|'offline', message:string) => { feedback.value = {type,message}; window.setTimeout(() => { if (feedback.value?.message === message) feedback.value = null; }, 3500); };
 
-async function record(participant: StationParticipant, override = false, clientUuid = uuid()) {
+async function record(participant: StationParticipant, clientUuid = uuid()) {
   if (!props.checkpoint || saving.value.has(participant.id)) return;
   if (participant.status && participant.status!=='registered') {showFeedback('error',tr('This entry is marked :status. Update its status in Participants before recording.', {status:participant.status.toUpperCase()}));return;}
   if (!props.race.started_at) { showFeedback('error', tr('The race clock has not started.')); return; }
   if (props.race.finished_at) { showFeedback('error', tr('This race is finished. Use Corrections & station health for corrections.')); return; }
   if (selected(participant)) { showFeedback('error', tr(':name (:bib) is already recorded here.', {name:participant.name,bib:bibLabel(participant.bib_number)})); return; }
-  const missing = priorRequiredIds.value.filter(id => !participant.completed_checkpoint_ids.includes(id));
-  if (missing.length && !override) {
-    const names = props.checkpoints.filter(cp => missing.includes(cp.id)).map(cp => tr(cp.name)).join(', ');
-    confirmation.value={message:tr('Earlier required timing missing: :checkpoints. Record :name here anyway?', {checkpoints:names,name:participant.name}),label:tr('Record anyway'),action:()=>record(participant,true,clientUuid)};return;
-  }
-
-  const payload = { operator_id:account.id, entry_id:participant.id, checkpoint_id:props.checkpoint.id, client_uuid:clientUuid, observed_at:new Date(serverNowMs()).toISOString(), source:online.value ? 'online' : 'offline', override_warning:override };
+  const payload = { operator_id:account.id, entry_id:participant.id, checkpoint_id:props.checkpoint.id, client_uuid:clientUuid, observed_at:new Date(serverNowMs()).toISOString(), source:online.value ? 'online' : 'offline' };
   const localTiming: Timing = { client_uuid:clientUuid, elapsed_ms:elapsedMs.value, recorded_at:String(payload.observed_at), entry:{id:participant.id,bib_number:participant.bib_number,display_name:participant.name}, queued:!online.value };
 
   saving.value.add(participant.id);
@@ -77,7 +71,7 @@ async function record(participant: StationParticipant, override = false, clientU
   try {
     if(!online.value){await saveOffline();return;}
     let result;
-    try {result=await jsonRequest<{timing?:Timing;message?:string;warning?:boolean;missing_checkpoints?:string[]}>(`/races/${props.race.id}/timings`,{method:'POST',body:JSON.stringify(payload),signal:AbortSignal.timeout(12000)});}
+    try {result=await jsonRequest<{timing?:Timing;message?:string}>(`/races/${props.race.id}/timings`,{method:'POST',body:JSON.stringify(payload),signal:AbortSignal.timeout(12000)});}
     catch {await saveOffline();return;}
     const {response,data}=result;
     if(response.ok&&data.timing){
@@ -86,7 +80,6 @@ async function record(participant: StationParticipant, override = false, clientU
       showFeedback('ok',data.message??tr('Timing recorded.'));query.value='';return;
     }
     if((response.ok&&!data.timing)||response.status>=500||[401,403,408,419,429].includes(response.status)){await saveOffline();return;}
-    if(response.status===409&&data.warning){confirmation.value={message:`${data.message} ${(data.missing_checkpoints??[]).join(', ')}`,label:tr('Record anyway'),action:()=>record(participant,true,clientUuid)};return;}
     showFeedback('error',data.message??tr('Timing could not be recorded.'));
   } catch {showFeedback('error',tr('Timing was NOT saved: device storage is unavailable. Use a backup stopwatch.'));}
   finally {saving.value.delete(participant.id);}
@@ -194,7 +187,6 @@ onBeforeUnmount(() => {
           <strong>{{ item.label ?? $t('Pending participant') }}</strong> · {{ formatDuration(item.elapsed_ms,2) }} · {{ $t(checkpoints.find(c=>c.id===item.payload.checkpoint_id)?.name ?? '') }}
           <p class="text-sm text-warning">{{ item.error ?? $t('Saved on this device. Waiting to synchronize.') }}</p>
           <div class="mt-2 flex flex-wrap gap-2"><button class="btn-secondary" :disabled="flushing||!online" @click="retryPending(item.client_uuid)"><i class="fa-solid fa-rotate" aria-hidden="true"></i>{{ $t("Retry") }}</button>
-          <button v-if="item.warning" class="btn-secondary" :disabled="flushing||!online" @click="confirmation={message:$t('Record despite missing earlier checkpoints? This override is kept in the timing audit.'),label:$t('Record anyway'),action:()=>retryPending(item.client_uuid,true)}"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>{{ $t("Review warning") }}</button>
           <button class="btn-danger" :disabled="flushing" @click="removePending(item.client_uuid)"><i class="fa-solid fa-trash" aria-hidden="true"></i>{{ $t("Discard") }}</button></div>
         </div>
       </div>

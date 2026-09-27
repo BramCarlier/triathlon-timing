@@ -3,7 +3,6 @@ import { tr } from '../../i18n';
 import { computed, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
-import ConfirmDialog from '../../Components/ConfirmDialog.vue';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import RaceClock from '../../Components/RaceClock.vue';
 import LiveStandings from '../../Components/LiveStandings.vue';
@@ -53,12 +52,12 @@ const selectedCheckpoint=computed(()=>props.race.checkpoints.find(cp=>cp.id===Nu
 const search=ref('');
 const saving=ref(new Set<number>());
 const feedback=ref<{type:'ok'|'error';message:string}|null>(null);
-const confirmation=ref<{participant:StationParticipant;clientUuid:string;message:string}|null>(null);
 
 const filtered=computed(()=>{
   const term=search.value.trim().toLowerCase();
-  if(!term)return participants.value;
-  return participants.value.filter(participant=>
+  const visible=participants.value.filter(participant=>participant.status!=='dns');
+  if(!term)return visible;
+  return visible.filter(participant=>
     (participant.bib_number??'').toLowerCase().includes(term)
     || participant.name.toLowerCase().includes(term)
     || participant.members.some(member=>member.name.toLowerCase().includes(term))
@@ -75,7 +74,7 @@ function showFeedback(type:'ok'|'error',message:string){
   window.setTimeout(()=>{if(feedback.value?.message===message)feedback.value=null;},4000);
 }
 
-async function record(participant:StationParticipant,override=false,clientUuid=uuid()){
+async function record(participant:StationParticipant,clientUuid=uuid()){
   if(!selectedCheckpoint.value||saving.value.has(participant.id))return;
   if(!props.race.started_at){showFeedback('error',tr('The race has not started yet.'));return;}
   if(props.race.finished_at){showFeedback('error',tr('The race is finished.'));return;}
@@ -88,8 +87,6 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
     const {response,data}=await jsonRequest<{
       timing?:Timing;
       message?:string;
-      warning?:boolean;
-      missing_checkpoints?:string[];
       auto_finished?:boolean;
     }>(`/race/${props.token}/timings`,{
       method:'POST',
@@ -98,7 +95,6 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
         checkpoint_id:selected.id,
         client_uuid:clientUuid,
         observed_at:new Date().toISOString(),
-        override_warning:override,
       }),
     });
 
@@ -113,16 +109,6 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
       return;
     }
 
-    if(response.status===409&&data.warning){
-      const missing=(data.missing_checkpoints??[]).join(', ');
-      confirmation.value={
-        participant,
-        clientUuid,
-        message:[data.message??tr('An earlier checkpoint is missing.'), missing?tr('Missing: :checkpoints.',{checkpoints:missing}):'', tr('Record anyway?')].filter(Boolean).join(' '),
-      };
-      return;
-    }
-
     showFeedback('error',data.message??tr('The time was not recorded. Try again.'));
   }catch{
     showFeedback('error',tr('The time was not recorded. Check the connection and try again.'));
@@ -131,11 +117,6 @@ async function record(participant:StationParticipant,override=false,clientUuid=u
   }
 }
 
-function confirmOverride(){
-  const pending=confirmation.value;
-  confirmation.value=null;
-  if(pending)void record(pending.participant,true,pending.clientUuid);
-}
 </script>
 
 <template>
@@ -226,13 +207,5 @@ function confirmOverride(){
       </div>
     </section>
 
-    <ConfirmDialog
-      v-if="confirmation"
-      :title="$t('Record this time?')"
-      :message="confirmation.message"
-      :confirm-label="$t('Record anyway')"
-      @cancel="confirmation=null"
-      @confirm="confirmOverride"
-    />
   </AppLayout>
 </template>

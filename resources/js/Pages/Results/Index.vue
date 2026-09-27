@@ -3,6 +3,7 @@ import { tr } from '../../i18n';
 import { usePermissions } from '../../Composables/usePermissions';
 const can=usePermissions();
 import ResultSplits from '../../Components/ResultSplits.vue';
+import CheckpointTime from '../../Components/CheckpointTime.vue';
 import SortableHeader from '../../Components/SortableHeader.vue';
 import { useResultSorting } from '../../Composables/useResultSorting';
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
@@ -12,7 +13,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import { formatDuration, bibLabel } from '../../lib';
 import { formatDate } from '../../presentation';
 import type { Checkpoint, PageProps, Race } from '../../types';
-interface Row { id:number;place:number|null;result_status:string;bib_number:string|null;type:string;name:string;category?:string;members:Array<{discipline:string;name:string}>;splits:Array<{checkpoint_id:number;checkpoint:string;elapsed_ms:number|null;split_ms:number|null}>;total_ms:number|null;gap_ms:number|null;finished:boolean }
+interface Row { id:number;place:number|null;result_status:string;bib_number:string|null;type:string;name:string;category?:string;members:Array<{discipline:string;name:string}>;splits:Array<{checkpoint_id:number;checkpoint:string;elapsed_ms:number|null;split_ms:number|null;place:number|null}>;total_ms:number|null;gap_ms:number|null;finished:boolean }
 const props=defineProps<{race:Race & {checkpoints:Checkpoint[]};results:Row[];categories:string[];filters:{type?:string;category?:string;status?:string};publicMode?:boolean}>();
 const page=usePage<PageProps>();
 const precision=ref<2|3>(2);
@@ -91,7 +92,7 @@ useRaceRefresh(()=>['race','results','categories']);
             <td class="sticky left-0 z-10 max-w-56 bg-surface p-3"><div class="font-semibold break-words">{{ row.name }}</div><div class="mt-1 text-xs muted">{{ bibLabel(row.bib_number) }} · {{ row.category }} · {{ $t(row.result_status) }}</div></td>
             <td class="whitespace-nowrap p-3 font-mono font-bold tabular-nums" :class="row.finished?'text-success':'text-muted'">{{ formatDuration(row.total_ms,precision) }}</td>
             <td class="whitespace-nowrap p-3 font-mono tabular-nums">{{ row.gap_ms===0?$t('Leader'):row.gap_ms==null?'—':'+'+formatDuration(row.gap_ms,precision) }}</td>
-            <td v-for="checkpoint in checkpoints" :key="checkpoint.id" class="whitespace-nowrap p-3 font-mono tabular-nums">{{ formatDuration(row.splits.find(split=>split.checkpoint_id===checkpoint.id)?.elapsed_ms??null,precision) }}</td>
+            <td v-for="checkpoint in checkpoints" :key="checkpoint.id" class="whitespace-nowrap p-3 font-mono tabular-nums"><CheckpointTime :split="row.splits.find(split=>split.checkpoint_id===checkpoint.id)" :precision="precision"/></td>
             <td v-if="!display" class="p-3"><button class="btn-secondary whitespace-nowrap" :aria-expanded="expanded.includes(row.id)" :aria-controls="`splits-${row.id}`" @click="toggleRow(row.id)"><i :class="expanded.includes(row.id)?'fa-solid fa-eye-slash':'fa-solid fa-eye'" aria-hidden="true"></i>{{ expanded.includes(row.id)?$t('Hide splits'):$t('View splits') }}</button></td>
           </tr>
           <tr v-if="!display&&expanded.includes(row.id)"><td :colspan="checkpoints.length+6" class="bg-canvas p-4"><ResultSplits :id="`splits-${row.id}`" :race="race" :checkpoints="checkpoints" :splits="row.splits" :precision="precision"/><p v-if="row.type==='relay'" class="mt-3 text-sm muted">{{ row.members.map(member=>`${$t(member.discipline)}: ${member.name}`).join(' · ') }}</p></td></tr>

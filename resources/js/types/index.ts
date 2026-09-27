@@ -17,5 +17,5 @@ export interface LiveStanding {
   latest_checkpoint: string | null;
   latest_elapsed_ms: number | null;
   finished: boolean;
-  splits: Array<{checkpoint_id: number; checkpoint: string; elapsed_ms: number | null; split_ms: number | null}>;
+  splits: Array<{checkpoint_id: number; checkpoint: string; elapsed_ms: number | null; split_ms: number | null; place: number | null}>;
 }
