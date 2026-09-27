@@ -41,7 +41,9 @@ class TimingService
                 }
                 return $existing;
             }
-            if ($lockedEntry->status !== 'registered') throw new TimingConflictException(__('This participant is marked :status. Review their status before recording.', ['status'=>strtoupper($lockedEntry->status)]));
+            $race = $race->fresh();
+            $recoveringOffline = $source === TimingSource::Offline && $lockedEntry->isAutomaticDnf();
+            if ($lockedEntry->status !== 'registered' && !$recoveringOffline) throw new TimingConflictException(__('This participant is marked :status. Review their status before recording.', ['status'=>strtoupper($lockedEntry->status)]));
             $active = TimingRecord::query()
                 ->where('entry_id', $entry->id)
                 ->where('checkpoint_id', $checkpoint->id)
@@ -51,6 +53,9 @@ class TimingService
 
             $serverNow = CarbonImmutable::now('UTC');
             $observed = !empty($data['observed_at']) ? CarbonImmutable::parse($data['observed_at'])->utc() : $serverNow;
+            if ($recoveringOffline && (empty($data['observed_at']) || !$race->finished_at || $observed->greaterThan(CarbonImmutable::instance($race->finished_at)->utc()))) {
+                throw new TimingConflictException(__('The race has already been finished.'));
+            }
             if ($observed->greaterThan($serverNow->addSeconds(10)) && $source !== TimingSource::Manual) throw new TimingConflictException(__('The device clock is too far ahead of the server clock.'));
             $started = CarbonImmutable::instance($race->started_at)->utc();
             if ($observed->lessThan($started)) throw new TimingConflictException(__('The recorded time is before the race start.'));
@@ -61,6 +66,8 @@ class TimingService
                 ? $entry->members()->where('discipline', $checkpoint->discipline->value)->first()
                 : null;
             $elapsed = max(0, $observed->getTimestampMs() - $started->getTimestampMs());
+
+            if ($checkpoint->kind === CheckpointKind::Finish) $lockedEntry->restoreAfterFinishTiming($operator);
 
             return TimingRecord::create([
                 'client_uuid' => $uuid,
@@ -112,6 +119,8 @@ class TimingService
             $member = $checkpoint->discipline
                 ? $entry->members()->where('discipline', $checkpoint->discipline->value)->first()
                 : null;
+
+            if ($checkpoint->kind === CheckpointKind::Finish) $lockedEntry->restoreAfterFinishTiming($operator);
 
             return TimingRecord::create([
                 'client_uuid' => (string) \Illuminate\Support\Str::uuid(),

@@ -96,7 +96,7 @@ class TimingController extends Controller
                     ->exists();
 
                 if (!$hasUnfinishedParticipants) {
-                    $clock->finish($race->fresh());
+                    $clock->finish($race->fresh(), $request->user());
                     $autoFinished = true;
                 }
             }

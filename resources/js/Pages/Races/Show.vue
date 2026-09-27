@@ -792,6 +792,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       @cancel="pendingClockAction=null; clockForm.clearErrors()"
       @confirm="changeClock"
     >
+      <p v-if="pendingClockAction==='finish'" class="mt-3 text-sm">{{ $t('Competing athletes without a finish time will automatically be marked DNF. DNS and disqualified statuses stay unchanged.') }}</p>
       <p v-if="Object.keys(clockForm.errors).length" class="mt-3 text-error">{{ Object.values(clockForm.errors)[0] }}</p>
     </ConfirmDialog>
 

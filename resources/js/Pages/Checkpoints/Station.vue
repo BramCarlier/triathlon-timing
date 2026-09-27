@@ -124,7 +124,7 @@ onMounted(async () => {
   if (echo) {
     echo.private(channelName)
       .listen('.race.started', () => router.reload({only:['race','serverNow']}))
-      .listen('.race.finished', () => router.reload({only:['race','serverNow']}))
+      .listen('.race.finished', () => router.reload({only:['race','serverNow','participants','recentTimings']}))
       .listen('.timing.recorded', (event:any) => { const p=participants.value.find(item=>item.id===event.entry_id); if(p && !p.completed_checkpoint_ids.includes(event.checkpoint_id)) p.completed_checkpoint_ids.push(event.checkpoint_id); })
       .listen('.timing.voided', (event:any) => { const p=participants.value.find(item=>item.id===event.entry_id); if(p) p.completed_checkpoint_ids=p.completed_checkpoint_ids.filter(id=>id!==event.checkpoint_id); });
   }

@@ -37,7 +37,7 @@ class RaceControlController extends Controller
     {
         Gate::authorize('manage-race', $race);
         abort_unless(request()->user()->isAdmin(), 403);
-        $clock->finish($race);
+        $clock->finish($race, request()->user());
         return back()->with('success', __('Race marked as finished.'));
     }
 }

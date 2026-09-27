@@ -911,5 +911,6 @@
   "Ascending": "Oplopend",
   "Descending": "Aflopend",
   "Race results. Select a column header to sort; select it again to reverse the order. Official places do not change.": "Wedstrijduitslagen. Selecteer een kolomkop om te sorteren; selecteer opnieuw om de volgorde om te keren. Officiële plaatsen veranderen niet.",
-  "Place :place": "Plaats :place"
+  "Place :place": "Plaats :place",
+  "Competing athletes without a finish time will automatically be marked DNF. DNS and disqualified statuses stay unchanged.": "Deelnemende atleten zonder finishtijd worden automatisch als DNF gemarkeerd. DNS en diskwalificaties blijven ongewijzigd."
 }
