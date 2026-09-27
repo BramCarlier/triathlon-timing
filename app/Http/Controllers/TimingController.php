@@ -133,6 +133,6 @@ class TimingController extends Controller
         if (!$request->user()->isAdmin()) abort_unless($timing->operator_id === $request->user()->id, 403);
         $data = $request->validate(['reason' => ['nullable','string','max:1000']]);
         $service->void($timing, $request->user(), $data['reason'] ?? null);
-        return $request->expectsJson() ? response()->json(['ok' => true]) : back()->with('success', __('Timing voided. You can record the participant again.'));
+        return $request->expectsJson() ? response()->json(['ok' => true]) : back()->with('success', __('Time registration deleted.'));
     }
 }
