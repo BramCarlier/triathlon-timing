@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
+import DeleteTimingButton from '../../Components/DeleteTimingButton.vue';
 import RaceClock from '../../Components/RaceClock.vue';
 import LiveStandings from '../../Components/LiveStandings.vue';
 import LiveUpdatesStatus from '../../Components/LiveUpdatesStatus.vue';
@@ -55,6 +56,7 @@ interface Timing {
   entry?: { id:number; bib_number:string|null; display_name?:string };
   checkpoint?: { id?:number; name:string };
   operator?: { name:string };
+  operator_id?: number|null;
 }
 
 type Step = 'prepare' | 'participants' | 'race-day' | 'finish';
@@ -742,7 +744,10 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
               <div v-for="timing in recent.slice(0,12)" :key="timing.id ?? timing.client_uuid" class="p-4">
                 <div class="flex items-center justify-between gap-3">
                   <div class="min-w-0"><strong class="block truncate">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</strong><span class="text-sm muted">{{ $t(timing.checkpoint?.name ?? '') }}<span v-if="timing.operator?.name"> · {{ timing.operator.name }}</span></span></div>
-                  <span class="shrink-0 font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
+                  <div class="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+                    <span class="font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
+                    <DeleteTimingButton v-if="timing.id && (isAdmin || timing.operator_id===account?.id)" :race-id="race.id" :timing-id="timing.id" :label="`${timing.entry?.display_name ?? ''} · ${$t(timing.checkpoint?.name ?? 'Checkpoint')} · ${formatDuration(timing.elapsed_ms,2)}`"/>
+                  </div>
                 </div>
               </div>
             </div>

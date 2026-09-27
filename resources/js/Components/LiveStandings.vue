@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import SortableHeader from './SortableHeader.vue';
+import { useResultSorting } from '../Composables/useResultSorting';
 import { bibLabel, formatDuration } from '../lib';
 import type { Checkpoint, LiveStanding } from '../types';
 
@@ -13,9 +15,10 @@ const search = ref('');
 const checkpoints = computed(() => props.checkpoints
   .filter(checkpoint => checkpoint.is_active && checkpoint.kind !== 'start')
   .slice().sort((a, b) => a.sequence - b.sequence));
+const { sortKey, sortDirection, sortedRows, sortBy } = useResultSorting(() => props.standings);
 const rows = computed(() => {
   const term = search.value.trim().toLocaleLowerCase();
-  return props.standings.filter(row => !term || `${row.name} ${row.bib_number ?? ''}`.toLocaleLowerCase().includes(term));
+  return sortedRows.value.filter(row => !term || `${row.name} ${row.bib_number ?? ''}`.toLocaleLowerCase().includes(term));
 });
 </script>
 
@@ -38,21 +41,22 @@ const rows = computed(() => {
         <caption class="sr-only">{{ $t('Current positions and cumulative checkpoint times. Equal times at the same checkpoint share a position. DNS, DNF and DSQ are not ranked.') }}</caption>
         <thead class="sticky top-0 z-20 bg-surface text-xs text-muted">
           <tr>
-            <th scope="col" class="sticky left-0 z-30 min-w-44 bg-surface p-3 sm:min-w-60">{{ $t('Place') }} · {{ $t('Participant') }}</th>
-            <th scope="col" class="min-w-40 p-3">{{ $t('Latest checkpoint') }}</th>
-            <th v-for="checkpoint in checkpoints" :key="checkpoint.id" scope="col" class="min-w-36 p-3">{{ $t(checkpoint.name) }}</th>
+            <SortableHeader column="place" :label="$t('Place')" :sort-key="sortKey" :direction="sortDirection" class="min-w-20 p-3" @sort="sortBy"/>
+            <SortableHeader column="bib_number" :label="$t('Bib number')" :sort-key="sortKey" :direction="sortDirection" class="min-w-24 p-3" @sort="sortBy"/>
+            <SortableHeader column="name" :label="$t('Name')" :sort-key="sortKey" :direction="sortDirection" class="sticky left-0 z-30 min-w-44 bg-surface p-3 sm:min-w-60" @sort="sortBy"/>
+            <SortableHeader column="latest_checkpoint" :label="$t('Latest checkpoint')" :sort-key="sortKey" :direction="sortDirection" class="min-w-40 p-3" @sort="sortBy"/>
+            <SortableHeader v-for="checkpoint in checkpoints" :key="checkpoint.id" :column="`checkpoint:${checkpoint.id}`" :label="$t(checkpoint.name)" :sort-key="sortKey" :direction="sortDirection" class="min-w-36 p-3" @sort="sortBy"/>
           </tr>
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id" class="border-t border-outline">
+            <td class="p-3 align-top text-lg font-bold tabular-nums text-accent">{{ row.place ?? '—' }}</td>
+            <td class="p-3 align-top tabular-nums">{{ row.bib_number ?? '—' }}</td>
             <th scope="row" class="sticky left-0 z-10 bg-surface p-3 align-top font-normal">
-              <div class="flex items-start gap-2 sm:gap-3">
-                <strong class="w-6 shrink-0 text-lg tabular-nums text-accent">{{ row.place ?? '—' }}</strong>
-                <div class="w-28 min-w-0 sm:w-44">
-                  <strong class="block break-words">{{ row.name }}</strong>
-                  <span class="mt-1 block break-words text-xs muted">{{ bibLabel(row.bib_number) }} · {{ $t(row.type) }}</span>
-                  <span class="mt-1 block text-xs" :class="row.finished ? 'text-success' : 'text-muted'">{{ $t(row.result_status) }}</span>
-                </div>
+              <div class="w-36 min-w-0 sm:w-52">
+                <strong class="block break-words">{{ row.name }}</strong>
+                <span class="mt-1 block break-words text-xs muted">{{ bibLabel(row.bib_number) }} · {{ $t(row.type) }}</span>
+                <span class="mt-1 block text-xs" :class="row.finished ? 'text-success' : 'text-muted'">{{ $t(row.result_status) }}</span>
               </div>
             </th>
             <td class="p-3 align-top">
@@ -63,7 +67,7 @@ const rows = computed(() => {
               {{ formatDuration(row.splits.find(split => split.checkpoint_id === checkpoint.id)?.elapsed_ms ?? null, 2) }}
             </td>
           </tr>
-          <tr v-if="!rows.length"><td :colspan="checkpoints.length + 2" class="p-6 muted">{{ search ? $t('No matching athlete.') : $t('No participants yet. Standings will appear here when athletes are added.') }}</td></tr>
+          <tr v-if="!rows.length"><td :colspan="checkpoints.length + 4" class="p-6 muted">{{ search ? $t('No matching athlete.') : $t('No participants yet. Standings will appear here when athletes are added.') }}</td></tr>
         </tbody>
       </table>
     </div>

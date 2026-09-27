@@ -9,6 +9,7 @@ use App\Models\EntryChange;
 use Illuminate\Validation\ValidationException;
 use App\Models\Race;
 use App\Services\AthleteLookupService;
+use App\Services\TimingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -118,7 +119,7 @@ class EntryController extends Controller
             $ids=$entry->members()->pluck('athlete_id')->unique()->sort()->values()->all();
             $provided=collect($data['athletes'])->pluck('id')->map(fn($id)=>(int)$id)->sort()->values()->all();
             if($ids!==$provided)throw ValidationException::withMessages(['athletes'=>__('Edit the existing athletes; changing relay membership requires official review.')]);
-            if($data['status']==='dns'&&$entry->timings()->exists())throw ValidationException::withMessages(['status'=>__('This participant has timing history. Use DNF or disqualification instead of DNS.')]);
+            if ($data['status'] === 'dns') app(TimingService::class)->clearForDns($entry, $request->user());
             foreach($data['athletes'] as $person){
                 $email=empty($person['email'])?null:strtolower($person['email']);
                 if($email&&Athlete::where('email',$email)->where('id','!=',$person['id'])->exists())throw ValidationException::withMessages(['athletes'=>'That email belongs to another athlete.']);
@@ -158,11 +159,7 @@ class EntryController extends Controller
             ];
             $before = $snapshot();
 
-            if ($data['status'] === 'dns' && $entry->timings()->exists()) {
-                throw ValidationException::withMessages([
-                    'status' => 'This participant has timing history. Use DNF or disqualification instead of DNS.',
-                ]);
-            }
+            if ($data['status'] === 'dns') app(TimingService::class)->clearForDns($entry, $request->user());
 
             $entry->update(collect($data)->only(['bib_number', 'status'])->all());
             EntryChange::create([

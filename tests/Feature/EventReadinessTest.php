@@ -45,7 +45,9 @@ class EventReadinessTest extends TestCase {
         $this->assertNull($row['place']);$this->assertSame(120000,$row['total_ms']);$this->assertSame('DSQ',$row['result_status']);
         $this->assertSame([],app(ResultsService::class)->filtered($race,['category'=>'Other']));
         $this->get("/races/$race->id/results.csv?status=DSQ")->assertOk()->assertDownload();
-        $this->put("/races/$race->id/participants/$entry->id",['bib_number'=>null,'category'=>'Open','status'=>'dns','reason'=>'Incorrect status','athletes'=>$entry->members()->with('athlete')->get()->pluck('athlete')->unique('id')->map->only(['id','first_name','last_name','email','club'])->values()->all()])->assertSessionHasErrors('status');
+        $this->put("/races/$race->id/participants/$entry->id",['bib_number'=>null,'category'=>'Open','status'=>'dns','reason'=>'Incorrect status','athletes'=>$entry->members()->with('athlete')->get()->pluck('athlete')->unique('id')->map->only(['id','first_name','last_name','email','club'])->values()->all()])->assertSessionHasNoErrors();
+        $this->assertSame('dns', $entry->fresh()->status);
+        $this->assertSame(0, $entry->timings()->where('status', 'recorded')->count());
     }
     public function test_offline_replay_can_use_its_original_checkpoint_after_selection_changes():void {
         Event::fake();[$admin,$race,$entry]=$this->fixture();$organizer=User::factory()->create(['role'=>UserRole::Official]);$organizer->races()->attach($race);

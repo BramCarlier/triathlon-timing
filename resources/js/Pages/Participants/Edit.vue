@@ -43,7 +43,7 @@ function changeLines(change:Change):string[] {
     <form class="panel-pad max-w-3xl" @submit.prevent="save">
       <div v-if="race.started_at" class="mb-4 rounded-xl border border-outline bg-canvas p-4">
         <strong>{{ $t("The race has started.") }}</strong>
-        <p class="mt-1 text-sm muted">{{ $t("You can still add or change a bib number or correct the result status. You can optionally include a reason for the change. Athlete details stay locked and recorded times are preserved.") }}</p>
+        <p class="mt-1 text-sm muted">{{ $t("You can still add or change a bib number or correct the result status. The reason is optional. Athlete details stay locked. Selecting DNS removes all recorded times for this race.") }}</p>
       </div>
 
       <h2 class="mb-4 text-lg font-bold">{{ entry.type==='relay' ? entry.team_name : [entry.members[0]?.athlete.first_name, entry.members[0]?.athlete.last_name].filter(Boolean).join(' ') }}</h2>
@@ -55,7 +55,9 @@ function changeLines(change:Change):string[] {
         </template>
         <label class="label">{{ $t("Result status") }}<select v-model="form.status" class="field"><option value="registered">{{ $t("Competing / normal result") }}</option><option value="dns">{{ $t("DNS — did not start") }}</option><option value="dnf">{{ $t("DNF — did not finish") }}</option><option value="dsq">{{ $t("DSQ — disqualified") }}</option></select></label>
       </div>
-      <p class="mt-3 text-sm muted">{{ $t("DNS, DNF and DSQ are excluded from places. Recorded timings remain available.") }}</p>
+      <p class="mt-3 text-sm muted">{{ $t("DNS, DNF and DSQ are excluded from places. DNS removes all recorded times for this race; DNF and DSQ keep their times.") }}</p>
+
+      <p v-if="form.status==='dns'" role="status" class="mt-3 rounded-xl bg-amber-500/10 p-3 text-sm text-warning">{{ $t('Saving DNS deletes all time registrations for this participant in this race. Changing the status back will not restore them.') }}</p>
 
       <template v-if="!race.started_at">
         <p class="mt-4 text-sm muted">{{ $t("Athlete profile corrections apply everywhere this athlete is reused.") }}</p>

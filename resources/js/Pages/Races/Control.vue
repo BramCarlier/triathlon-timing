@@ -5,12 +5,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
+import DeleteTimingButton from '../../Components/DeleteTimingButton.vue';
 import { formatDuration, bibLabel } from '../../lib';
 import type { Checkpoint, Race } from '../../types';
 
 interface Timing { id:number; elapsed_ms:number; recorded_at:string; entry:{bib_number:string|null;display_name:string}; checkpoint:{name:string}; operator?:{name:string} }
 interface Presence { id:number; pending_count:number; last_seen_at:string; user?:{name:string}; checkpoint?:{name:string} }
-interface EntryOption { id:number; bib_number:string|null; name:string; timings:Array<{checkpoint_id:number;elapsed_ms:number}> }
+interface EntryOption { id:number; bib_number:string|null; name:string; timings:Array<{id:number;checkpoint_id:number;elapsed_ms:number}> }
 
 const props = defineProps<{ race: Race & {checkpoints:Checkpoint[]; entries_count:number}; recentTimings:Timing[]; presence:Presence[]; completedCount:number; entries:EntryOption[] }>();
 
@@ -24,7 +25,8 @@ const correction = useForm({
   notes:'',
 });
 const confirmingCorrection=ref(false);
-const oldTiming=computed(()=>props.entries.find(entry=>entry.id===Number(correction.entry_id))?.timings.find(timing=>timing.checkpoint_id===Number(correction.checkpoint_id))?.elapsed_ms);
+const selectedTiming=computed(()=>props.entries.find(entry=>entry.id===Number(correction.entry_id))?.timings.find(timing=>timing.checkpoint_id===Number(correction.checkpoint_id)));
+const oldTiming=computed(()=>selectedTiming.value?.elapsed_ms);
 const proposedTime=computed(()=>Number(correction.hours)*3600000+Number(correction.minutes)*60000+Number(correction.seconds)*1000+Number(correction.millis));
 const correctionSummary=computed(()=>`${props.entries.find(entry=>entry.id===Number(correction.entry_id))?.name} · ${tr(props.race.checkpoints.find(cp=>cp.id===Number(correction.checkpoint_id))?.name??'')}: ${oldTiming.value==null?tr('No recorded time'):formatDuration(oldTiming.value,3)} → ${formatDuration(proposedTime.value,3)}. ${tr('The previous record remains in the audit history.')}`);
 const submitCorrection = () => {
@@ -40,12 +42,12 @@ const submitCorrection = () => {
 };
 
 const channelName=`race.${props.race.id}`;
-useRaceRefresh(()=>['presence','race','recentTimings','completedCount']);
+useRaceRefresh(()=>['presence','race','recentTimings','completedCount','entries']);
 onMounted(()=>{
   const echo=(window as any).Echo;
   if(echo) echo.private(channelName)
-    .listen('.timing.recorded',()=>router.reload({only:['recentTimings','completedCount','presence']}))
-    .listen('.timing.voided',()=>router.reload({only:['recentTimings','completedCount','presence']}))
+    .listen('.timing.recorded',()=>router.reload({only:['recentTimings','completedCount','presence','entries']}))
+    .listen('.timing.voided',()=>router.reload({only:['recentTimings','completedCount','presence','entries']}))
     .listen('.race.finished',()=>router.reload({only:['race','recentTimings','completedCount']}));
 });
 onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelName);});
@@ -96,6 +98,7 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
             <label class="label">{{ $t("Checkpoint") }}<select v-model="correction.checkpoint_id" class="field" required><option :value="null">{{ $t("Choose checkpoint") }}</option><option v-for="cp in race.checkpoints.filter(c=>c.kind!=='start')" :key="cp.id" :value="cp.id">{{ $t(cp.name) }}</option></select></label>
           </div>
           <p class="rounded-xl bg-canvas p-3 text-sm">{{ $t("Current timing:") }} <strong class="font-mono">{{ oldTiming==null?$t('Not recorded'):formatDuration(oldTiming,3) }}</strong></p>
+          <DeleteTimingButton v-if="selectedTiming" :key="selectedTiming.id" :race-id="race.id" :timing-id="selectedTiming.id" :label="`${entries.find(entry=>entry.id===Number(correction.entry_id))?.name ?? ''} · ${$t(race.checkpoints.find(cp=>cp.id===Number(correction.checkpoint_id))?.name ?? 'Checkpoint')} · ${formatDuration(selectedTiming.elapsed_ms,3)}`"/>
           <fieldset>
             <legend class="label">{{ $t("Correct elapsed time") }}</legend>
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -120,7 +123,7 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
         <div v-for="timing in recentTimings" :key="timing.id" class="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
           <div><strong>{{ timing.entry.display_name }}</strong><span class="block text-xs muted">{{ bibLabel(timing.entry.bib_number) }}</span></div>
           <div><span class="font-semibold">{{ $t(timing.checkpoint.name) }}</span><span class="block text-sm muted">{{ timing.operator?.name }}</span></div>
-          <div class="font-mono font-semibold">{{ formatDuration(timing.elapsed_ms,2) }}</div>
+          <div class="flex flex-wrap items-center gap-2"><span class="font-mono font-semibold">{{ formatDuration(timing.elapsed_ms,2) }}</span><DeleteTimingButton :race-id="race.id" :timing-id="timing.id" :label="`${timing.entry.display_name} · ${$t(timing.checkpoint.name)} · ${formatDuration(timing.elapsed_ms,2)}`"/></div>
         </div>
       </div>
       <p v-else class="mt-3 muted">{{ $t("No timings recorded yet.") }}</p>

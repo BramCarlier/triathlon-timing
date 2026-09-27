@@ -17,6 +17,7 @@ use App\Models\TimingRecord;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TimingService
 {
@@ -35,6 +36,9 @@ class TimingService
             if ($existing = TimingRecord::where('client_uuid', $uuid)->first()) {
                 if ($existing->race_id !== $race->id || $existing->entry_id !== $entry->id || $existing->checkpoint_id !== $checkpoint->id || $existing->operator_id !== $operator?->id) {
                     throw new TimingConflictException(__('This timing request identifier is already in use.'));
+                }
+                if ($existing->status === TimingStatus::Voided) {
+                    throw new TimingConflictException(__('This time registration has been deleted. Record a new time if needed.'));
                 }
                 return $existing;
             }
@@ -104,7 +108,10 @@ class TimingService
 
         $voided = null;
         $timing = DB::transaction(function () use ($race, $entry, $checkpoint, $operator, $elapsedMs, $notes, &$voided) {
-            Entry::query()->lockForUpdate()->findOrFail($entry->id);
+            $lockedEntry = Entry::query()->lockForUpdate()->findOrFail($entry->id);
+            if ($lockedEntry->status === 'dns') {
+                throw ValidationException::withMessages(['entry_id' => __('Change the participant status from DNS before adding a timing.')]);
+            }
             $voided = TimingRecord::query()
                 ->where('entry_id', $entry->id)
                 ->where('checkpoint_id', $checkpoint->id)
@@ -148,9 +155,30 @@ class TimingService
 
     public function void(TimingRecord $timing, User $user, ?string $reason = null): TimingRecord
     {
-        if ($timing->status === TimingStatus::Voided) return $timing;
-        $timing->forceFill(['status' => TimingStatus::Voided, 'voided_at' => now('UTC'), 'voided_by' => $user->id, 'notes' => trim(($timing->notes ? $timing->notes."\n" : '').($reason ?? 'Voided by operator'))])->save();
-        RaceBroadcast::dispatch(new TimingVoided($timing));
-        return $timing->fresh();
+        return DB::transaction(function () use ($timing, $user, $reason) {
+            // Use the same lock as recording, corrections and participant status edits.
+            Entry::query()->lockForUpdate()->findOrFail($timing->entry_id);
+            $timing = TimingRecord::query()->findOrFail($timing->id);
+            if ($timing->status === TimingStatus::Voided) return $timing;
+
+            $timing->forceFill([
+                'status' => TimingStatus::Voided,
+                'voided_at' => now('UTC'),
+                'voided_by' => $user->id,
+                'notes' => trim(($timing->notes ? $timing->notes."\n" : '').($reason ?: 'Voided by operator')),
+            ])->save();
+            DB::afterCommit(fn () => RaceBroadcast::dispatch(new TimingVoided($timing)));
+            return $timing;
+        });
+    }
+
+    public function clearForDns(Entry $entry, User $user): void
+    {
+        DB::transaction(function () use ($entry, $user) {
+            $entry = Entry::query()->lockForUpdate()->findOrFail($entry->id);
+            foreach ($entry->timings()->where('status', TimingStatus::Recorded->value)->get() as $timing) {
+                $this->void($timing, $user, 'Removed because participant was marked DNS.');
+            }
+        });
     }
 }

@@ -893,5 +893,22 @@
   "Current positions and cumulative checkpoint times. Equal times at the same checkpoint share a position. DNS, DNF and DSQ are not ranked.": "Huidige posities en cumulatieve tussentijden. Gelijke tijden bij hetzelfde controlepunt delen een positie. DNS, DNF en DSQ krijgen geen positie.",
   "Latest checkpoint": "Laatste controlepunt",
   "No time recorded yet": "Nog geen tijd geregistreerd",
-  "No participants yet. Standings will appear here when athletes are added.": "Nog geen deelnemers. De tussenstand verschijnt hier zodra er atleten zijn toegevoegd."
+  "No participants yet. Standings will appear here when athletes are added.": "Nog geen deelnemers. De tussenstand verschijnt hier zodra er atleten zijn toegevoegd.",
+  "Time registration deleted.": "Tijdregistratie verwijderd.",
+  "Change the participant status from DNS before adding a timing.": "Wijzig de DNS-status van de deelnemer voordat je een tijd toevoegt.",
+  "Delete time: :label": "Tijd verwijderen: :label",
+  "Delete time registration?": "Tijdregistratie verwijderen?",
+  "Delete time": "Tijd verwijderen",
+  "This time will be removed from the results and live standings. A record remains in the audit history.": "Deze tijd wordt verwijderd uit de uitslagen en de tussenstand. De verwijdering blijft bewaard in de wijzigingsgeschiedenis.",
+  "You can still add or change a bib number or correct the result status. The reason is optional. Athlete details stay locked. Selecting DNS removes all recorded times for this race.": "Je kunt nog een startnummer toevoegen of wijzigen en de resultaatstatus aanpassen. De reden is optioneel. Atleetgegevens blijven vergrendeld. DNS verwijdert alle geregistreerde tijden voor deze wedstrijd.",
+  "DNS, DNF and DSQ are excluded from places. DNS removes all recorded times for this race; DNF and DSQ keep their times.": "DNS, DNF en DSQ krijgen geen plaats. DNS verwijdert alle geregistreerde tijden voor deze wedstrijd; DNF en DSQ behouden hun tijden.",
+  "Places and gaps apply to the selected group. Equal total milliseconds share a place (1, 1, 3). DNS has no recorded times. DNF and DSQ keep their timings but receive no place.": "Plaatsen en achterstanden gelden voor de geselecteerde groep. Gelijke totaaltijden in milliseconden delen een plaats (1, 1, 3). DNS heeft geen geregistreerde tijden. DNF en DSQ behouden hun tijden, maar krijgen geen plaats.",
+  "Saving DNS deletes all time registrations for this participant in this race. Changing the status back will not restore them.": "Als je DNS opslaat, worden alle tijdregistraties van deze deelnemer in deze wedstrijd verwijderd. De status terugzetten herstelt deze tijden niet.",
+  "This time registration has been deleted. Record a new time if needed.": "Deze tijdregistratie is verwijderd. Registreer zo nodig een nieuwe tijd.",
+  "Sort ascending": "Oplopend sorteren",
+  "Sort descending": "Aflopend sorteren",
+  "Sort results by": "Resultaten sorteren op",
+  "Ascending": "Oplopend",
+  "Descending": "Aflopend",
+  "Race results. Select a column header to sort; select it again to reverse the order. Official places do not change.": "Wedstrijduitslagen. Selecteer een kolomkop om te sorteren; selecteer opnieuw om de volgorde om te keren. Officiële plaatsen veranderen niet."
 }

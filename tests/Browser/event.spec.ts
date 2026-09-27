@@ -24,4 +24,22 @@ test('offline recovery, account isolation, audited edits, filtered results and f
   await expect(spectator.getByRole('cell',{name:'Offline Runner',exact:false})).toBeVisible();await expect(spectator.getByRole('link',{name:'Race control',exact:true})).toHaveCount(0);await expect(spectator.getByRole('link',{name:'Export CSV'})).toHaveCount(0);await spectator.getByText('Display options',{exact:true}).click();await spectator.getByRole('button',{name:'Large-screen display'}).click();await expect(spectator.getByText('Page 1 of 1',{exact:true})).toBeVisible();await spectator.getByRole('button',{name:'Exit display mode'}).click();
   await page.getByRole('button',{name:'Unpublish',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Unpublish',exact:true}).click();await expect(page.getByText('Public leaderboard unpublished.',{exact:false})).toBeVisible();await spectator.reload();await expect(spectator.getByRole('heading',{name:'404',exact:true})).toBeVisible();await guestContext.close();
 
+  await page.goto(`${racePath}/control`);
+  const correctionForm=page.locator('form').filter({has:page.getByLabel('Seconds',{exact:true})});
+  await expect(correctionForm).toContainText('00:00:04.321');
+  await correctionForm.getByRole('button',{name:/^Delete time:/}).click();
+  await expect(page.getByRole('dialog')).toContainText('00:00:04.321');
+  await page.getByRole('dialog').getByRole('button',{name:'Delete time',exact:true}).click();
+  await expect(correctionForm).toContainText('Not recorded');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.goto(`${racePath}/participants`);
+  await page.getByRole('link',{name:'Edit',exact:true}).click();
+  await page.getByLabel('Result status').selectOption('dns');
+  await expect(page.getByRole('status')).toContainText('Saving DNS deletes all time registrations');
+  await page.getByRole('button',{name:'Save participant'}).click();
+  await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();
+  await page.goto(`${racePath}/control`);
+  await page.getByText('Recent timings',{exact:true}).click();
+  await expect(page.getByText('No timings recorded yet.',{exact:true})).toBeVisible();
+
 });
