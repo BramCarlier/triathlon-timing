@@ -100,7 +100,7 @@ class EntryController extends Controller
     public function update(Request $request,Race $race,Entry $entry): RedirectResponse
     {
         Gate::authorize('manage-race',$race);abort_unless($entry->race_id===$race->id,404);abort_unless($request->user()->isAdmin(),403);
-        if ($race->started_at) return $this->updateResultStatus($request, $race, $entry);
+        if ($race->started_at) return $this->updateRaceDayDetails($request, $race, $entry);
         $data=$request->validate([
             'bib_number'=>['nullable','string','max:32',Rule::unique('entries')->where('race_id',$race->id)->ignore($entry->id)],
             'team_name'=>[$entry->type===EntryType::Relay?'required':'nullable','string','max:255'],
@@ -123,11 +123,11 @@ class EntryController extends Controller
                 $email=empty($person['email'])?null:strtolower($person['email']);
                 if($email&&Athlete::where('email',$email)->where('id','!=',$person['id'])->exists())throw ValidationException::withMessages(['athletes'=>'That email belongs to another athlete.']);
                 $athlete=Athlete::lockForUpdate()->findOrFail($person['id']);
-                $athlete->fill(['first_name'=>$person['first_name'],'last_name'=>$person['last_name'],'email'=>$email,'club'=>$person['club']??null]);
+                $athlete->fill(['first_name'=>$person['first_name'],'last_name'=>$person['last_name'] ?? '','email'=>$email,'club'=>$person['club']??null]);
                 $athlete->save();
             }
             $entry->update(collect($data)->only(['bib_number','team_name','category','status'])->all());
-            EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>$data['reason'] ?: 'Participant details updated']);
+            EntryChange::create(['entry_id'=>$entry->id,'user_id'=>$request->user()->id,'before'=>$before,'after'=>$snapshot(),'reason'=>($data['reason'] ?? null) ?: 'Participant details updated']);
         });
         return back()->with('success',__('Participant updated. The change is saved in the history.'));
     }
@@ -142,9 +142,10 @@ class EntryController extends Controller
     }
 
 
-    private function updateResultStatus(Request $request, Race $race, Entry $entry): RedirectResponse
+    private function updateRaceDayDetails(Request $request, Race $race, Entry $entry): RedirectResponse
     {
         $data = $request->validate([
+            'bib_number' => ['sometimes','nullable','string','max:32',Rule::unique('entries')->where('race_id', $race->id)->ignore($entry->id)],
             'status' => ['required', Rule::in(['registered','dns','dnf','dsq'])],
             'reason' => ['required','string','min:3','max:1000'],
         ]);
@@ -163,7 +164,7 @@ class EntryController extends Controller
                 ]);
             }
 
-            $entry->update(['status' => $data['status']]);
+            $entry->update(collect($data)->only(['bib_number', 'status'])->all());
             EntryChange::create([
                 'entry_id' => $entry->id,
                 'user_id' => $request->user()->id,
@@ -173,7 +174,7 @@ class EntryController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Participant result status updated. The reason is saved in the audit history.');
+        return back()->with('success', __('Participant updated. The change is saved in the history.'));
     }
 
     private function ensureRegistrationOpen(Race $race): void

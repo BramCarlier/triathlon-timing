@@ -604,14 +604,14 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       </div>
     </section>
 
-    <section v-if="isAdmin && !race.started_at" id="participants" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
+    <section v-if="isAdmin" id="participants" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='participants'" @click="toggleStep('participants')">
         <div><p class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ $t("Step 2") }}</p><h2 class="text-xl font-bold">{{ $t("Athletes") }}</h2><p class="mt-1 text-sm muted">{{ race.entries_count ?? 0 }} {{ $t("added") }}</p></div>
         <i :class="openStep==='participants'?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'" aria-hidden="true"></i>
       </button>
       <div v-show="openStep==='participants'" class="border-t border-outline p-4">
-        <div class="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
-          <form class="rounded-2xl border border-outline p-4" @submit.prevent="addParticipant">
+        <div class="grid gap-5" :class="!race.started_at ? 'xl:grid-cols-[.9fr_1.1fr]' : ''">
+          <form v-if="!race.started_at" class="rounded-2xl border border-outline p-4" @submit.prevent="addParticipant">
             <h3 class="font-bold">{{ $t("Add athlete") }}</h3>
             <p class="mt-1 text-sm muted">{{ $t("For a normal solo athlete, just enter the name. Bibs and everything else are optional.") }}</p>
 
@@ -649,7 +649,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
           </form>
 
           <section class="rounded-2xl border border-outline overflow-hidden">
-            <div class="border-b border-outline p-4"><h3 class="font-bold">{{ $t("Added athletes & teams") }}</h3></div>
+            <div class="border-b border-outline p-4"><h3 class="font-bold">{{ $t("Added athletes & teams") }}</h3><p class="mt-1 text-sm muted">{{ $t("Use Edit to add or change a bib number and update athlete details.") }}</p></div>
             <div v-if="participants.length" class="divide-y divide-outline">
               <div v-for="participant in participants.slice(0,10)" :key="participant.id" class="flex items-center gap-3 p-4">
                 <span class="max-w-24 shrink-0 rounded-xl bg-raised px-3 py-2 font-mono font-bold">{{ bibLabel(participant.bib_number) }}</span>
@@ -778,7 +778,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
       <p class="mt-2 text-sm muted">{{ $t("Only use these when the normal race flow is not enough.") }}</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
         <Link v-if="can('timings.record')" :href="`/races/${race.id}/station`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-stopwatch mr-2" aria-hidden="true"></i>{{ $t("Full-screen timing station") }}</strong><p class="mt-2 text-sm muted">{{ $t("The same race timing workflow with extra offline and device recovery controls.") }}</p></Link>
-        <Link v-if="isAdmin && !race.started_at" :href="`/races/${race.id}/participants`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-users mr-2" aria-hidden="true"></i>{{ $t("Full participant list") }}</strong><p class="mt-2 text-sm muted">{{ $t("Search or edit registration details before the start.") }}</p></Link>
+        <Link v-if="isAdmin" :href="`/races/${race.id}/participants`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-users mr-2" aria-hidden="true"></i>{{ $t("Full participant list") }}</strong><p class="mt-2 text-sm muted">{{ $t("Find athletes, assign bib numbers or correct result statuses.") }}</p></Link>
         <Link v-if="isAdmin && race.started_at" :href="`/races/${race.id}/control`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-screwdriver-wrench mr-2" aria-hidden="true"></i>{{ $t("Corrections & station health") }}</strong><p class="mt-2 text-sm muted">{{ $t("Correct recorded times or check which timing stations are online.") }}</p></Link>
       </div>
       <div v-if="isAdmin && !race.started_at" class="mt-5 border-t border-red-500/20 pt-5"><button class="btn-danger" @click="deleting=true"><i class="fa-solid fa-trash" aria-hidden="true"></i>{{ $t("Delete race") }}</button></div>
