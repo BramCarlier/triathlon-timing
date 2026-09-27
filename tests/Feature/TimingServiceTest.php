@@ -7,8 +7,9 @@ use App\Enums\EntryType;
 use App\Enums\RaceStatus;
 use App\Enums\UserRole;
 use App\Exceptions\TimingConflictException;
-use App\Exceptions\TimingWarningException;
 use App\Models\Athlete;
+use App\Models\CheckpointAssignment;
+use App\Services\ResultsService;
 use App\Models\Entry;
 use App\Models\Race;
 use App\Models\User;
@@ -36,11 +37,32 @@ class TimingServiceTest extends TestCase
         return compact('operator','race','swim','bike','entry','athlete');
     }
 
-    public function test_checkpoint_progression_warns_if_required_prior_checkpoint_is_missing(): void
+    public static function recordingSources(): array
+    {
+        return [['online'], ['offline']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('recordingSources')]
+    public function test_later_checkpoint_records_immediately_and_skipped_checkpoint_stays_blank(string $source): void
     {
         $data = $this->setupRace();
-        $this->expectException(TimingWarningException::class);
-        app(TimingService::class)->record($data['race'],$data['entry'],$data['bike'],$data['operator'],['client_uuid'=>(string)\Illuminate\Support\Str::uuid(),'source'=>'online','observed_at'=>now()->toISOString()]);
+        CheckpointAssignment::create(['race_id' => $data['race']->id, 'checkpoint_id' => $data['bike']->id, 'user_id' => $data['operator']->id]);
+        $response = $this->actingAs($data['operator'])->postJson('/races/'.$data['race']->id.'/timings', [
+            'operator_id' => $data['operator']->id,
+            'entry_id' => $data['entry']->id,
+            'checkpoint_id' => $data['bike']->id,
+            'client_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'source' => $source,
+            'observed_at' => now()->subSeconds(5)->toISOString(),
+        ])->assertOk()->assertJsonMissingPath('warning');
+        $this->assertDatabaseCount('timing_records', 1);
+        $this->assertDatabaseMissing('timing_records', ['checkpoint_id' => $data['swim']->id]);
+        foreach ([app(ResultsService::class)->rows($data['race']), app(ResultsService::class)->live($data['race'])] as $rows) {
+            $splits = collect($rows[0]['splits'])->keyBy('checkpoint_id');
+            $this->assertNull($splits[$data['swim']->id]['elapsed_ms']);
+            $this->assertNull($splits[$data['swim']->id]['split_ms']);
+            $this->assertSame($response->json('timing.elapsed_ms'), $splits[$data['bike']->id]['elapsed_ms']);
+        }
     }
 
     public function test_record_is_idempotent_by_client_uuid_and_attributes_leg_athlete(): void

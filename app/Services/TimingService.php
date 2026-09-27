@@ -9,7 +9,6 @@ use App\Enums\TimingStatus;
 use App\Events\TimingRecorded;
 use App\Events\TimingVoided;
 use App\Exceptions\TimingConflictException;
-use App\Exceptions\TimingWarningException;
 use App\Models\Checkpoint;
 use App\Models\Entry;
 use App\Models\Race;
@@ -49,24 +48,6 @@ class TimingService
                 ->where('status', TimingStatus::Recorded->value)
                 ->first();
             if ($active) throw new TimingConflictException(__('This participant is already recorded at this checkpoint.'));
-
-            $priorRequired = Checkpoint::query()
-                ->where('race_id', $race->id)
-                ->where('sequence', '<', $checkpoint->sequence)
-                ->where('is_required', true)
-                ->where('is_active', true)
-                ->where('kind', '!=', CheckpointKind::Start->value)
-                ->pluck('id');
-            $recordedPrior = TimingRecord::query()
-                ->where('entry_id', $entry->id)
-                ->whereIn('checkpoint_id', $priorRequired)
-                ->where('status', TimingStatus::Recorded->value)
-                ->pluck('checkpoint_id');
-            $missingIds = $priorRequired->diff($recordedPrior)->values();
-            if ($missingIds->isNotEmpty() && empty($data['override_warning'])) {
-                $missing = Checkpoint::whereIn('id', $missingIds)->orderBy('sequence')->pluck('name')->map(fn ($name) => __($name))->all();
-                throw new TimingWarningException(__('One or more earlier required checkpoints are missing.'), ['missing_checkpoints' => $missing]);
-            }
 
             $serverNow = CarbonImmutable::now('UTC');
             $observed = !empty($data['observed_at']) ? CarbonImmutable::parse($data['observed_at'])->utc() : $serverNow;

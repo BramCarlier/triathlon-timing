@@ -44,7 +44,8 @@ export function useOfflineTimingQueue(raceId:number,operatorId:number) {
       const run=async()=>{
         for(const item of await scoped()) {
           if(disposed)break;
-          if(!mayReplay(item.operator_id,operatorId)||item.blocked)continue;
+          // Old versions blocked skipped checkpoints as warnings. Retry those normally.
+          if(!mayReplay(item.operator_id,operatorId)||(item.blocked&&!item.warning))continue;
           try {
             const {response,data}=await jsonRequest<{message?:string;warning?:boolean;timing?:{client_uuid:string}}>(item.url,{method:'POST',body:JSON.stringify(item.payload),signal:AbortSignal.timeout(12000)});
             if(response.ok&&data.timing?.client_uuid===item.client_uuid){await remove(item.client_uuid);changed=true;}
@@ -56,9 +57,9 @@ export function useOfflineTimingQueue(raceId:number,operatorId:number) {
       await refresh();return changed;
     } finally {flushing.value=false;}
   };
-  const retry=async(id:string,override=false)=>{
+  const retry=async(id:string)=>{
     const item=(await scoped()).find(i=>i.client_uuid===id&&mayReplay(i.operator_id,operatorId));
-    if(item)await put({...item,blocked:false,error:undefined,payload:{...item.payload,override_warning:override||item.payload.override_warning}});
+    if(item)await put({...item,blocked:false,error:undefined,payload:item.payload});
     return flush();
   };
   const discard=async(id:string)=>{const item=(await scoped()).find(i=>i.client_uuid===id&&mayReplay(i.operator_id,operatorId));if(item)await remove(id);await refresh();};
