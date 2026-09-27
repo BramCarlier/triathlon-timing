@@ -187,6 +187,10 @@ test.describe('responsive layouts', () => {
         await expect(page.locator('h1')).toBeVisible();
         await atSizes(page, '/admin/roles', representativeSizes);
 
+        await page.goto('/admin/deleted-races');
+        await expect(page.getByRole('heading', { name: 'Deleted races', exact: true })).toBeVisible();
+        await atSizes(page, '/admin/deleted-races', representativeSizes);
+
         await page.goto('/account/password');
         await expect(page.locator('h1')).toBeVisible();
         await atSizes(page, '/account/password', representativeSizes);

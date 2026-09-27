@@ -93,6 +93,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/deleted-races', [RaceController::class, 'deleted'])->name('admin.races.deleted');
         Route::get('/admin/roles', [\App\Http\Controllers\AccessRoleController::class,'index'])->name('roles.index');
         Route::post('/admin/roles', [\App\Http\Controllers\AccessRoleController::class,'store'])->name('roles.store');
         Route::put('/admin/roles/{accessRole}', [\App\Http\Controllers\AccessRoleController::class,'update'])->name('roles.update');

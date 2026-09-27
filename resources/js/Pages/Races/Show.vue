@@ -780,7 +780,7 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
         <Link v-if="isAdmin" :href="`/races/${race.id}/participants`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-users mr-2" aria-hidden="true"></i>{{ $t("Full participant list") }}</strong><p class="mt-2 text-sm muted">{{ $t("Find athletes, assign bib numbers or correct result statuses.") }}</p></Link>
         <Link v-if="isAdmin && race.started_at" :href="`/races/${race.id}/control`" class="rounded-xl border border-outline p-4 hover:bg-raised"><strong><i class="fa-solid fa-screwdriver-wrench mr-2" aria-hidden="true"></i>{{ $t("Corrections & station health") }}</strong><p class="mt-2 text-sm muted">{{ $t("Correct recorded times or check which timing stations are online.") }}</p></Link>
       </div>
-      <div v-if="isAdmin && !race.started_at" class="mt-5 border-t border-red-500/20 pt-5"><button class="btn-danger" @click="deleting=true"><i class="fa-solid fa-trash" aria-hidden="true"></i>{{ $t("Delete race") }}</button></div>
+      <div v-if="isAdmin && (!race.started_at || race.finished_at)" class="mt-5 border-t border-red-500/20 pt-5"><button class="btn-danger" @click="deleting=true"><i class="fa-solid fa-trash" aria-hidden="true"></i>{{ $t("Delete race") }}</button></div>
     </details>
 
     <ConfirmDialog

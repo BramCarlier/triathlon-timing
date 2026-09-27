@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { tr } from '../../i18n';
 import { usePermissions } from '../../Composables/usePermissions';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import RaceClock from '../../Components/RaceClock.vue';
 import { useRaceRefresh } from '../../Composables/useRaceRefresh';
@@ -11,7 +11,7 @@ import type { PageProps, Race } from '../../types';
 const can=usePermissions();
 const page=usePage<PageProps>();
 const isAdmin=page.props.auth.user?.role==='admin';
-defineProps<{races:Race[];deletedRaces:Race[];serverNow:string}>();
+defineProps<{races:Race[];serverNow:string}>();
 useRaceRefresh(()=>['races','serverNow']);
 
 const statusLabel=(race:Race)=>{
@@ -61,15 +61,5 @@ const statusLabel=(race:Race)=>{
       </Link>
     </section>
 
-    <details v-if="deletedRaces.length" class="panel-pad mt-6">
-      <summary class="cursor-pointer font-bold">{{ $t("Deleted races ·") }} {{ deletedRaces.length }}</summary>
-      <p class="mt-2 text-sm muted">{{ $t("These are hidden from normal race work but can still be restored.") }}</p>
-      <div v-for="race in deletedRaces" :key="race.id" class="flex flex-wrap items-center justify-between gap-3 border-b border-outline py-4 last:border-0">
-        <div><h3 class="font-semibold">{{ race.name }}</h3><p class="text-sm muted">{{ formatDate(race.event_date) }}</p></div>
-        <button class="btn-secondary" @click="router.post(`/races/${race.id}/restore`)">
-          <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>{{ $t("Restore") }}
-        </button>
-      </div>
-    </details>
   </AppLayout>
 </template>
