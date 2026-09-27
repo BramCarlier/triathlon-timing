@@ -14,6 +14,7 @@ use App\Services\TimingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Services\ResultsService;
 use Inertia\Inertia;
 
 class PublicRaceController extends Controller
@@ -105,6 +106,7 @@ class PublicRaceController extends Controller
             ],
             'token' => $token,
             'participants' => $participants,
+            'standings' => fn () => app(ResultsService::class)->live($race),
             'recentTimings' => $recentTimings,
             'completedCount' => $completedCount,
             'serverNow' => now('UTC')->toISOString(),

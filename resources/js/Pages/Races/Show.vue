@@ -5,6 +5,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
 import RaceClock from '../../Components/RaceClock.vue';
+import LiveStandings from '../../Components/LiveStandings.vue';
 import LiveUpdatesStatus from '../../Components/LiveUpdatesStatus.vue';
 import RaceAthletePicker from '../../Components/RaceAthletePicker.vue';
 import { usePermissions } from '../../Composables/usePermissions';
@@ -12,7 +13,7 @@ import { useRaceRefresh } from '../../Composables/useRaceRefresh';
 import { useOfflineTimingQueue } from '../../Composables/useOfflineTimingQueue';
 import { checkpointDistanceText } from '../../checkpointDistance';
 import { bibLabel, formatDuration, jsonRequest, uuid } from '../../lib';
-import type { Checkpoint, PageProps, Race, StationParticipant } from '../../types';
+import type { LiveStanding, Checkpoint, PageProps, Race, StationParticipant } from '../../types';
 
 interface Official {
   id: number;
@@ -70,6 +71,7 @@ const props = defineProps<{
   participants: StationParticipant[];
   recentTimings: Timing[];
   completedCount: number;
+  standings: LiveStanding[];
   serverNow: string;
 }>();
 
@@ -92,7 +94,7 @@ const copyRaceDayLink = async () => {
   }
 };
 
-useRaceRefresh(() => ['race', 'participants', 'recentTimings', 'completedCount', 'serverNow', 'checkpointAssignments', 'allowedTimingCheckpointIds']);
+useRaceRefresh(() => ['race', 'participants', 'recentTimings', 'standings', 'completedCount', 'serverNow', 'checkpointAssignments', 'allowedTimingCheckpointIds']);
 
 const orderedCheckpoints = computed(() => [...props.race.checkpoints].sort((a,b) => a.sequence-b.sequence));
 const setupCheckpoints = computed(() => orderedCheckpoints.value.filter(cp => cp.kind !== 'start'));
@@ -364,7 +366,7 @@ async function recordTiming(participant:StationParticipant, override=false, clie
       if(selectedCheckpoint.value?.kind==='finish')localCompletedCount.value+=1;
       timingSearch.value='';
       showTimingFeedback('ok',data.message??tr('Time recorded.'));
-      if(data.auto_finished)router.reload({only:['race','serverNow','completedCount']});
+      router.reload({only:['standings', ...(data.auto_finished ? ['race','serverNow','completedCount'] : [])]});
       return;
     }
     if(response.status===409&&data.warning){
@@ -384,7 +386,7 @@ const confirmTimingOverride = () => {
   timingConfirmation.value = null;
   if (item) void recordTiming(item.participant, true, item.clientUuid);
 };
-const syncWorkspaceQueue=async()=>{if(await flushWorkspaceTiming())router.reload({only:['participants','recentTimings','completedCount','race','serverNow']});};
+const syncWorkspaceQueue=async()=>{if(await flushWorkspaceTiming())router.reload({only:['participants','recentTimings', 'standings','completedCount','race','serverNow']});};
 const handleWorkspaceOnline=()=>{workspaceOnline.value=true;void syncWorkspaceQueue();};
 const handleWorkspaceOffline=()=>{workspaceOnline.value=false;};
 onMounted(async()=>{window.addEventListener('online',handleWorkspaceOnline);window.addEventListener('offline',handleWorkspaceOffline);try{await refreshWorkspaceQueue();await syncWorkspaceQueue();}catch{/* full-screen timing exposes detailed storage recovery */}});
@@ -751,6 +753,8 @@ const deleteRace = () => deleteForm.delete(`/races/${props.race.id}`, { onSucces
         <section v-else class="panel-pad"><p class="font-semibold">{{ $t("Your account cannot record timings.") }}</p></section>
       </div>
     </section>
+
+    <LiveStandings :standings="standings" :checkpoints="race.checkpoints" :started="!!race.started_at" :finished="!!race.finished_at" class="mb-4"/>
 
     <section id="finish" class="mb-4 scroll-mt-28 rounded-2xl border border-outline bg-surface">
       <button type="button" class="flex w-full items-center justify-between gap-4 p-4 text-left" :aria-expanded="openStep==='finish'" @click="toggleStep('finish')">

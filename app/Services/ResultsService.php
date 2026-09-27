@@ -24,10 +24,47 @@ class ResultsService
         return $rows;
     }
 
-    public function rows(Race $race): array
+    /** Provisional places use course progress first, then elapsed time at that checkpoint. */
+    public function live(Race $race): array
     {
-        $checkpoints = $race->checkpoints()->where('kind', '!=', CheckpointKind::Start->value)->get();
-        $entries = $race->entries()->with(['members.athlete', 'timings' => fn ($q) => $q->where('status', TimingStatus::Recorded->value)->with('checkpoint')])->get();
+        $rows = collect($this->rows($race, activeOnly: true))->map(function ($row) use ($race) {
+            $latestIndex = null;
+            foreach ($row['splits'] as $index => $split) {
+                if ($split['elapsed_ms'] !== null) $latestIndex = $index;
+            }
+            $latest = $latestIndex !== null ? $row['splits'][$latestIndex] : null;
+            $row['latest_checkpoint'] = $latest['checkpoint'] ?? null;
+            $row['latest_elapsed_ms'] = $latest['elapsed_ms'] ?? null;
+            $row['place'] = null;
+            $row['result_status'] = $row['status'] !== 'registered'
+                ? strtoupper($row['status'])
+                : ($row['finished'] ? 'FINISHED' : ($race->started_at ? 'IN PROGRESS' : 'Awaiting start'));
+            $row['_rankable'] = $row['status'] === 'registered' && $latest !== null;
+            $row['_sort'] = [
+                $row['status'] !== 'registered' ? 3 : ($row['finished'] ? 0 : ($latest ? 1 : 2)),
+                $row['finished'] ? 0 : -($latestIndex ?? -1),
+                $row['finished'] ? $row['total_ms'] : ($row['latest_elapsed_ms'] ?? PHP_INT_MAX),
+            ];
+            return $row;
+        })->sort(fn ($a, $b) => ($a['_sort'] <=> $b['_sort']) ?: ($a['id'] <=> $b['id']))->values();
+
+        $previous = null;
+        $place = null;
+        return $rows->map(function ($row, $index) use (&$previous, &$place) {
+            if ($row['_rankable']) {
+                if ($row['_sort'] !== $previous) $place = $index + 1;
+                $row['place'] = $place;
+                $previous = $row['_sort'];
+            }
+            unset($row['_rankable'], $row['_sort']);
+            return $row;
+        })->all();
+    }
+
+    public function rows(Race $race, bool $activeOnly = false): array
+    {
+        $checkpoints = $race->checkpoints()->where('kind', '!=', CheckpointKind::Start->value)->when($activeOnly, fn ($q) => $q->where('is_active', true))->get();
+        $entries = $race->entries()->with(['members.athlete', 'timings' => fn ($q) => $q->where('status', TimingStatus::Recorded->value)->when($activeOnly, fn ($q) => $q->whereHas('checkpoint', fn ($q) => $q->where('is_active', true)))->with('checkpoint')])->get();
 
         return $entries->map(function ($entry) use ($checkpoints) {
             $byCheckpoint = $entry->timings->keyBy('checkpoint_id');
@@ -36,10 +73,10 @@ class ResultsService
             foreach ($checkpoints as $checkpoint) {
                 $timing = $byCheckpoint->get($checkpoint->id);
                 if (!$timing) {
-                    $splits[] = ['checkpoint' => $checkpoint->name, 'elapsed_ms' => null, 'split_ms' => null];
+                    $splits[] = ['checkpoint_id' => $checkpoint->id, 'checkpoint' => $checkpoint->name, 'elapsed_ms' => null, 'split_ms' => null];
                     continue;
                 }
-                $splits[] = ['checkpoint' => $checkpoint->name, 'elapsed_ms' => $timing->elapsed_ms, 'split_ms' => $timing->elapsed_ms - $previous];
+                $splits[] = ['checkpoint_id' => $checkpoint->id, 'checkpoint' => $checkpoint->name, 'elapsed_ms' => $timing->elapsed_ms, 'split_ms' => $timing->elapsed_ms - $previous];
                 $previous = $timing->elapsed_ms;
             }
             $finish = $entry->timings->filter(fn ($t) => $t->checkpoint?->kind === CheckpointKind::Finish)->sortByDesc('elapsed_ms')->first();
