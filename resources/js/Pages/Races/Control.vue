@@ -106,7 +106,7 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
             </div>
             <p class="mt-2 text-sm muted">{{ $t("Preview:") }} <strong class="font-mono">{{ formatDuration(proposedTime,3) }}</strong></p>
           </fieldset>
-          <label class="label">{{ $t("Reason") }}<input v-model="correction.notes" class="field" :placeholder="$t('For example: finish camera review')" maxlength="1000" required></label>
+          <label class="label">{{ $t("Reason") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="correction.notes" class="field" :placeholder="$t('For example: finish camera review')" maxlength="1000"></label>
           <p v-if="Object.keys(correction.errors).length" class="text-sm text-error">{{ Object.values(correction.errors)[0] }}</p>
           <button class="btn-primary" :disabled="correction.processing || !race.started_at"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>{{ $t("Review correction") }}</button>
           <p v-if="!race.started_at" class="text-sm muted">{{ $t("Corrections become available after the race starts.") }}</p>
@@ -127,7 +127,7 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
     </details>
 
     <ConfirmDialog v-if="confirmingCorrection" :title="$t('Save timing correction?')" :message="correctionSummary" :confirm-label="$t('Save correction')" :busy="correction.processing" @cancel="confirmingCorrection=false" @confirm="submitCorrection">
-      <p class="mt-3 text-sm">{{ $t("Reason:") }} {{ correction.notes }}</p>
+      <p v-if="correction.notes.trim()" class="mt-3 text-sm">{{ $t("Reason:") }} {{ correction.notes }}</p>
       <p v-if="Object.keys(correction.errors).length" role="alert" class="mt-3 text-error">{{ Object.values(correction.errors)[0] }}</p>
     </ConfirmDialog>
   </AppLayout>

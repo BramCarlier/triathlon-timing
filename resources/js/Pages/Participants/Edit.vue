@@ -43,7 +43,7 @@ function changeLines(change:Change):string[] {
     <form class="panel-pad max-w-3xl" @submit.prevent="save">
       <div v-if="race.started_at" class="mb-4 rounded-xl border border-outline bg-canvas p-4">
         <strong>{{ $t("The race has started.") }}</strong>
-        <p class="mt-1 text-sm muted">{{ $t("You can still add or change a bib number or correct the result status. Include a reason for the change. Athlete details stay locked and recorded times are preserved.") }}</p>
+        <p class="mt-1 text-sm muted">{{ $t("You can still add or change a bib number or correct the result status. You can optionally include a reason for the change. Athlete details stay locked and recorded times are preserved.") }}</p>
       </div>
 
       <h2 class="mb-4 text-lg font-bold">{{ entry.type==='relay' ? entry.team_name : [entry.members[0]?.athlete.first_name, entry.members[0]?.athlete.last_name].filter(Boolean).join(' ') }}</h2>
@@ -82,7 +82,7 @@ function changeLines(change:Change):string[] {
         </fieldset>
       </template>
 
-      <label class="label mt-4">{{ $t("Reason for change") }} <span v-if="!race.started_at" class="font-normal muted">{{ $t("(optional)") }}</span><textarea v-model="form.reason" class="field" :minlength="race.started_at?3:undefined" maxlength="1000" :required="!!race.started_at" :placeholder="race.started_at?$t('For example: bib assigned at check-in'):$t('Optional note about this edit')"></textarea></label>
+      <label class="label mt-4">{{ $t("Reason for change") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><textarea v-model="form.reason" class="field" maxlength="1000" :placeholder="race.started_at?$t('For example: bib assigned at check-in'):$t('Optional note about this edit')"></textarea></label>
       <div v-if="Object.keys(form.errors).length" role="alert" class="mt-3 text-error"><p v-for="(error,key) in form.errors" :key="key">{{ error }}</p></div>
       <div class="mt-4 flex flex-wrap gap-3">
         <button class="btn-primary" :disabled="form.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ $t('Save participant') }}</button>

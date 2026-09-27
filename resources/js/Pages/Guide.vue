@@ -41,7 +41,7 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
 
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">{{ $t("Add athletes") }}</h2></div>
-          <p class="muted">{{ $t("For a normal solo athlete, a name is enough. Existing athletes appear automatically so you can reuse them across races. Bib, email, club and category are optional; relay and file-import tools are available when needed. Open Athletes and choose Edit to add or change bib numbers later. After the start, bib and result status corrections need a reason; other registration details are locked.") }}</p>
+          <p class="muted">{{ $t("For a normal solo athlete, a name is enough. Existing athletes appear automatically so you can reuse them across races. Bib, email, club and category are optional; relay and file-import tools are available when needed. Open Athletes and choose Edit to add or change bib numbers later. After the start, bib and result status corrections can include an optional reason; other registration details are locked.") }}</p>
         </article>
 
         <article class="panel-pad">

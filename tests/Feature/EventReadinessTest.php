@@ -16,13 +16,22 @@ class EventReadinessTest extends TestCase {
         foreach(['swim','bike','run'] as $i=>$discipline)$entry->members()->create(['athlete_id'=>$athlete->id,'discipline'=>$discipline,'position'=>$i+1]);
         return [$admin,$race,$entry,$athlete];
     }
-    public function test_live_bib_and_status_edits_are_audited_and_other_registration_fields_stay_locked():void {
+    public static function correctionReasons(): array {
+        return [
+            'omitted' => [[], 'Participant details updated'],
+            'empty' => [['reason'=>''], 'Participant details updated'],
+            'null' => [['reason'=>null], 'Participant details updated'],
+            'whitespace' => [['reason'=>'   '], 'Participant details updated'],
+            'provided' => [['reason'=>'Withdrew during bike'], 'Withdrew during bike'],
+        ];
+    }
+    #[\PHPUnit\Framework\Attributes\DataProvider('correctionReasons')]
+    public function test_live_bib_and_status_edits_are_audited_and_other_registration_fields_stay_locked(array $reason, string $expectedReason):void {
         [$admin,$race,$entry,$athlete]=$this->fixture();
         $payload=['bib_number'=>'007','category'=>'Masters','status'=>'dnf','athletes'=>[$athlete->only(['id','first_name','last_name','email','club'])]];
-        $this->put("/races/$race->id/participants/$entry->id",$payload)->assertSessionHasErrors('reason');
-        $this->put("/races/$race->id/participants/$entry->id",$payload+['reason'=>'Withdrew during bike'])->assertSessionHasNoErrors();
+        $this->put("/races/$race->id/participants/$entry->id",$payload+$reason)->assertSessionHasNoErrors();
         $this->assertSame('007',$entry->fresh()->bib_number);$this->assertSame('Open',$entry->fresh()->category);$this->assertSame('dnf',$entry->fresh()->status);
-        $this->assertDatabaseHas('entry_changes',['entry_id'=>$entry->id,'user_id'=>$admin->id,'reason'=>'Withdrew during bike']);
+        $this->assertDatabaseHas('entry_changes',['entry_id'=>$entry->id,'user_id'=>$admin->id,'reason'=>$expectedReason]);
     }
     public function test_athlete_and_unassigned_organizer_cannot_edit_participants_or_view_health():void {
         [$admin,$race,$entry]=$this->fixture();
