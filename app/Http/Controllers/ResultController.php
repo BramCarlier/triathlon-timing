@@ -45,6 +45,7 @@ class ResultController extends Controller
         $race->load('checkpoints');
         return Inertia::render('Results/Index',[
             'publicMode'=>true,
+            'pdfUrl'=>route('results.public.pdf', ['token'=>$token], false),
             'race'=>array_merge($race->only(['id','name','event_date','timezone','status','started_at','finished_at']),['settings'=>collect($race->settings??[])->only(['swim_km','bike_km','run_km'])->all(),'checkpoints'=>$race->checkpoints->map(fn($cp)=>$cp->only(['id','name','sequence','kind','discipline','distance_km']))]),
             'results'=>$results->filtered($race,$this->filters($request)),
             'filters'=>$this->filters($request),

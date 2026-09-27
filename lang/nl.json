@@ -912,5 +912,11 @@
   "Descending": "Aflopend",
   "Race results. Select a column header to sort; select it again to reverse the order. Official places do not change.": "Wedstrijduitslagen. Selecteer een kolomkop om te sorteren; selecteer opnieuw om de volgorde om te keren. Officiële plaatsen veranderen niet.",
   "Place :place": "Plaats :place",
-  "Competing athletes without a finish time will automatically be marked DNF. DNS and disqualified statuses stay unchanged.": "Deelnemende atleten zonder finishtijd worden automatisch als DNF gemarkeerd. DNS en diskwalificaties blijven ongewijzigd."
+  "Competing athletes without a finish time will automatically be marked DNF. DNS and disqualified statuses stay unchanged.": "Deelnemende atleten zonder finishtijd worden automatisch als DNF gemarkeerd. DNS en diskwalificaties blijven ongewijzigd.",
+  "Complete results": "Volledige uitslag",
+  "Download complete results (PDF)": "Volledige uitslag downloaden (PDF)",
+  "Download all participants and checkpoints in landscape format.": "Download alle deelnemers en controlepunten in liggend formaat.",
+  "Generated :time": "Gegenereerd op :time",
+  "Participants: :count": "Deelnemers: :count",
+  "All participants and checkpoints. Times include milliseconds; checkpoint places use the complete field.": "Alle deelnemers en controlepunten. Tijden inclusief milliseconden; posities per controlepunt gelden voor alle deelnemers."
 }

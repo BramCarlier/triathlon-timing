@@ -153,7 +153,7 @@ When using those offline-capable stations, open each station on its intended dev
 
 ## Results
 
-Results are derived from active timing records. The app shows cumulative checkpoint time and per-checkpoint split time, and exports CSV/XLSX files.
+Results are derived from active timing records. The app shows cumulative checkpoint time and per-checkpoint split time, and exports CSV/XLSX files. Published results also offer a direct **Download complete results (PDF)** button to anyone with the published link. The PDF includes every participant and checkpoint, regardless of screen filters, with millisecond times, checkpoint places, splits, statuses and relay members. Standard courses use A4 landscape with repeated column headers and page numbers; courses with extra checkpoints use wider landscape pages so columns are never cut off. Labels follow the selected English/Dutch language. Unpublishing revokes PDF access along with the leaderboard link. Authorized staff can also download the PDF from their results page.
 
 ## Tests and quality
 

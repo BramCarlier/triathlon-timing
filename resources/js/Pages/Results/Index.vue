@@ -14,7 +14,7 @@ import { formatDuration, bibLabel } from '../../lib';
 import { formatDate } from '../../presentation';
 import type { Checkpoint, PageProps, Race } from '../../types';
 interface Row { id:number;place:number|null;result_status:string;bib_number:string|null;type:string;name:string;category?:string;members:Array<{discipline:string;name:string}>;splits:Array<{checkpoint_id:number;checkpoint:string;elapsed_ms:number|null;split_ms:number|null;place:number|null}>;total_ms:number|null;gap_ms:number|null;finished:boolean }
-const props=defineProps<{race:Race & {checkpoints:Checkpoint[]};results:Row[];categories:string[];filters:{type?:string;category?:string;status?:string};publicMode?:boolean}>();
+const props=defineProps<{race:Race & {checkpoints:Checkpoint[]};results:Row[];categories:string[];filters:{type?:string;category?:string;status?:string};publicMode?:boolean;pdfUrl?:string}>();
 const page=usePage<PageProps>();
 const precision=ref<2|3>(2);
 const expanded=ref<number[]>([]);
@@ -51,6 +51,7 @@ useRaceRefresh(()=>['race','results','categories']);
         <button class="btn-primary w-full" @click="toggleDisplay"><i class="fa-solid fa-display" aria-hidden="true"></i>{{ $t("Large-screen display") }}</button>
       </div>
     </details>
+    <a v-if="publicMode || canExport" :href="publicMode ? pdfUrl : `/races/${race.id}/results.pdf`" class="btn-secondary self-start" :title="$t('Download all participants and checkpoints in landscape format.')"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i>{{ $t('Download complete results (PDF)') }}</a>
     <details v-if="canExport" class="rounded-xl border border-outline bg-surface p-2">
       <summary class="btn-secondary list-none"><i class="fa-solid fa-download" aria-hidden="true"></i>{{ $t("Export") }}</summary>
       <div class="mt-3 grid gap-2 p-2"><a :href="`/races/${race.id}/results.csv?${exportQuery}`" class="btn-secondary"><i class="fa-solid fa-file-csv" aria-hidden="true"></i>{{ $t("CSV") }}</a><a :href="`/races/${race.id}/results.xlsx?${exportQuery}`" class="btn-secondary"><i class="fa-solid fa-file-excel" aria-hidden="true"></i>{{ $t("Excel") }}</a></div>
