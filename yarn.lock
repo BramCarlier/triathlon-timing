@@ -71,35 +71,36 @@ __metadata:
 "@fortawesome/fontawesome-free@npm:^7.3.1":
   version: 7.3.1
   resolution: "@fortawesome/fontawesome-free@npm:7.3.1"
+  checksum: 10c0/85b70ea64e69b9635ff0b949871acaaf0e6c6fd41860b8a78a5067123a42dd71144f7f7feea7aee013a485166ee8bf8ee3aafb15146dc0f55512d07015adddee
   languageName: node
   linkType: hard
 
-"@inertiajs/core@npm:3.7.1":
-  version: 3.7.1
-  resolution: "@inertiajs/core@npm:3.7.1"
+"@inertiajs/core@npm:3.8.0":
+  version: 3.8.0
+  resolution: "@inertiajs/core@npm:3.8.0"
   dependencies:
     "@jridgewell/trace-mapping": "npm:^0.3.31"
     es-toolkit: "npm:^1.33.0"
-    laravel-precognition: "npm:^2.0.0"
+    laravel-precognition: "npm:^2.1.0"
   peerDependencies:
     axios: ^1.15.2
   peerDependenciesMeta:
     axios:
       optional: true
-  checksum: 10c0/d9fd5def6c6647c9010c5b3e74c09db3696fef3a1075be705ac847fae6af41b6bfa82530906e761141ae6eda5b905522256dfb0c1ca2bb7c39ffae1b2a896efb
+  checksum: 10c0/08aa9c813bc51be0b7462e7572657336347e104cd2b0aa68b1230250ae8cdc3a5fa7bb9384e2c3b532bd38a349a4e5446adbba7a9a66e14c0b2d998e70e62a0c
   languageName: node
   linkType: hard
 
-"@inertiajs/vue3@npm:^3.7.1":
-  version: 3.7.1
-  resolution: "@inertiajs/vue3@npm:3.7.1"
+"@inertiajs/vue3@npm:^3.8.0":
+  version: 3.8.0
+  resolution: "@inertiajs/vue3@npm:3.8.0"
   dependencies:
-    "@inertiajs/core": "npm:3.7.1"
+    "@inertiajs/core": "npm:3.8.0"
     es-toolkit: "npm:^1.33.0"
-    laravel-precognition: "npm:^2.0.0"
+    laravel-precognition: "npm:^2.1.0"
   peerDependencies:
     vue: ^3.0.0
-  checksum: 10c0/3e9f5393d1c00193a2fc0ecbb014e92d3405d03746704445a397808fcb0db4e629d598ad16268f6d16bace51b6159e8b565aa19511948d694f4afcacfbe5193d
+  checksum: 10c0/3ad92c1568e939daa8e7e5a7f7d50a53cbfa9ee1552a8ded2c55246f09a048fc10a79317e85774ae21e5a316af92aad10e7a9cb6da3a5726d1daca06fabc1e42
   languageName: node
   linkType: hard
 
@@ -1001,9 +1002,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"laravel-precognition@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "laravel-precognition@npm:2.0.0"
+"laravel-precognition@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "laravel-precognition@npm:2.1.0"
   dependencies:
     es-toolkit: "npm:^1.32.0"
   peerDependencies:
@@ -1011,7 +1012,7 @@ __metadata:
   peerDependenciesMeta:
     axios:
       optional: true
-  checksum: 10c0/0ad11e3ae02ff83aceacd337e447f4d5d7b193bacbbfa7185fe92fcf236fb8f175c4899f259539b74d83e0df625a1e554630cb19dbd55772916bd1b4f4811721
+  checksum: 10c0/ba941fa0cab8e7f5b8889b53444c12ffda8ff47c3ab5e717dfa7da322ed8ffeafbf4e9c2a95ada0646afbdc869f97f26f10da7d3abfc8f98fa4d43d4390958a8
   languageName: node
   linkType: hard
 
@@ -1574,7 +1575,7 @@ __metadata:
   resolution: "triathlon-timing@workspace:."
   dependencies:
     "@fortawesome/fontawesome-free": "npm:^7.3.1"
-    "@inertiajs/vue3": "npm:^3.7.1"
+    "@inertiajs/vue3": "npm:^3.8.0"
     "@playwright/test": "npm:^1.63.0"
     "@tailwindcss/vite": "npm:^4.0.0"
     "@types/node": "npm:^24.0.0"
