@@ -28,9 +28,12 @@ jobs:
         with:
           node-version: '24'
       - run: corepack enable
-      - run: composer validate --strict --no-check-publish
+      # License metadata is intentionally omitted for this project.
+      - run: composer validate --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: yarn install --immutable || (sleep 2 && yarn install --immutable)
+      - run: composer audit --locked --no-interaction
+      - run: yarn npm audit --all --recursive
       - run: bash -n deploy/forge-deploy.sh
       - run: python3 -m unittest discover -s tests/Deployment -v
       - run: cp .env.example .env && php artisan key:generate
