@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '../../Components/Icon.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -17,9 +18,9 @@ const submit = () => form.post('/races');
   <Head :title="$t('Create race')"/>
   <AppLayout :title="$t('Create race')">
     <form class="panel-pad max-w-2xl" @submit.prevent="submit">
-      <div class="mb-5 rounded-2xl bg-canvas p-4">
+      <div class="mb-5 rounded-lg bg-canvas p-4">
         <div class="flex items-start gap-3">
-          <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-cyan-400 font-bold text-slate-950">1</span>
+          <span class="grid size-9 shrink-0 place-items-center rounded-md bg-buoy font-bold text-on-buoy">1</span>
           <div>
             <h2 class="font-bold">{{ $t("Start with the essentials") }}</h2>
             <p class="mt-1 text-sm muted">{{ $t("After creating the race you stay in one workspace to review checkpoints, add athletes and run race day.") }}</p>
@@ -33,8 +34,8 @@ const submit = () => form.post('/races');
         <p class="text-sm text-error">{{ form.errors.name }}</p>
       </div>
 
-      <details class="mt-5 rounded-2xl border border-outline p-4">
-        <summary class="cursor-pointer font-semibold"><i class="fa-solid fa-sliders mr-2" aria-hidden="true"></i>{{ $t("Date, distances & other optional details") }}</summary>
+      <details class="mt-5 rounded-lg border border-outline p-4">
+        <summary class="cursor-pointer font-semibold"><Icon name="sliders" class="mr-2"/>{{ $t("Date, distances & other optional details") }}</summary>
         <p class="mt-2 text-sm muted">{{ $t("You can create the race with only a name. If the date is left blank, today is used. The standard distances stay prefilled at 1 km swim, 35 km bike and 8 km run.") }}</p>
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
@@ -54,7 +55,7 @@ const submit = () => form.post('/races');
 
       <p v-if="Object.keys(form.errors).length" class="mt-4 text-sm text-error">{{ Object.values(form.errors)[0] }}</p>
       <button class="btn-primary mt-6" :disabled="form.processing">
-        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>{{ $t("Create and continue") }}
+        <Icon name="arrow-right"/>{{ $t("Create and continue") }}
       </button>
     </form>
   </AppLayout>

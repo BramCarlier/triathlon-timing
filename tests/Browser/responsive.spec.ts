@@ -255,12 +255,13 @@ test.describe('responsive layouts', () => {
         await login(page, 'admin@example.test');
 
         await page.goto('/races/9001/station');
+        await expect(page.locator('h1')).toBeVisible();
         if (await page.getByRole('button', { name: 'Open checkpoint' }).isVisible()) {
             await page.getByRole('button', { name: 'Open checkpoint' }).click();
         }
 
-        await page.getByLabel('Find participant').fill('TheLongestRelay');
-        await expect(page.getByRole('button', { name: /TheLongestRelay.*TAP/ })).toBeVisible();
+        await page.getByRole('searchbox', { name: 'Find athlete' }).fill('TheLongestRelay');
+        await expect(page.getByRole('button', { name: /TheLongestRelay.*(Tap|Recorded)/ })).toBeVisible();
         await atEverySize(page, 'selected timing station', async (size) => {
             await screenshot(page, info, size, 'station');
         });
@@ -336,7 +337,7 @@ test.describe('responsive layouts', () => {
 
         await page.goto('/race/responsive-timing');
         await expect(page.locator('h1')).toContainText('TriathlonChampionship');
-        await expect(page.getByLabel('1. Checkpoint', { exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Where are you timing?' })).toBeVisible();
         await atEverySize(page, 'public race-day timing');
 
         expect(errors).toEqual([]);

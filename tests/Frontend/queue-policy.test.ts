@@ -8,3 +8,6 @@ test('temporary failures retry; authorization and timing conflicts require revie
   for(const status of [408,429,500,502,503])assert.equal(retryDisposition(status),'retry');
   for(const status of [200,401,403,409,419,422])assert.equal(retryDisposition(status),'review');
 });
+test('race-day link taps replay only for the same link scope',()=>{
+  assert.equal(mayReplay('link:abc','link:abc'),true);assert.equal(mayReplay('link:abc','link:def'),false);assert.equal(mayReplay('link:abc',7),false);assert.equal(mayReplay(7.5,7.5),false);
+});

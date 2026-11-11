@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '../../Components/Icon.vue';
 import { formatDateTime } from '../../presentation';
 import { tr } from '../../i18n';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
@@ -41,7 +42,7 @@ function changeLines(change:Change):string[] {
   <Head :title="$t('Edit participant')"/>
   <AppLayout :title="`${race.name} · ${$t('Edit participant')}`">
     <form class="panel-pad max-w-3xl" @submit.prevent="save">
-      <div v-if="race.started_at" class="mb-4 rounded-xl border border-outline bg-canvas p-4">
+      <div v-if="race.started_at" class="mb-4 rounded-md border border-outline bg-canvas p-4">
         <strong>{{ $t("The race has started.") }}</strong>
         <p class="mt-1 text-sm muted">{{ $t("You can still add or change a bib number or correct the result status. The reason is optional. Athlete details stay locked. Selecting DNS removes all recorded times for this race.") }}</p>
       </div>
@@ -57,26 +58,26 @@ function changeLines(change:Change):string[] {
       </div>
       <p class="mt-3 text-sm muted">{{ $t("DNS, DNF and DSQ are excluded from places. DNS removes all recorded times for this race; DNF and DSQ keep their times.") }}</p>
 
-      <p v-if="form.status==='dns'" role="status" class="mt-3 rounded-xl bg-amber-500/10 p-3 text-sm text-warning">{{ $t('Saving DNS deletes all time registrations for this participant in this race. Changing the status back will not restore them.') }}</p>
+      <p v-if="form.status==='dns'" role="status" class="mt-3 rounded-md bg-warning/10 p-3 text-sm text-warning">{{ $t('Saving DNS deletes all time registrations for this participant in this race. Changing the status back will not restore them.') }}</p>
 
       <template v-if="!race.started_at">
         <p class="mt-4 text-sm muted">{{ $t("Athlete profile corrections apply everywhere this athlete is reused.") }}</p>
-        <fieldset v-for="athlete in form.athletes" :key="athlete.id" class="mt-4 grid gap-3 rounded-xl border border-outline-strong p-4 sm:grid-cols-2">
+        <fieldset v-for="athlete in form.athletes" :key="athlete.id" class="mt-4 grid gap-3 rounded-md border border-outline-strong p-4 sm:grid-cols-2">
           <legend class="px-1 font-semibold">{{ $t("Athlete details") }}</legend>
           <label class="label">{{ $t("First name") }}<input v-model="athlete.first_name" class="field" required></label>
           <label class="label">{{ $t("Last name") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="athlete.last_name" class="field"></label>
           <label class="label">{{ $t("Email") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="athlete.email" class="field" type="email"></label>
           <label class="label">{{ $t("Club") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="athlete.club" class="field"></label>
-          <div class="sm:col-span-2 rounded-xl bg-canvas p-3">
+          <div class="sm:col-span-2 rounded-md bg-canvas p-3">
             <template v-if="athlete.user">
               <strong class="text-sm">{{ $t("Results account linked") }}</strong>
               <p class="mt-1 text-xs muted">{{ athlete.user.email }} · {{ athlete.user.is_active ? (athlete.user.force_password_change ? $t('Invitation/password setup pending') : $t('Active')) : $t('Disabled') }}</p>
-              <button v-if="athlete.user.force_password_change && athlete.user.is_active && mailConfigured" type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><i class="fa-solid fa-envelope" aria-hidden="true"></i>{{ $t("Resend invitation") }}</button>
+              <button v-if="athlete.user.force_password_change && athlete.user.is_active && mailConfigured" type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><Icon name="envelope"/>{{ $t("Resend invitation") }}</button>
             </template>
             <template v-else-if="athlete.email && mailConfigured">
               <strong class="text-sm">{{ $t("Athlete access") }}</strong>
               <p class="mt-1 text-xs muted">{{ $t("Invite this athlete to sign in and see all races linked to this profile.") }}</p>
-              <button type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>{{ $t("Invite to view results") }}</button>
+              <button type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><Icon name="paper-plane"/>{{ $t("Invite to view results") }}</button>
             </template>
             <p v-else-if="!athlete.email" class="text-xs muted">{{ $t("Add and save an email address before inviting this athlete to view results.") }}</p>
             <p v-else class="text-xs muted">{{ $t("Email invitations are not configured. Manage the account from People instead.") }}</p>
@@ -87,8 +88,8 @@ function changeLines(change:Change):string[] {
       <label class="label mt-4">{{ $t("Reason for change") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><textarea v-model="form.reason" class="field" maxlength="1000" :placeholder="race.started_at?$t('For example: bib assigned at check-in'):$t('Optional note about this edit')"></textarea></label>
       <div v-if="Object.keys(form.errors).length" role="alert" class="mt-3 text-error"><p v-for="(error,key) in form.errors" :key="key">{{ error }}</p></div>
       <div class="mt-4 flex flex-wrap gap-3">
-        <button class="btn-primary" :disabled="form.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ $t('Save participant') }}</button>
-        <Link class="btn-secondary" :href="`/races/${race.id}/participants`"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>{{ $t("Back to participants") }}</Link>
+        <button class="btn-primary" :disabled="form.processing"><Icon name="floppy-disk"/>{{ $t('Save participant') }}</button>
+        <Link class="btn-secondary" :href="`/races/${race.id}/participants`"><Icon name="arrow-left"/>{{ $t("Back to participants") }}</Link>
       </div>
     </form>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { loadEcho } from '../echo';
 import { tr } from '../i18n';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 const props = defineProps<{ raceId: number }>();
@@ -13,8 +14,8 @@ const failed = (error?: any) => {
 const changed = ({current}: {current: string}) => {
   state.value = current === 'connected' ? (subscription?.subscribed ? 'live' : 'connecting') : 'refresh';
 };
-onMounted(() => {
-  const echo = (window as any).Echo;
+onMounted(async () => {
+  const echo = await loadEcho();
   if (!echo) { state.value = 'refresh'; return; }
   connection = echo.connector.pusher.connection;
   subscription = echo.private(`race.${props.raceId}`).subscription;

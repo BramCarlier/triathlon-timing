@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from './Icon.vue';
 import { tr } from '../i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { jsonRequest } from '../lib';
@@ -151,18 +152,18 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
 </script>
 
 <template>
-  <div class="rounded-xl border border-outline p-3">
+  <div class="rounded-md border border-outline p-3">
     <strong class="block">{{ title }}</strong>
 
-    <div v-if="selected" class="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+    <div v-if="selected" class="mt-3 rounded-md border border-success/40 bg-success/10 p-3">
       <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
-          <span class="text-xs font-bold uppercase tracking-wider text-success">{{ $t("Existing athlete") }}</span>
+          <span class="text-xs font-bold text-success">{{ $t("Existing athlete") }}</span>
           <strong class="mt-1 block truncate">{{ selected.full_name }}</strong>
           <span v-if="selected.club" class="mt-1 block text-sm muted">{{ selected.club }}</span>
         </div>
         <button type="button" class="btn-secondary !px-3" @click="clearSelection">
-          <i class="fa-solid fa-rotate" aria-hidden="true"></i>{{ $t("Change") }}
+          <Icon name="rotate"/>{{ $t("Change") }}
         </button>
       </div>
     </div>
@@ -175,12 +176,12 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
 
       <p class="mt-2 text-xs muted">{{ $t("If this athlete already exists, choose them below. Otherwise a new athlete is created automatically.") }}</p>
 
-      <p v-if="loading" class="mt-3 text-sm muted"><i class="fa-solid fa-spinner fa-spin mr-1" aria-hidden="true"></i>{{ $t("Looking for athletes…") }}</p>
+      <p v-if="loading" class="mt-3 text-sm muted"><Icon name="spinner" class="mr-1 animate-spin"/>{{ $t("Looking for athletes…") }}</p>
       <p v-if="error" class="mt-3 text-sm text-error" role="alert">{{ error }}</p>
 
-      <div v-if="!loading && results.length" class="mt-3 rounded-xl border border-outline bg-canvas p-2">
+      <div v-if="!loading && results.length" class="mt-3 rounded-md border border-outline bg-canvas p-2">
         <div class="flex items-center justify-between gap-3 px-2 pb-2">
-          <p class="text-xs font-bold uppercase tracking-wider text-accent">{{ listTitle }}</p>
+          <p class="text-xs font-bold text-accent">{{ listTitle }}</p>
           <span class="text-xs muted">{{ results.length }} {{ $t("shown") }}</span>
         </div>
         <div class="max-h-52 space-y-1 overflow-y-auto pr-1">
@@ -188,8 +189,8 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
             v-for="athlete in results"
             :key="athlete.id"
             type="button"
-            class="w-full rounded-xl border border-outline p-3 text-left"
-            :class="athlete.already_in_race?'cursor-not-allowed opacity-60':'hover:border-cyan-400 hover:bg-raised'"
+            class="w-full rounded-md border border-outline p-3 text-left"
+            :class="athlete.already_in_race?'cursor-not-allowed opacity-60':'hover:border-buoy hover:bg-raised'"
             :disabled="athlete.already_in_race"
             @click="selectAthlete(athlete)"
           >
@@ -202,11 +203,11 @@ onBeforeUnmount(() => clearTimeout(searchTimer));
         </div>
       </div>
 
-      <p v-else-if="!loading && !error && hasLookup" class="mt-3 rounded-xl bg-canvas p-3 text-sm muted">
+      <p v-else-if="!loading && !error && hasLookup" class="mt-3 rounded-md bg-canvas p-3 text-sm muted">
         {{ $t("No existing athlete matches. This name will be added as a new athlete.") }}
       </p>
 
-      <details class="mt-3 rounded-xl border border-outline p-3">
+      <details class="mt-3 rounded-md border border-outline p-3">
         <summary class="cursor-pointer text-sm font-semibold">{{ $t("Optional contact details") }}</summary>
         <div class="mt-3 grid gap-3 sm:grid-cols-2">
           <label class="label">{{ $t("Email") }}<input :value="modelValue.email" class="field" type="email" :placeholder="$t('Optional')" @input="updateField('email',$event)"></label>

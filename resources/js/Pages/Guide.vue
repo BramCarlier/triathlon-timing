@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '../Components/Icon.vue';
 import { tr } from '../i18n';
 import { computed } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -14,8 +15,8 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
   <AppLayout :title="$t(':role guide', {role:roleLabel})">
     <section class="panel-pad mb-5">
       <div class="flex items-start gap-4">
-        <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-400 text-xl text-slate-950">
-          <i class="fa-solid fa-compass" aria-hidden="true"></i>
+        <span class="grid size-12 shrink-0 place-items-center rounded-lg bg-buoy text-xl text-on-buoy">
+          <Icon name="compass"/>
         </span>
         <div>
           <h2 class="text-xl font-bold">{{ $t("The simple race flow") }}</h2>
@@ -31,7 +32,7 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">{{ $t("Create the race") }}</h2></div>
           <p class="muted">{{ $t("Enter a race name and continue. The date can be left blank to use today, and the standard 1 km swim / 35 km bike / 8 km run course is already filled in. The normal triathlon checkpoints are created automatically.") }}</p>
-          <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>{{ $t("Open races") }}</Link>
+          <Link href="/races" class="btn-primary mt-4"><Icon name="flag-checkered"/>{{ $t("Open races") }}</Link>
         </article>
 
         <article class="panel-pad">
@@ -58,12 +59,12 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
       <details class="panel-pad mt-5">
         <summary class="cursor-pointer font-bold">{{ $t("Occasional admin tools") }}</summary>
         <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <Link href="/admin/roles" class="rounded-xl border border-outline p-4 hover:bg-raised">
-            <strong><i class="fa-solid fa-key mr-2" aria-hidden="true"></i>{{ $t("Access & permissions") }}</strong>
+          <Link href="/admin/roles" class="rounded-md border border-outline p-4 hover:bg-raised">
+            <strong><Icon name="key" class="mr-2"/>{{ $t("Access & permissions") }}</strong>
             <p class="mt-2 text-sm muted">{{ $t("Optional advanced setup for named Official or Athlete accounts. Normal race-day timing works from the shared link without these accounts.") }}</p>
           </Link>
-          <Link href="/admin/health" class="rounded-xl border border-outline p-4 hover:bg-raised">
-            <strong><i class="fa-solid fa-heart-pulse mr-2" aria-hidden="true"></i>{{ $t("System health") }}</strong>
+          <Link href="/admin/health" class="rounded-md border border-outline p-4 hover:bg-raised">
+            <strong><Icon name="heart-pulse" class="mr-2"/>{{ $t("System health") }}</strong>
             <p class="mt-2 text-sm muted">{{ $t("Troubleshooting information. You normally do not need this during a race.") }}</p>
           </Link>
         </div>
@@ -75,7 +76,7 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">{{ $t("Open your race") }}</h2></div>
           <p class="muted">{{ $t("Open the race assigned to your account. Your checkpoint assignment follows your account, so you do not have to choose a station yourself.") }}</p>
-          <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>{{ $t("Open my races") }}</Link>
+          <Link href="/races" class="btn-primary mt-4"><Icon name="flag-checkered"/>{{ $t("Open my races") }}</Link>
         </article>
 
         <article class="panel-pad">
@@ -100,7 +101,7 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
         <article class="panel-pad">
           <h2 class="text-lg font-bold">{{ $t("Your races") }}</h2>
           <p class="mt-2 muted">{{ $t("Open My races to see every event linked to your athlete profile. You do not need to choose checkpoints or operate the race clock.") }}</p>
-          <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>{{ $t("Open my races") }}</Link>
+          <Link href="/athlete" class="btn-primary mt-4"><Icon name="person-running"/>{{ $t("Open my races") }}</Link>
         </article>
         <article class="panel-pad">
           <h2 class="text-lg font-bold">{{ $t("Results") }}</h2>

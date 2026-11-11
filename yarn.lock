@@ -124,10 +124,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fortawesome/fontawesome-free@npm:^7.3.1":
-  version: 7.3.1
-  resolution: "@fortawesome/fontawesome-free@npm:7.3.1"
-  checksum: 10c0/85b70ea64e69b9635ff0b949871acaaf0e6c6fd41860b8a78a5067123a42dd71144f7f7feea7aee013a485166ee8bf8ee3aafb15146dc0f55512d07015adddee
+"@fontsource/barlow-condensed@npm:^5.3.0":
+  version: 5.3.0
+  resolution: "@fontsource/barlow-condensed@npm:5.3.0"
+  checksum: 10c0/0b2a913cc5e75ca66cdeddbc5304be3fff5dbb374f70e82cdf515f4fec32871bb5dd50e16fe3faf2bc2f656b387be475dd95d039463a035b583209d625c94643
+  languageName: node
+  linkType: hard
+
+"@fontsource/barlow@npm:^5.3.0":
+  version: 5.3.0
+  resolution: "@fontsource/barlow@npm:5.3.0"
+  checksum: 10c0/2efe5abb3dac2ef2eb3ae9a3fd5acdc6955daf85efc1b5439081003e2d67ea90d62aae1d54fd1dcf6fc0eccfc815174bb77e70120a4973c0142431827d0b9c6d
   languageName: node
   linkType: hard
 
@@ -1079,6 +1086,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lucide-vue-next@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "lucide-vue-next@npm:1.0.0"
+  peerDependencies:
+    vue: ">=3.0.1"
+  checksum: 10c0/28f6a7d83e5d06db34006214f1ee3fe2c67ba0ca58f6e8af0d9032c495bb419f5c632b2db66e10ba90a6376e9f8aa913bc2e56be7c3aa06089d6ad2a472d93aa
+  languageName: node
+  linkType: hard
+
 "magic-string@npm:^0.30.21":
   version: 0.30.21
   resolution: "magic-string@npm:0.30.21"
@@ -1353,7 +1369,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "triathlon-timing@workspace:."
   dependencies:
-    "@fortawesome/fontawesome-free": "npm:^7.3.1"
+    "@fontsource/barlow": "npm:^5.3.0"
+    "@fontsource/barlow-condensed": "npm:^5.3.0"
     "@inertiajs/vue3": "npm:^3.11.0"
     "@playwright/test": "npm:^1.65.0"
     "@tailwindcss/vite": "npm:^4.3.5"
@@ -1361,6 +1378,7 @@ __metadata:
     "@vitejs/plugin-vue": "npm:^6.0.10"
     laravel-echo: "npm:^2.6.3"
     laravel-vite-plugin: "npm:^3.2.1"
+    lucide-vue-next: "npm:^1.0.0"
     pusher-js: "npm:^8.4.0"
     tailwindcss: "npm:^4.3.5"
     typescript: "npm:^6"

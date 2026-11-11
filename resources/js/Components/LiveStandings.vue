@@ -3,7 +3,8 @@ import { computed, ref } from 'vue';
 import SortableHeader from './SortableHeader.vue';
 import CheckpointTime from './CheckpointTime.vue';
 import { useResultSorting } from '../Composables/useResultSorting';
-import { bibLabel, formatDuration } from '../lib';
+import { formatDuration } from '../lib';
+import Bib from './Bib.vue';
 import type { Checkpoint, LiveStanding } from '../types';
 
 const props = defineProps<{
@@ -27,7 +28,7 @@ const rows = computed(() => {
   <section class="panel min-w-0 overflow-hidden" :aria-label="$t('Live standings')">
     <div class="space-y-3 border-b border-outline p-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-xl font-bold">{{ $t('Live standings') }}</h2>
+        <h2 class="text-2xl">{{ $t('Live standings') }}</h2>
         <span class="badge">{{ finished ? $t('Race finished') : started ? $t('Live') : $t('Awaiting start') }}</span>
       </div>
       <p class="text-sm muted">{{ $t('Provisional positions: furthest checkpoint first, then fastest time there. Times are measured from the race start. Updates every 5 seconds while online.') }}</p>
@@ -40,10 +41,9 @@ const rows = computed(() => {
     <div class="scroll-region max-h-[65dvh] overflow-auto" tabindex="0" role="region" :aria-label="$t('Live standings table')">
       <table class="w-full text-left text-sm">
         <caption class="sr-only">{{ $t('Current positions and cumulative checkpoint times. Equal times at the same checkpoint share a position. DNS, DNF and DSQ are not ranked.') }}</caption>
-        <thead class="sticky top-0 z-20 bg-surface text-xs text-muted">
+        <thead class="sticky top-0 z-20 bg-surface text-sm text-muted">
           <tr>
-            <SortableHeader column="place" :label="$t('Place')" :sort-key="sortKey" :direction="sortDirection" class="min-w-20 p-3" @sort="sortBy"/>
-            <SortableHeader column="bib_number" :label="$t('Bib number')" :sort-key="sortKey" :direction="sortDirection" class="min-w-24 p-3" @sort="sortBy"/>
+            <SortableHeader column="place" :label="$t('Place')" :sort-key="sortKey" :direction="sortDirection" class="w-16 p-3" @sort="sortBy"/>
             <SortableHeader column="name" :label="$t('Name')" :sort-key="sortKey" :direction="sortDirection" class="sticky left-0 z-30 min-w-44 bg-surface p-3 sm:min-w-60" @sort="sortBy"/>
             <SortableHeader column="latest_checkpoint" :label="$t('Latest checkpoint')" :sort-key="sortKey" :direction="sortDirection" class="min-w-40 p-3" @sort="sortBy"/>
             <SortableHeader v-for="checkpoint in checkpoints" :key="checkpoint.id" :column="`checkpoint:${checkpoint.id}`" :label="$t(checkpoint.name)" :sort-key="sortKey" :direction="sortDirection" class="min-w-36 p-3" @sort="sortBy"/>
@@ -51,20 +51,21 @@ const rows = computed(() => {
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id" class="border-t border-outline">
-            <td class="p-3 align-top text-lg font-bold tabular-nums text-accent">{{ row.place ?? '—' }}</td>
-            <td class="p-3 align-top tabular-nums">{{ row.bib_number ?? '—' }}</td>
+            <td class="p-3 align-top"><span class="display tabular text-2xl font-bold" :class="row.place ? 'text-foreground' : 'text-muted'">{{ row.place ?? '—' }}</span></td>
             <th scope="row" class="sticky left-0 z-10 bg-surface p-3 align-top font-normal">
-              <div class="w-36 min-w-0 sm:w-52">
-                <strong class="block break-words">{{ row.name }}</strong>
-                <span class="mt-1 block break-words text-xs muted">{{ bibLabel(row.bib_number) }} · {{ $t(row.type) }}</span>
-                <span class="mt-1 block text-xs" :class="row.finished ? 'text-success' : 'text-muted'">{{ $t(row.result_status) }}</span>
+              <div class="flex w-44 min-w-0 items-start gap-2.5 sm:w-64">
+                <Bib :bib="row.bib_number" small class="mt-0.5"/>
+                <div class="min-w-0">
+                  <strong class="block break-words">{{ row.name }}</strong>
+                  <span class="block text-xs" :class="row.finished ? 'font-semibold text-success' : row.status !== 'registered' ? 'font-semibold text-error' : 'text-muted'">{{ $t(row.result_status) }}<template v-if="row.type === 'relay'"> · {{ $t('relay') }}</template></span>
+                </div>
               </div>
             </th>
             <td class="p-3 align-top">
               <span class="block">{{ row.latest_checkpoint ? $t(row.latest_checkpoint) : $t('No time recorded yet') }}</span>
-              <strong class="mt-1 block whitespace-nowrap font-mono tabular-nums">{{ formatDuration(row.latest_elapsed_ms, 2) }}</strong>
+              <strong class="mt-1 block whitespace-nowrap tabular">{{ formatDuration(row.latest_elapsed_ms, 2) }}</strong>
             </td>
-            <td v-for="checkpoint in checkpoints" :key="checkpoint.id" class="whitespace-nowrap p-3 align-top font-mono tabular-nums" :class="checkpoint.kind === 'finish' && row.finished ? 'font-bold text-success' : ''">
+            <td v-for="checkpoint in checkpoints" :key="checkpoint.id" class="whitespace-nowrap p-3 align-top tabular" :class="checkpoint.kind === 'finish' && row.finished ? 'font-bold text-success' : ''">
               <CheckpointTime :split="row.splits.find(split => split.checkpoint_id === checkpoint.id)" :precision="2"/>
             </td>
           </tr>

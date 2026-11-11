@@ -1,5 +1,6 @@
 import { onBeforeUnmount, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { deviceId } from '../lib';
 
 /** Reconcile after missed broadcasts, reconnects, or a suspended browser tab. */
 export function useRaceRefresh(only: () => string[]) {
@@ -9,7 +10,7 @@ export function useRaceRefresh(only: () => string[]) {
   const refresh = () => {
     if (disposed || refreshing || !navigator.onLine) return;
     refreshing = true;
-    router.reload({ only: only(), onFinish: () => { refreshing = false; } });
+    router.reload({ only: only(), headers: { 'X-Device-Id': deviceId() }, onFinish: () => { refreshing = false; } });
   };
   const visible = () => { if (document.visibilityState === 'visible') refresh(); };
   onMounted(() => {

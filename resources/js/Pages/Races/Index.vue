@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '../../Components/Icon.vue';
 import { tr } from '../../i18n';
 import { usePermissions } from '../../Composables/usePermissions';
 import { Head, Link, usePage } from '@inertiajs/vue3';
@@ -30,7 +31,7 @@ const statusLabel=(race:Race)=>{
         <p class="mt-1 text-sm muted">{{ isAdmin?$t('Athletes, checkpoints, the shared race-day link and the race clock stay together. Official accounts are optional.'):$t('Your checkpoint assignment follows your account automatically.') }}</p>
       </div>
       <Link v-if="can('races.create')" href="/races/create" class="btn-primary">
-        <i class="fa-solid fa-plus" aria-hidden="true"></i>{{ $t("Create race") }}
+        <Icon name="plus"/>{{ $t("Create race") }}
       </Link>
     </div>
 
@@ -43,12 +44,12 @@ const statusLabel=(race:Race)=>{
             <p class="mt-1 text-sm muted">{{ formatDate(race.event_date) }} · {{ race.entries_count??0 }} {{ $t("participants") }}</p>
           </div>
         </div>
-        <div v-if="race.started_at" class="rounded-xl bg-canvas p-4">
-          <div class="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">{{ race.finished_at?$t('Final race time'):$t('Shared race clock') }}</div>
+        <div v-if="race.started_at" class="rounded-md bg-canvas p-4">
+          <div class="mb-1 text-xs font-semiboldst text-accent">{{ race.finished_at?$t('Final race time'):$t('Shared race clock') }}</div>
           <RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow" compact/>
         </div>
         <Link :href="isAdmin?`/races/${race.id}`:`/races/${race.id}/station`" class="btn-primary mt-auto">
-          <i :class="isAdmin?'fa-solid fa-arrow-right':'fa-solid fa-stopwatch'" aria-hidden="true"></i>{{ isAdmin?(race.finished_at?$t('Open finished race'):$t('Open race')):$t('Open timing station') }}
+          <Icon :name="isAdmin?'arrow-right':'stopwatch'"/>{{ isAdmin?(race.finished_at?$t('Open finished race'):$t('Open race')):$t('Open timing station') }}
         </Link>
       </article>
     </div>
@@ -57,7 +58,7 @@ const statusLabel=(race:Race)=>{
       <h2 class="text-xl font-bold">{{ $t("Your first race starts here") }}</h2>
       <p class="mx-auto mt-3 max-w-lg muted">{{ $t("Create a race to get one guided workspace for setup and race day.") }}</p>
       <Link v-if="can('races.create')" href="/races/create" class="btn-primary mt-5">
-        <i class="fa-solid fa-plus" aria-hidden="true"></i>{{ $t("Create your first race") }}
+        <Icon name="plus"/>{{ $t("Create your first race") }}
       </Link>
     </section>
 

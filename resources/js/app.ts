@@ -1,40 +1,24 @@
 import '../css/app.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import { createApp, h } from 'vue';
 import type { DefineComponent } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
-import { jsonRequest } from './lib';
+import { loadEcho } from './echo';
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/500.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
+import '@fontsource/barlow-condensed/800.css';
 import { tr, setLocale, activeLocale } from './i18n';
 
-(window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
-
-if (import.meta.env.VITE_REVERB_APP_KEY) {
-  (window as any).Echo = new Echo({
-    broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST ?? window.location.hostname,
-    wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 80),
-    wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-    enabledTransports: ['ws', 'wss'],
-    authorizer: (channel: {name:string}) => ({
-      authorize: (socketId, callback) => {
-        jsonRequest<{auth:string;channel_data?:string;shared_secret?:string}>('/broadcasting/auth',{method:'POST',body:JSON.stringify({socket_id:socketId,channel_name:channel.name}),signal:AbortSignal.timeout(12000)})
-          .then(({response,data})=>callback(response.ok?null:new Error(`Live authorization failed (${response.status})`),data))
-          .catch(error=>callback(error,null));
-      },
-    }),
-  });
-}
-
-const pages = import.meta.glob<DefineComponent>('./Pages/**/*.vue', { eager: true });
+// Pages load on demand: a volunteer on the race-day link never downloads the admin screens.
+const pages = import.meta.glob<DefineComponent>('./Pages/**/*.vue');
 
 createInertiaApp({
   title: (title) => title ? `${title} · Triathlon Timing` : 'Triathlon Timing',
-  resolve: (name) => pages[`./Pages/${name}.vue`],
+  resolve: (name) => pages[`./Pages/${name}.vue`](),
   setup({ el, App, props, plugin }) {
+    if (props.initialPage.props.auth && (props.initialPage.props.auth as { user?: unknown }).user) void loadEcho();
     setLocale(props.initialPage.props.locale === 'nl' ? 'nl' : 'en');
     router.on('beforeUpdate', ({ detail }) => setLocale(detail.page.props.locale === 'nl' ? 'nl' : 'en'));
     router.on('navigate', ({ detail }) => {
@@ -45,7 +29,14 @@ createInertiaApp({
     app.config.globalProperties.$t = tr;
     app.mount(el);
   },
-  progress: { color: '#22d3ee' },
+  progress: { color: '#ff5b14' },
+});
+
+// A background refresh interrupted by navigation or a dropped connection is retried by
+// the next poll; it is not an application error.
+window.addEventListener('unhandledrejection', (event) => {
+  const name = (event.reason as { name?: string } | undefined)?.name;
+  if (name === 'HttpNetworkError' || name === 'HttpCancelledError') event.preventDefault();
 });
 
 if ('serviceWorker' in navigator) {

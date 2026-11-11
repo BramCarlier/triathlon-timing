@@ -1,28 +1,78 @@
 @import "tailwindcss";
 
+/*
+ * Design system: "lake and buoy".
+ * Built for timers standing outside in daylight: high contrast, large condensed
+ * numerals and one strong accent (swim-course buoy orange). Swim, bike and run
+ * each own a colour, and checkpoints and bibs carry it.
+ */
 :root {
   color-scheme: light;
-  --app-canvas: #f8fafc;
+  --app-canvas: #e9eff0;
   --app-surface: #ffffff;
-  --app-raised: #e2e8f0;
-  --app-hover: #cbd5e1;
-  --app-outline: #cbd5e1;
-  --app-outline-strong: #94a3b8;
-  --app-foreground: #0f172a;
-  --app-secondary: #334155;
-  --app-muted: #475569;
-  --app-accent: #0e7490;
-  --app-success: #047857;
-  --app-error: #b91c1c;
-  --app-warning: #92400e;
-  --app-background: radial-gradient(circle at top, #e0f2fe 0, #f8fafc 45%, #f1f5f9 100%);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --app-raised: #dde6e8;
+  --app-hover: #ced9dc;
+  --app-outline: #c8d4d7;
+  --app-outline-strong: #8fa3aa;
+  --app-foreground: #0b2a3c;
+  --app-secondary: #23465a;
+  --app-muted: #4d6676;
+  --app-accent: #c2410c;
+  --app-buoy: #ff5b14;
+  --app-on-buoy: #0b2a3c;
+  --app-ink: #0b2a3c;
+  --app-on-ink: #f2f7f8;
+  --app-success: #0b7a43;
+  --app-error: #b4121b;
+  --app-warning: #9a4a03;
+  --app-swim: #0b6fb8;
+  --app-bike: #e8ad00;
+  --app-run: #cf2a3c;
+  --app-finish: #0b2a3c;
+  --app-on-swim: #ffffff;
+  --app-on-bike: #0b2a3c;
+  --app-on-run: #ffffff;
+  --app-on-finish: #ffffff;
+  --app-bib-paper: #ffffff;
+  --app-bib-ink: #0b2a3c;
+  --app-shadow: 0 1px 0 rgb(11 42 60 / 0.06), 0 8px 24px -16px rgb(11 42 60 / 0.35);
+  --font-body: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
+  font-size: 106.25%;
 }
 
-html, body, #app { min-height: 100%; }
-body { margin: 0; background: var(--app-canvas); color: var(--app-foreground); }
-button, input, select, textarea { font: inherit; }
-button { touch-action: manipulation; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-canvas: #061822;
+  --app-surface: #0b2331;
+  --app-raised: #123245;
+  --app-hover: #1a4157;
+  --app-outline: #1b3d50;
+  --app-outline-strong: #3c6178;
+  --app-foreground: #e8f2f5;
+  --app-secondary: #c3d6de;
+  --app-muted: #92adba;
+  --app-accent: #ff8a52;
+  --app-buoy: #ff6a26;
+  --app-on-buoy: #061822;
+  --app-ink: #020d14;
+  --app-on-ink: #e8f2f5;
+  --app-success: #4fd18b;
+  --app-error: #ff8a8a;
+  --app-warning: #ffc266;
+  --app-swim: #3aa0e8;
+  --app-bike: #f5c430;
+  --app-run: #ff5c6e;
+  --app-finish: #e8f2f5;
+  --app-on-swim: #061822;
+  --app-on-bike: #061822;
+  --app-on-run: #061822;
+  --app-on-finish: #061822;
+  --app-bib-paper: #f4f7f8;
+  --app-bib-ink: #0b2a3c;
+  --app-shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 10px 30px -18px rgb(0 0 0 / 0.8);
+}
 
 @theme inline {
   --color-canvas: var(--app-canvas);
@@ -35,52 +85,117 @@ button { touch-action: manipulation; }
   --color-secondary: var(--app-secondary);
   --color-muted: var(--app-muted);
   --color-accent: var(--app-accent);
+  --color-buoy: var(--app-buoy);
+  --color-on-buoy: var(--app-on-buoy);
+  --color-ink: var(--app-ink);
+  --color-on-ink: var(--app-on-ink);
   --color-success: var(--app-success);
   --color-error: var(--app-error);
   --color-warning: var(--app-warning);
+  --color-swim: var(--app-swim);
+  --color-bike: var(--app-bike);
+  --color-run: var(--app-run);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
 }
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --app-canvas: #020617;
-  --app-surface: #0f172a;
-  --app-raised: #1e293b;
-  --app-hover: #334155;
-  --app-outline: #1e293b;
-  --app-outline-strong: #334155;
-  --app-foreground: #f1f5f9;
-  --app-secondary: #cbd5e1;
-  --app-muted: #94a3b8;
-  --app-accent: #67e8f9;
-  --app-success: #6ee7b7;
-  --app-error: #fca5a5;
-  --app-warning: #fde68a;
-  --app-background: radial-gradient(circle at top, #10243d 0, #07111f 45%, #050a12 100%);
-}
-.app-background { background: var(--app-background); }
-input[type="checkbox"] { accent-color: var(--app-accent); }
-:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 3px; }
+
+html, body, #app { min-height: 100%; }
+body { margin: 0; background: var(--app-canvas); color: var(--app-foreground); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; }
+button { touch-action: manipulation; }
+h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: 0.005em; line-height: 1.1; }
+h1 { font-weight: 800; }
+h2, h3 { font-weight: 700; }
+input[type="checkbox"] { accent-color: var(--app-buoy); }
+:focus-visible { outline: 3px solid var(--app-buoy); outline-offset: 2px; }
+::selection { background: color-mix(in srgb, var(--app-buoy) 35%, transparent); }
+.icon { width: 1.15em; height: 1.15em; flex-shrink: 0; }
 
 @layer components {
-  .panel { @apply rounded-2xl border border-outline bg-surface/80 shadow-xl shadow-black/10; }
-  .panel-pad { @apply rounded-2xl border border-outline bg-surface/80 p-4 shadow-xl shadow-black/10 sm:p-6; }
-  .btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-strong bg-raised px-4 py-2.5 font-semibold text-foreground transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-danger { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-icon { @apply inline-flex size-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-outline-strong bg-raised text-foreground transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50; }
-  .field { @apply w-full rounded-xl border border-outline-strong bg-canvas px-3 py-2.5 text-foreground outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25; }
+  .panel { @apply rounded-lg border border-outline bg-surface; box-shadow: var(--app-shadow); }
+  .panel-pad { @apply rounded-lg border border-outline bg-surface p-4 sm:p-6; box-shadow: var(--app-shadow); }
+  .btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 py-2.5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-buoy px-4 py-2.5 font-semibold text-on-buoy transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary:not(:disabled):hover { background: color-mix(in srgb, var(--app-buoy) 88%, black); }
+  .btn-secondary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-outline-strong bg-surface px-4 py-2.5 font-semibold text-foreground transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-quiet { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-3 py-2 font-semibold text-secondary transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-danger { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-error px-4 py-2.5 font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-icon { @apply inline-flex size-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border border-outline-strong bg-surface text-foreground transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50; }
+  .field { @apply w-full rounded-md border border-outline-strong bg-surface px-3 py-2.5 text-foreground outline-none placeholder:text-muted focus:border-buoy; }
+  .field:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-buoy) 25%, transparent); }
   .label { @apply mb-1.5 block text-sm font-semibold text-secondary; }
   .muted { @apply text-muted; }
-  .badge { @apply inline-flex items-center rounded-full border border-outline-strong bg-raised px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-secondary; }
+  .badge { @apply inline-flex items-center gap-1 rounded-full border border-outline-strong bg-surface px-2.5 py-0.5 text-sm font-semibold text-secondary; }
+  .section-title { @apply text-2xl font-bold sm:text-3xl; font-family: var(--font-display); }
 }
 
-[data-discipline="swim"] { border-inline-start: 3px solid var(--app-accent); padding-inline-start: .6rem; }
-[data-discipline="bike"] { border-inline-start: 3px solid var(--app-warning); padding-inline-start: .6rem; }
-[data-discipline="run"] { border-inline-start: 3px solid var(--app-success); padding-inline-start: .6rem; }
+@layer components {
+/* Numbers: clocks, bibs and times always use condensed tabular figures. */
+.tabular, .race-clock, .bib, time { font-variant-numeric: tabular-nums lining-nums; }
+.display { font-family: var(--font-display); }
+.race-clock { font-family: var(--font-display); font-weight: 700; white-space: nowrap; letter-spacing: 0.01em; line-height: 1; font-size: clamp(1.9rem, 6vw, 4.25rem); }
+
+/*
+ * The race bib: white paper, black condensed number and a strip in the
+ * discipline colour of the selected checkpoint. Pin holes mark the corners.
+ */
+.bib {
+  --strip: var(--app-ink);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-width: 4.25rem;
+  max-width: 7rem;
+  word-break: break-all;
+  text-align: center;
+  padding: 0.55rem 0.6rem 0.3rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(to bottom, var(--strip) 0 0.38rem, var(--app-bib-paper) 0.38rem);
+  color: var(--app-bib-ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.65rem;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgb(11 42 60 / 0.18);
+}
+.bib::before, .bib::after {
+  content: "";
+  position: absolute;
+  bottom: 0.25rem;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgb(11 42 60 / 0.22);
+}
+.bib::before { left: 0.3rem; }
+.bib::after { right: 0.3rem; }
+.bib-empty { font-size: 0.85rem; font-weight: 700; color: rgb(11 42 60 / 0.55); padding-top: 0.75rem; padding-bottom: 0.45rem; }
+.bib-sm { min-width: 3.25rem; max-width: 5rem; font-size: 1.15rem; padding: 0.45rem 0.45rem 0.22rem; }
+
+[data-discipline="swim"] { --discipline: var(--app-swim); --on-discipline: var(--app-on-swim); }
+[data-discipline="bike"] { --discipline: var(--app-bike); --on-discipline: var(--app-on-bike); }
+[data-discipline="run"] { --discipline: var(--app-run); --on-discipline: var(--app-on-run); }
+[data-kind="finish"] { --discipline: var(--app-finish); --on-discipline: var(--app-on-finish); }
+[data-discipline] .bib, [data-kind] .bib { --strip: var(--discipline, var(--app-ink)); }
+.discipline-mark { border-inline-start: 4px solid var(--discipline, var(--app-outline-strong)); padding-inline-start: 0.6rem; }
+
+/* The selected checkpoint fills the top of every timing screen with its colour. */
+.checkpoint-band {
+  background: var(--discipline, var(--app-ink));
+  color: var(--on-discipline, var(--app-on-ink));
+}
+[data-kind="finish"].checkpoint-band {
+  background:
+    repeating-conic-gradient(rgb(255 255 255 / 0.09) 0 25%, transparent 0 50%) 0 0 / 1.5rem 1.5rem,
+    var(--app-finish);
+}
+
+}
+
 .badge[data-status="running"] { color: var(--app-success); border-color: var(--app-success); }
-.badge[data-status="finished"], .badge[data-status="archived"] { color: var(--app-accent); }
+.badge[data-status="finished"], .badge[data-status="archived"] { color: var(--app-secondary); }
 summary { min-height: 44px; align-content: center; cursor: pointer; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 
 /* Content may shrink inside grids without hiding names or form controls. */
 .app-shell, .auth-screen, dialog { overflow-wrap: anywhere; }
@@ -93,12 +208,12 @@ button, a, input, select, textarea { scroll-margin-block: 6rem 2rem; }
 .app-container { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
 .app-main { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
 .app-header { padding-top: env(safe-area-inset-top); }
-.station-status { top: var(--app-header-height, 70px); }
-.race-clock { white-space: nowrap; font-size: clamp(1.4rem, 5vw, 3.75rem); }
+.station-status { top: var(--app-header-height, 64px); }
 .auth-screen { min-height: 100vh; min-height: 100dvh; padding-top: max(5rem, env(safe-area-inset-top)); padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
 .auth-theme { top: max(1rem, env(safe-area-inset-top)); right: max(1rem, env(safe-area-inset-right)); }
 .confirmation-dialog { width: calc(100% - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; }
 .scroll-region { max-width: 100%; overscroll-behavior-x: contain; }
+.safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
 @media (min-width: 640px) { .app-container { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); } }
 @media (max-height: 500px) {
   .app-header { position: static; }
@@ -109,3 +224,10 @@ button, a, input, select, textarea { scroll-margin-block: 6rem 2rem; }
 @media (pointer: coarse) {
   button, .app-header a { min-height: 44px; }
 }
+
+/* A confirmed tap flashes once so the timer sees it without reading. */
+@keyframes tap-confirm { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-success) 60%, transparent); } to { box-shadow: 0 0 0 14px transparent; } }
+.tap-confirmed { animation: tap-confirm 600ms ease-out 1; }
+
+.checkpoint-chooser { max-height: 100dvh; }
+.checkpoint-chooser[open] { display: flex; flex-direction: column; }

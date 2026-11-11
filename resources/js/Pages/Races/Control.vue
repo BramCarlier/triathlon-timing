@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { loadEcho } from '../../echo';
+import Icon from '../../Components/Icon.vue';
 import { tr } from '../../i18n';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -43,8 +45,8 @@ const submitCorrection = () => {
 
 const channelName=`race.${props.race.id}`;
 useRaceRefresh(()=>['presence','race','recentTimings','completedCount','entries']);
-onMounted(()=>{
-  const echo=(window as any).Echo;
+onMounted(async()=>{
+  const echo=await loadEcho();
   if(echo) echo.private(channelName)
     .listen('.timing.recorded',()=>router.reload({only:['recentTimings','completedCount','presence','entries']}))
     .listen('.timing.voided',()=>router.reload({only:['recentTimings','completedCount','presence','entries']}))
@@ -61,7 +63,7 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
         <p class="font-semibold">{{ $t("Use this page only when the normal Race workspace is not enough.") }}</p>
         <p class="mt-1 text-sm muted">{{ $t("Start and end the race from the Race workspace. Here you can check station connectivity and correct recorded times.") }}</p>
       </div>
-      <Link :href="`/races/${race.id}`" class="btn-secondary self-start"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>{{ $t("Back to Race workspace") }}</Link>
+      <Link :href="`/races/${race.id}`" class="btn-secondary self-start"><Icon name="arrow-left"/>{{ $t("Back to Race workspace") }}</Link>
     </div>
 
     <section class="mb-5 grid gap-3 sm:grid-cols-3">
@@ -77,14 +79,14 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
           <span class="badge" :data-status="race.finished_at?'finished':race.started_at?'running':race.status">{{ race.finished_at?$t('Finished'):race.started_at?$t('Live'):$t('Not started') }}</span>
         </div>
         <div v-if="presence.length" class="mt-4 space-y-2">
-          <div v-for="item in presence" :key="item.id" class="rounded-xl border border-outline p-3">
+          <div v-for="item in presence" :key="item.id" class="rounded-md border border-outline p-3">
             <div class="flex items-center justify-between gap-3">
               <div><strong>{{ $t(item.checkpoint?.name ?? 'Checkpoint') }}</strong><span class="mt-1 block text-sm muted">{{ item.user?.name ?? $t('Official') }}</span></div>
               <span class="shrink-0 text-sm font-semibold" :class="item.pending_count?'text-warning':'text-success'">{{ item.pending_count? $t(':count pending', {count:item.pending_count}):$t('Synced') }}</span>
             </div>
           </div>
         </div>
-        <p v-else class="mt-4 rounded-xl bg-canvas p-4 muted">{{ $t("No timing station has checked in during the last five minutes.") }}</p>
+        <p v-else class="mt-4 rounded-md bg-canvas p-4 muted">{{ $t("No timing station has checked in during the last five minutes.") }}</p>
       </section>
 
       <section class="panel-pad">
@@ -97,7 +99,7 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
             <label class="label">{{ $t("Participant") }}<select v-model="correction.entry_id" class="field" required><option :value="null">{{ $t("Choose participant") }}</option><option v-for="entry in entries" :key="entry.id" :value="entry.id">{{ bibLabel(entry.bib_number) }} · {{ entry.name }}</option></select></label>
             <label class="label">{{ $t("Checkpoint") }}<select v-model="correction.checkpoint_id" class="field" required><option :value="null">{{ $t("Choose checkpoint") }}</option><option v-for="cp in race.checkpoints.filter(c=>c.kind!=='start')" :key="cp.id" :value="cp.id">{{ $t(cp.name) }}</option></select></label>
           </div>
-          <p class="rounded-xl bg-canvas p-3 text-sm">{{ $t("Current timing:") }} <strong class="font-mono">{{ oldTiming==null?$t('Not recorded'):formatDuration(oldTiming,3) }}</strong></p>
+          <p class="rounded-md bg-canvas p-3 text-sm">{{ $t("Current timing:") }} <strong class="tabular">{{ oldTiming==null?$t('Not recorded'):formatDuration(oldTiming,3) }}</strong></p>
           <DeleteTimingButton v-if="selectedTiming" :key="selectedTiming.id" :race-id="race.id" :timing-id="selectedTiming.id" :label="`${entries.find(entry=>entry.id===Number(correction.entry_id))?.name ?? ''} · ${$t(race.checkpoints.find(cp=>cp.id===Number(correction.checkpoint_id))?.name ?? 'Checkpoint')} · ${formatDuration(selectedTiming.elapsed_ms,3)}`"/>
           <fieldset>
             <legend class="label">{{ $t("Correct elapsed time") }}</legend>
@@ -107,23 +109,23 @@ onBeforeUnmount(()=>{const echo=(window as any).Echo;if(echo)echo.leave(channelN
               <label class="label">{{ $t("Seconds") }}<input v-model="correction.seconds" class="field" type="number" min="0" max="59" required></label>
               <label class="label">{{ $t("Milliseconds") }}<input v-model="correction.millis" class="field" type="number" min="0" max="999" required></label>
             </div>
-            <p class="mt-2 text-sm muted">{{ $t("Preview:") }} <strong class="font-mono">{{ formatDuration(proposedTime,3) }}</strong></p>
+            <p class="mt-2 text-sm muted">{{ $t("Preview:") }} <strong class="tabular">{{ formatDuration(proposedTime,3) }}</strong></p>
           </fieldset>
           <label class="label">{{ $t("Reason") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="correction.notes" class="field" :placeholder="$t('For example: finish camera review')" maxlength="1000"></label>
           <p v-if="Object.keys(correction.errors).length" class="text-sm text-error">{{ Object.values(correction.errors)[0] }}</p>
-          <button class="btn-primary" :disabled="correction.processing || !race.started_at"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>{{ $t("Review correction") }}</button>
+          <button class="btn-primary" :disabled="correction.processing || !race.started_at"><Icon name="clipboard-check"/>{{ $t("Review correction") }}</button>
           <p v-if="!race.started_at" class="text-sm muted">{{ $t("Corrections become available after the race starts.") }}</p>
         </form>
       </section>
     </div>
 
     <details class="panel-pad mt-5">
-      <summary class="font-bold"><i class="fa-solid fa-clock-rotate-left mr-2" aria-hidden="true"></i>{{ $t("Recent timings") }}</summary>
+      <summary class="font-bold"><Icon name="clock-rotate-left" class="mr-2"/>{{ $t("Recent timings") }}</summary>
       <div v-if="recentTimings.length" class="mt-3 divide-y divide-outline">
         <div v-for="timing in recentTimings" :key="timing.id" class="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
           <div><strong>{{ timing.entry.display_name }}</strong><span class="block text-xs muted">{{ bibLabel(timing.entry.bib_number) }}</span></div>
           <div><span class="font-semibold">{{ $t(timing.checkpoint.name) }}</span><span class="block text-sm muted">{{ timing.operator?.name }}</span></div>
-          <div class="flex flex-wrap items-center gap-2"><span class="font-mono font-semibold">{{ formatDuration(timing.elapsed_ms,2) }}</span><DeleteTimingButton :race-id="race.id" :timing-id="timing.id" :label="`${timing.entry.display_name} · ${$t(timing.checkpoint.name)} · ${formatDuration(timing.elapsed_ms,2)}`"/></div>
+          <div class="flex flex-wrap items-center gap-2"><span class="tabular font-semibold">{{ formatDuration(timing.elapsed_ms,2) }}</span><DeleteTimingButton :race-id="race.id" :timing-id="timing.id" :label="`${timing.entry.display_name} · ${$t(timing.checkpoint.name)} · ${formatDuration(timing.elapsed_ms,2)}`"/></div>
         </div>
       </div>
       <p v-else class="mt-3 muted">{{ $t("No timings recorded yet.") }}</p>

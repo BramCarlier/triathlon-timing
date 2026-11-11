@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from './Icon.vue';
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import ConfirmDialog from './ConfirmDialog.vue';
@@ -13,7 +14,7 @@ const remove = () => form.post(`/races/${props.raceId}/timings/${props.timingId}
 </script>
 
 <template>
-  <button type="button" class="btn-danger shrink-0" :aria-label="$t('Delete time: :label', {label})" @click="confirming=true"><i class="fa-solid fa-trash-can" aria-hidden="true"></i>{{ $t('Delete') }}</button>
+  <button type="button" class="btn-quiet !min-h-10 !px-2.5 shrink-0 text-error hover:!bg-error/10" :aria-label="$t('Delete time: :label', {label})" :title="$t('Delete time')" @click="confirming=true"><Icon name="trash-can"/></button>
   <Teleport to="body">
   <ConfirmDialog v-if="confirming" :title="$t('Delete time registration?')" :message="label" :confirm-label="$t('Delete time')" :busy="form.processing" @cancel="confirming=false" @confirm="remove">
     <p class="mt-3 text-sm muted">{{ $t('This time will be removed from the results and live standings. A record remains in the audit history.') }}</p>

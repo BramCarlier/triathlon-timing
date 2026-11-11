@@ -29,6 +29,7 @@ test('organizer can find athletes and assign bibs before and after the start on 
   await page.getByRole('link', { name: 'Race workspace', exact: true }).click();
   await expect(page).toHaveURL(racePath);
   const start = page.getByRole('button', { name: 'Start race', exact: true });
+  await expect(page.locator('h1')).toBeVisible();
   if (!(await start.isVisible())) await page.locator('#race-day > button').click();
   await start.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Start race', exact: true }).click();
