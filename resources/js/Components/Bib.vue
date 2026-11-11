@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { tr } from '../i18n';
 
 const props = defineProps<{ bib: string | null | undefined; small?: boolean }>();
-const label = computed(() => props.bib ? tr('Bib :bib', { bib: props.bib }) : tr('No bib'));
+const label = computed(() => (props.bib ? tr('Bib :bib', { bib: props.bib }) : tr('No bib')));
 </script>
 
 <template>

@@ -25,7 +25,10 @@ export interface TimingFeedback {
   tap?: RecordedTap;
 }
 
-interface RaceState { started_at?: string | null; finished_at?: string | null }
+interface RaceState {
+  started_at?: string | null;
+  finished_at?: string | null;
+}
 
 export interface TimingRecorderOptions {
   /** POST endpoint for taps. */
@@ -65,15 +68,19 @@ export function useTimingRecorder(options: TimingRecorderOptions) {
   const show = (next: TimingFeedback, durationMs = 6000) => {
     feedback.value = next;
     window.clearTimeout(feedbackTimer);
-    feedbackTimer = window.setTimeout(() => { if (feedback.value === next) feedback.value = null; }, durationMs);
+    feedbackTimer = window.setTimeout(() => {
+      if (feedback.value === next) feedback.value = null;
+    }, durationMs);
   };
-  const dismiss = () => { feedback.value = null; };
+  const dismiss = () => {
+    feedback.value = null;
+  };
 
-  const isQueued = (participant: StationParticipant, checkpointId: number) => queue.items.value.some(item =>
-    Number(item.payload.entry_id) === participant.id && Number(item.payload.checkpoint_id) === checkpointId);
+  const isQueued = (participant: StationParticipant, checkpointId: number) =>
+    queue.items.value.some(item => Number(item.payload.entry_id) === participant.id && Number(item.payload.checkpoint_id) === checkpointId);
 
-  const isRecorded = (participant: StationParticipant, checkpointId = options.checkpoint()?.id) => checkpointId !== undefined
-    && (participant.completed_checkpoint_ids.includes(checkpointId) || isQueued(participant, checkpointId));
+  const isRecorded = (participant: StationParticipant, checkpointId = options.checkpoint()?.id) =>
+    checkpointId !== undefined && (participant.completed_checkpoint_ids.includes(checkpointId) || isQueued(participant, checkpointId));
 
   const markRecorded = (participantId: number, checkpointId: number, recorded: boolean) => {
     const participant = options.participants.value.find(item => item.id === participantId);
@@ -82,16 +89,31 @@ export function useTimingRecorder(options: TimingRecorderOptions) {
     participant.completed_checkpoint_ids = recorded ? [...ids, checkpointId] : ids;
   };
 
-  const vibrate = (pattern: number | number[]) => { try { navigator.vibrate?.(pattern); } catch { /* unsupported */ } };
+  const vibrate = (pattern: number | number[]) => {
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {
+      /* unsupported */
+    }
+  };
 
   async function record(participant: StationParticipant): Promise<void> {
     const checkpoint = options.checkpoint();
     const race = options.race();
     if (!checkpoint || saving.value.has(participant.id)) return;
-    if (!race.started_at) { show({ type: 'error', message: tr('The race has not started yet.') }); return; }
-    if (race.finished_at) { show({ type: 'error', message: tr('The race is finished.') }); return; }
+    if (!race.started_at) {
+      show({ type: 'error', message: tr('The race has not started yet.') });
+      return;
+    }
+    if (race.finished_at) {
+      show({ type: 'error', message: tr('The race is finished.') });
+      return;
+    }
     if (participant.status && participant.status !== 'registered') {
-      show({ type: 'error', message: tr(':name is marked :status.', { name: participant.name, status: participant.status.toUpperCase() }) });
+      show({
+        type: 'error',
+        message: tr(':name is marked :status.', { name: participant.name, status: participant.status.toUpperCase() }),
+      });
       return;
     }
     if (isRecorded(participant, checkpoint.id)) {
@@ -122,17 +144,25 @@ export function useTimingRecorder(options: TimingRecorderOptions) {
       const queued = { ...tap, queued: true };
       recent.value = [queued, ...recent.value].slice(0, 12);
       vibrate([30, 60, 30]);
-      show({ type: 'offline', message: tr(':name saved on this device. It uploads automatically.', { name: participant.name }), tap: queued }, 8000);
+      show(
+        { type: 'offline', message: tr(':name saved on this device. It uploads automatically.', { name: participant.name }), tap: queued },
+        8000,
+      );
       options.onRecorded?.(queued, { autoFinished: false, queued: true });
     };
 
     saving.value.add(participant.id);
     try {
-      if (!online.value) { await saveOnDevice(); return; }
+      if (!online.value) {
+        await saveOnDevice();
+        return;
+      }
       let result;
       try {
         result = await jsonRequest<{ timing?: RecordedTap; message?: string; auto_finished?: boolean; undo_until?: string }>(options.url, {
-          method: 'POST', body: JSON.stringify(payload), signal: AbortSignal.timeout(12000),
+          method: 'POST',
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(12000),
         });
       } catch {
         await saveOnDevice();
@@ -141,7 +171,14 @@ export function useTimingRecorder(options: TimingRecorderOptions) {
       const { response, data } = result;
       if (response.ok && data.timing) {
         markRecorded(participant.id, checkpoint.id, true);
-        const saved: RecordedTap = { ...tap, ...data.timing, client_uuid: tap.client_uuid, undo_until: data.undo_until ?? null, entry: tap.entry, checkpoint: tap.checkpoint };
+        const saved: RecordedTap = {
+          ...tap,
+          ...data.timing,
+          client_uuid: tap.client_uuid,
+          undo_until: data.undo_until ?? null,
+          entry: tap.entry,
+          checkpoint: tap.checkpoint,
+        };
         recent.value = [saved, ...recent.value].slice(0, 12);
         vibrate(35);
         show({ type: 'ok', message: data.message ?? tr('Time recorded.'), tap: saved }, 8000);
@@ -155,7 +192,10 @@ export function useTimingRecorder(options: TimingRecorderOptions) {
       vibrate([80, 40, 80]);
       show({ type: 'error', message: data.message ?? tr('The time was not recorded. Try again.') }, 9000);
     } catch {
-      show({ type: 'error', message: tr('The time was NOT saved and device storage is unavailable. Write it down and tell the Organizer.') }, 15000);
+      show(
+        { type: 'error', message: tr('The time was NOT saved and device storage is unavailable. Write it down and tell the Organizer.') },
+        15000,
+      );
     } finally {
       saving.value.delete(participant.id);
     }
@@ -166,13 +206,25 @@ export function useTimingRecorder(options: TimingRecorderOptions) {
     if (tap.queued) {
       await queue.discard(tap.client_uuid);
     } else {
-      if (!online.value) { show({ type: 'error', message: tr('Reconnect before undoing a synced timing.') }); return; }
+      if (!online.value) {
+        show({ type: 'error', message: tr('Reconnect before undoing a synced timing.') });
+        return;
+      }
       const error = await options.undoRemote(tap);
-      if (error) { show({ type: 'error', message: error }, 9000); return; }
+      if (error) {
+        show({ type: 'error', message: error }, 9000);
+        return;
+      }
     }
     if (tap.entry && checkpointId) markRecorded(tap.entry.id, checkpointId, false);
     recent.value = recent.value.filter(item => item.client_uuid !== tap.client_uuid);
-    show({ type: 'ok', message: tr(':name removed from :checkpoint.', { name: tap.entry?.display_name ?? '', checkpoint: tr(tap.checkpoint?.name ?? '') }) }, 4000);
+    show(
+      {
+        type: 'ok',
+        message: tr(':name removed from :checkpoint.', { name: tap.entry?.display_name ?? '', checkpoint: tr(tap.checkpoint?.name ?? '') }),
+      },
+      4000,
+    );
   }
 
   const sync = async () => {
@@ -184,16 +236,28 @@ export function useTimingRecorder(options: TimingRecorderOptions) {
   };
 
   let syncTimer: number | undefined;
-  const handleOnline = () => { online.value = true; void sync(); };
-  const handleOffline = () => { online.value = false; };
-  const handleVisible = () => { if (document.visibilityState === 'visible') void sync(); };
+  const handleOnline = () => {
+    online.value = true;
+    void sync();
+  };
+  const handleOffline = () => {
+    online.value = false;
+  };
+  const handleVisible = () => {
+    if (document.visibilityState === 'visible') void sync();
+  };
 
   onMounted(async () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     document.addEventListener('visibilitychange', handleVisible);
     syncTimer = window.setInterval(() => void sync(), 15000);
-    try { await queue.refresh(); await sync(); } catch { /* error is exposed through queue.error */ }
+    try {
+      await queue.refresh();
+      await sync();
+    } catch {
+      /* error is exposed through queue.error */
+    }
   });
   onBeforeUnmount(() => {
     window.removeEventListener('online', handleOnline);

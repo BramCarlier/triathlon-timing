@@ -15,8 +15,8 @@ import { tr, setLocale, activeLocale } from './i18n';
 const pages = import.meta.glob<DefineComponent>('./Pages/**/*.vue');
 
 createInertiaApp({
-  title: (title) => title ? `${title} · Triathlon Timing` : 'Triathlon Timing',
-  resolve: (name) => pages[`./Pages/${name}.vue`](),
+  title: title => (title ? `${title} · Triathlon Timing` : 'Triathlon Timing'),
+  resolve: name => pages[`./Pages/${name}.vue`](),
   setup({ el, App, props, plugin }) {
     if (props.initialPage.props.auth && (props.initialPage.props.auth as { user?: unknown }).user) void loadEcho();
     setLocale(props.initialPage.props.locale === 'nl' ? 'nl' : 'en');
@@ -34,7 +34,7 @@ createInertiaApp({
 
 // A background refresh interrupted by navigation or a dropped connection is retried by
 // the next poll; it is not an application error.
-window.addEventListener('unhandledrejection', (event) => {
+window.addEventListener('unhandledrejection', event => {
   const name = (event.reason as { name?: string } | undefined)?.name;
   if (name === 'HttpNetworkError' || name === 'HttpCancelledError') event.preventDefault();
 });

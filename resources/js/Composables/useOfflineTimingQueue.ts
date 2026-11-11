@@ -35,8 +35,14 @@ async function transaction<T>(mode: IDBTransactionMode, action: (store: IDBObjec
   return new Promise((resolve, reject) => {
     const tx = database.transaction(STORE, mode);
     const request = action(tx.objectStore(STORE));
-    tx.oncomplete = () => { database.close(); resolve(request.result); };
-    tx.onabort = tx.onerror = () => { database.close(); reject(tx.error ?? request.error); };
+    tx.oncomplete = () => {
+      database.close();
+      resolve(request.result);
+    };
+    tx.onabort = tx.onerror = () => {
+      database.close();
+      reject(tx.error ?? request.error);
+    };
   });
 }
 
@@ -54,7 +60,9 @@ const byQueuedAt = (a: QueuedTiming, b: QueuedTiming) => a.queued_at.localeCompa
  */
 export function useOfflineTimingQueue(url: string, owner: QueueOwner) {
   let disposed = false;
-  onBeforeUnmount(() => { disposed = true; });
+  onBeforeUnmount(() => {
+    disposed = true;
+  });
   const items = ref<QueuedTiming[]>([]);
   const foreignCount = ref(0);
   const legacy = ref<QueuedTiming[]>([]);
@@ -79,7 +87,15 @@ export function useOfflineTimingQueue(url: string, owner: QueueOwner) {
 
   const queue = async (payload: Record<string, unknown>, label: string, elapsedMs: number) => {
     const body = { ...payload, source: 'offline', ...(typeof owner === 'number' ? { operator_id: owner } : {}) };
-    await put({ client_uuid: String(payload.client_uuid), url, payload: body, operator_id: owner, label, elapsed_ms: elapsedMs, queued_at: new Date().toISOString() });
+    await put({
+      client_uuid: String(payload.client_uuid),
+      url,
+      payload: body,
+      operator_id: owner,
+      label,
+      elapsed_ms: elapsedMs,
+      queued_at: new Date().toISOString(),
+    });
     await refresh();
   };
 
@@ -94,14 +110,24 @@ export function useOfflineTimingQueue(url: string, owner: QueueOwner) {
           // Old versions blocked skipped checkpoints as warnings. Retry those normally.
           if (!mayReplay(item.operator_id, owner) || (item.blocked && !item.warning)) continue;
           try {
-            const { response, data } = await jsonRequest<{ message?: string; warning?: boolean; timing?: { client_uuid?: string } }>(item.url, {
-              method: 'POST', body: JSON.stringify(item.payload), signal: AbortSignal.timeout(12000),
-            });
+            const { response, data } = await jsonRequest<{ message?: string; warning?: boolean; timing?: { client_uuid?: string } }>(
+              item.url,
+              {
+                method: 'POST',
+                body: JSON.stringify(item.payload),
+                signal: AbortSignal.timeout(12000),
+              },
+            );
             if (response.ok && data.timing?.client_uuid === item.client_uuid) {
               await remove(item.client_uuid);
               changed = true;
             } else {
-              await put({ ...item, error: data.message ?? tr('Server response :status', { status: response.status }), blocked: retryDisposition(response.status) === 'review', warning: !!data.warning });
+              await put({
+                ...item,
+                error: data.message ?? tr('Server response :status', { status: response.status }),
+                blocked: retryDisposition(response.status) === 'review',
+                warning: !!data.warning,
+              });
               if ([401, 403, 419, 429].includes(response.status) || response.status >= 500) break;
             }
           } catch {

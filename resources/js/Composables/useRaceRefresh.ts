@@ -10,9 +10,17 @@ export function useRaceRefresh(only: () => string[]) {
   const refresh = () => {
     if (disposed || refreshing || !navigator.onLine) return;
     refreshing = true;
-    router.reload({ only: only(), headers: { 'X-Device-Id': deviceId() }, onFinish: () => { refreshing = false; } });
+    router.reload({
+      only: only(),
+      headers: { 'X-Device-Id': deviceId() },
+      onFinish: () => {
+        refreshing = false;
+      },
+    });
   };
-  const visible = () => { if (document.visibilityState === 'visible') refresh(); };
+  const visible = () => {
+    if (document.visibilityState === 'visible') refresh();
+  };
   onMounted(() => {
     timer = window.setInterval(refresh, 5000);
     window.addEventListener('online', refresh);

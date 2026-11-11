@@ -14,9 +14,12 @@ const props = defineProps<{
   finished: boolean;
 }>();
 const search = ref('');
-const checkpoints = computed(() => props.checkpoints
-  .filter(checkpoint => checkpoint.is_active && checkpoint.kind !== 'start')
-  .slice().sort((a, b) => a.sequence - b.sequence));
+const checkpoints = computed(() =>
+  props.checkpoints
+    .filter(checkpoint => checkpoint.is_active && checkpoint.kind !== 'start')
+    .slice()
+    .sort((a, b) => a.sequence - b.sequence),
+);
 const { sortKey, sortDirection, sortedRows, sortBy } = useResultSorting(() => props.standings);
 const rows = computed(() => {
   const term = search.value.trim().toLocaleLowerCase();
@@ -31,33 +34,87 @@ const rows = computed(() => {
         <h2 class="text-2xl">{{ $t('Live standings') }}</h2>
         <span class="badge">{{ finished ? $t('Race finished') : started ? $t('Live') : $t('Awaiting start') }}</span>
       </div>
-      <p class="text-sm muted">{{ $t('Provisional positions: furthest checkpoint first, then fastest time there. Times are measured from the race start. Updates every 5 seconds while online.') }}</p>
+      <p class="text-sm muted">
+        {{
+          $t(
+            'Provisional positions: furthest checkpoint first, then fastest time there. Times are measured from the race start. Updates every 5 seconds while online.',
+          )
+        }}
+      </p>
       <label class="block max-w-sm">
         <span class="sr-only">{{ $t('Search standings') }}</span>
-        <input v-model="search" type="search" class="field" :placeholder="$t('Bib number or name')" :aria-label="$t('Search standings')">
+        <input v-model="search" type="search" class="field" :placeholder="$t('Bib number or name')" :aria-label="$t('Search standings')" />
       </label>
     </div>
     <p class="px-4 pt-3 text-xs muted sm:hidden">{{ $t('Swipe sideways to see all checkpoint times.') }}</p>
     <div class="scroll-region max-h-[65dvh] overflow-auto" tabindex="0" role="region" :aria-label="$t('Live standings table')">
       <table class="w-full text-left text-sm">
-        <caption class="sr-only">{{ $t('Current positions and cumulative checkpoint times. Equal times at the same checkpoint share a position. DNS, DNF and DSQ are not ranked.') }}</caption>
+        <caption class="sr-only">
+          {{
+            $t(
+              'Current positions and cumulative checkpoint times. Equal times at the same checkpoint share a position. DNS, DNF and DSQ are not ranked.',
+            )
+          }}
+        </caption>
         <thead class="sticky top-0 z-20 bg-surface text-sm text-muted">
           <tr>
-            <SortableHeader column="place" :label="$t('Place')" :sort-key="sortKey" :direction="sortDirection" class="w-16 p-3" @sort="sortBy"/>
-            <SortableHeader column="name" :label="$t('Name')" :sort-key="sortKey" :direction="sortDirection" class="sticky left-0 z-30 min-w-44 bg-surface p-3 sm:min-w-60" @sort="sortBy"/>
-            <SortableHeader column="latest_checkpoint" :label="$t('Latest checkpoint')" :sort-key="sortKey" :direction="sortDirection" class="min-w-40 p-3" @sort="sortBy"/>
-            <SortableHeader v-for="checkpoint in checkpoints" :key="checkpoint.id" :column="`checkpoint:${checkpoint.id}`" :label="$t(checkpoint.name)" :sort-key="sortKey" :direction="sortDirection" class="min-w-36 p-3" @sort="sortBy"/>
+            <SortableHeader
+              column="place"
+              :label="$t('Place')"
+              :sort-key="sortKey"
+              :direction="sortDirection"
+              class="w-16 p-3"
+              @sort="sortBy"
+            />
+            <SortableHeader
+              column="name"
+              :label="$t('Name')"
+              :sort-key="sortKey"
+              :direction="sortDirection"
+              class="sticky left-0 z-30 min-w-44 bg-surface p-3 sm:min-w-60"
+              @sort="sortBy"
+            />
+            <SortableHeader
+              column="latest_checkpoint"
+              :label="$t('Latest checkpoint')"
+              :sort-key="sortKey"
+              :direction="sortDirection"
+              class="min-w-40 p-3"
+              @sort="sortBy"
+            />
+            <SortableHeader
+              v-for="checkpoint in checkpoints"
+              :key="checkpoint.id"
+              :column="`checkpoint:${checkpoint.id}`"
+              :label="$t(checkpoint.name)"
+              :sort-key="sortKey"
+              :direction="sortDirection"
+              class="min-w-36 p-3"
+              @sort="sortBy"
+            />
           </tr>
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id" class="border-t border-outline">
-            <td class="p-3 align-top"><span class="display tabular text-2xl font-bold" :class="row.place ? 'text-foreground' : 'text-muted'">{{ row.place ?? '—' }}</span></td>
+            <td class="p-3 align-top">
+              <span class="display tabular text-2xl font-bold" :class="row.place ? 'text-foreground' : 'text-muted'">
+                {{ row.place ?? '—' }}
+              </span>
+            </td>
             <th scope="row" class="sticky left-0 z-10 bg-surface p-3 align-top font-normal">
               <div class="flex w-44 min-w-0 items-start gap-2.5 sm:w-64">
-                <Bib :bib="row.bib_number" small class="mt-0.5"/>
+                <Bib :bib="row.bib_number" small class="mt-0.5" />
                 <div class="min-w-0">
                   <strong class="block break-words">{{ row.name }}</strong>
-                  <span class="block text-xs" :class="row.finished ? 'font-semibold text-success' : row.status !== 'registered' ? 'font-semibold text-error' : 'text-muted'">{{ $t(row.result_status) }}<template v-if="row.type === 'relay'"> · {{ $t('relay') }}</template></span>
+                  <span
+                    class="block text-xs"
+                    :class="
+                      row.finished ? 'font-semibold text-success' : row.status !== 'registered' ? 'font-semibold text-error' : 'text-muted'
+                    "
+                  >
+                    {{ $t(row.result_status) }}
+                    <template v-if="row.type === 'relay'">· {{ $t('relay') }}</template>
+                  </span>
                 </div>
               </div>
             </th>
@@ -65,11 +122,20 @@ const rows = computed(() => {
               <span class="block">{{ row.latest_checkpoint ? $t(row.latest_checkpoint) : $t('No time recorded yet') }}</span>
               <strong class="mt-1 block whitespace-nowrap tabular">{{ formatDuration(row.latest_elapsed_ms, 2) }}</strong>
             </td>
-            <td v-for="checkpoint in checkpoints" :key="checkpoint.id" class="whitespace-nowrap p-3 align-top tabular" :class="checkpoint.kind === 'finish' && row.finished ? 'font-bold text-success' : ''">
-              <CheckpointTime :split="row.splits.find(split => split.checkpoint_id === checkpoint.id)" :precision="2"/>
+            <td
+              v-for="checkpoint in checkpoints"
+              :key="checkpoint.id"
+              class="whitespace-nowrap p-3 align-top tabular"
+              :class="checkpoint.kind === 'finish' && row.finished ? 'font-bold text-success' : ''"
+            >
+              <CheckpointTime :split="row.splits.find(split => split.checkpoint_id === checkpoint.id)" :precision="2" />
             </td>
           </tr>
-          <tr v-if="!rows.length"><td :colspan="checkpoints.length + 4" class="p-6 muted">{{ search ? $t('No matching athlete.') : $t('No participants yet. Standings will appear here when athletes are added.') }}</td></tr>
+          <tr v-if="!rows.length">
+            <td :colspan="checkpoints.length + 4" class="p-6 muted">
+              {{ search ? $t('No matching athlete.') : $t('No participants yet. Standings will appear here when athletes are added.') }}
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>

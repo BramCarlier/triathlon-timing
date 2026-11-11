@@ -18,7 +18,9 @@ export const clockRttMs = ref<number | null>(null);
 let leaving = new AbortController();
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => leaving.abort());
-  window.addEventListener('pageshow', () => { if (leaving.signal.aborted) leaving = new AbortController(); });
+  window.addEventListener('pageshow', () => {
+    if (leaving.signal.aborted) leaving = new AbortController();
+  });
 }
 
 const localNow = () => performance.timeOrigin + performance.now();
@@ -39,10 +41,15 @@ export async function sampleServerClock(): Promise<void> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
   try {
     const sentAt = localNow();
-    const response = await fetch('/time', { headers: { Accept: 'application/json' }, cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.any([AbortSignal.timeout(5000), leaving.signal]) });
+    const response = await fetch('/time', {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: AbortSignal.any([AbortSignal.timeout(5000), leaving.signal]),
+    });
     const receivedAt = localNow();
     if (!response.ok) return;
-    const { now_ms: serverMs } = await response.json() as { now_ms: number };
+    const { now_ms: serverMs } = (await response.json()) as { now_ms: number };
     if (!Number.isFinite(serverMs)) return;
     samples.push(sampleOffset(sentAt, receivedAt, serverMs));
     if (samples.length > 12) samples.shift();
@@ -59,7 +66,9 @@ export function startServerClock(serverNowIso?: string | null): () => void {
   seedServerClock(serverNowIso);
   users += 1;
   if (users === 1) {
-    void (async () => { for (let i = 0; i < 3; i += 1) await sampleServerClock(); })();
+    void (async () => {
+      for (let i = 0; i < 3; i += 1) await sampleServerClock();
+    })();
     timer = window.setInterval(() => void sampleServerClock(), 120_000);
     window.addEventListener('online', onWake);
     document.addEventListener('visibilitychange', onWake);

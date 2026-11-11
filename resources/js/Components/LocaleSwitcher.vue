@@ -9,15 +9,26 @@ function change(event: Event) {
   const select = event.target as HTMLSelectElement;
   const locale = select.value as Locale;
   pending.value = true;
-  router.post('/locale', { locale }, { preserveScroll: true, preserveState: true,
-    onFinish: () => { pending.value = false; select.value = activeLocale.value; },
-  });
+  router.post(
+    '/locale',
+    { locale },
+    {
+      preserveScroll: true,
+      preserveState: true,
+      onFinish: () => {
+        pending.value = false;
+        select.value = activeLocale.value;
+      },
+    },
+  );
 }
 </script>
 
 <template>
-  <label class="relative inline-flex min-h-11 items-center gap-2 rounded-md border border-outline-strong bg-surface px-2.5 text-sm font-semibold">
-    <Icon name="language"/>
+  <label
+    class="relative inline-flex min-h-11 items-center gap-2 rounded-md border border-outline-strong bg-surface px-2.5 text-sm font-semibold"
+  >
+    <Icon name="language" />
     <span class="sr-only">{{ $t('Language') }}</span>
     <select
       :value="activeLocale"
@@ -29,6 +40,6 @@ function change(event: Event) {
       <option value="en">EN</option>
       <option value="nl">NL</option>
     </select>
-    <Icon name="chevron-down" class="pointer-events-none absolute right-2 size-3.5"/>
+    <Icon name="chevron-down" class="pointer-events-none absolute right-2 size-3.5" />
   </label>
 </template>

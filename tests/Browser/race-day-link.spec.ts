@@ -15,12 +15,18 @@ async function startedRace(page: Page, name: string, athlete: string): Promise<s
   await page.getByPlaceholder('Halle Triathlon 2027').fill(name);
   await page.getByRole('button', { name: 'Create and continue', exact: true }).click();
   await expect(page).toHaveURL(/\/races\/\d+$/);
-  await page.getByRole('button', { name: /Athletes/ }).first().click();
+  await page
+    .getByRole('button', { name: /Athletes/ })
+    .first()
+    .click();
   const athleteForm = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add athlete', exact: true }) });
   await athleteForm.getByLabel('Name', { exact: true }).fill(athlete);
   await athleteForm.getByRole('button', { name: 'Add athlete', exact: true }).click();
   await expect(page.getByText('Participant added.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Start & timing/ }).first().click();
+  await page
+    .getByRole('button', { name: /Start & timing/ })
+    .first()
+    .click();
   const link = await page.getByRole('link', { name: 'Open race-day view', exact: true }).getAttribute('href');
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Start race', exact: true }).click();
@@ -38,8 +44,12 @@ test('a phone with a wrong clock still records the server time', async ({ page, 
     const RealDate = Date;
     const offset = 8000;
     class SkewedDate extends RealDate {
-      constructor(...args: ConstructorParameters<DateConstructor>) { super(...(args.length ? args : [RealDate.now() + offset]) as []); }
-      static now() { return RealDate.now() + offset; }
+      constructor(...args: ConstructorParameters<DateConstructor>) {
+        super(...((args.length ? args : [RealDate.now() + offset]) as []));
+      }
+      static now() {
+        return RealDate.now() + offset;
+      }
     }
     (window as unknown as { Date: DateConstructor }).Date = SkewedDate as unknown as DateConstructor;
   });
@@ -76,7 +86,8 @@ test('a tap without signal is kept with its time, can be undone, and uploads lat
   await expect(timer.getByText('1 taps waiting to upload', { exact: true })).toBeVisible();
 
   await context.unroute('**/race/*/timings');
-  await timer.getByRole('button', { name: 'Upload now', exact: true }).click();
+  // Reconnecting triggers the upload (the periodic retry may already have done it).
+  await timer.evaluate(() => window.dispatchEvent(new Event('online')));
   await expect(timer.getByText('1 taps waiting to upload', { exact: true })).toHaveCount(0);
   await timer.getByRole('button', { name: 'Latest times', exact: true }).click();
   const latest = timer.getByRole('listitem').filter({ hasText: 'Offline Finisher' });

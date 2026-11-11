@@ -1,91 +1,271 @@
 import { test, expect, type Page } from '@playwright/test';
-async function login(page:Page,role='admin') {await page.goto('/login');await page.getByRole('textbox',{name:'Email',exact:true}).fill(`${role}@example.test`);await page.getByLabel('Password',{exact:true}).fill('browser-test-password-123');await page.getByRole('button',{name:/sign in|log in/i}).click();await expect(page).not.toHaveURL(/\/login/);}
-async function logout(page:Page){const account=page.locator('summary').filter({hasText:'Account'}).first();if(!(await account.evaluate(el=>(el.parentElement as HTMLDetailsElement)?.open)))await account.click();await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page).toHaveURL(/\/login$/);}
-test('offline recovery, account isolation, audited edits, filtered results and frozen clocks',async({page,context})=>{
-  await login(page);await page.goto('/races/create');await page.getByPlaceholder('Halle Triathlon 2027').fill('Browser readiness');await page.getByRole('button',{name:'Create and continue',exact:true}).click();await expect(page).toHaveURL(/\/races\/\d+$/);const racePath=new URL(page.url()).pathname;
-  const editDetails=page.getByRole('button',{name:'Edit details',exact:true});await expect(page.locator('h1')).toBeVisible();if(!(await editDetails.isVisible()))await page.locator('#prepare > button').first().click();await editDetails.click();await page.getByRole('button',{name:'Save details',exact:true}).click();await expect(page.getByText('Race settings updated.',{exact:true})).toBeVisible();
-  await expect(page.getByText('Finish',{exact:true}).first()).toBeVisible();await expect(page.getByText('Run: 8 km · 44 km total',{exact:true})).toBeVisible();await expect(page.getByText('Bike: 0 km · 1 km total',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Add checkpoint',exact:true}).click();const checkpointForm=page.locator('form').filter({has:page.getByRole('heading',{name:'Add checkpoint',exact:true})});await expect(checkpointForm).toBeVisible();await checkpointForm.getByLabel('Name',{exact:true}).fill('Run 4 km');await checkpointForm.getByLabel('Sport',{exact:true}).selectOption('run');await checkpointForm.getByLabel(/Distance into this sport/).fill('4');await checkpointForm.getByRole('button',{name:'Add checkpoint',exact:true}).click();await expect(page.getByText('Checkpoint added.',{exact:true})).toBeVisible();await expect(page.getByText('Run 4 km',{exact:true}).first()).toBeVisible();
-  const runCheckpoint=page.locator('article').filter({hasText:'Run 4 km'});await runCheckpoint.getByRole('button',{name:'Edit',exact:true}).click();const editCheckpointForm=runCheckpoint.locator('form').filter({has:page.getByRole('heading',{name:'Edit checkpoint',exact:true})});await expect(editCheckpointForm).toBeVisible();await editCheckpointForm.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('button',{name:'Set up officials',exact:true}).click();await runCheckpoint.getByRole('button',{name:'Assign account',exact:true}).click();const officialForm=runCheckpoint.locator('form').filter({has:page.getByRole('heading',{name:'Optional Official account',exact:true})});await expect(officialForm).toBeVisible();await expect(officialForm.getByText('Available officials',{exact:true})).toBeVisible();await officialForm.getByRole('button',{name:/Test Official.*official@example\.test/}).click();await expect(officialForm.getByText('Existing Official selected',{exact:true})).toBeVisible();await officialForm.getByRole('button',{name:'Assign to checkpoint',exact:true}).click();await expect(page.getByText('Official assigned to the checkpoint.',{exact:true})).toBeVisible();
-  await page.getByRole('button',{name:/Athletes/}).first().click();const athleteForm=page.locator('form').filter({has:page.getByRole('heading',{name:'Add athlete',exact:true})});await expect(athleteForm.getByText('Available athletes',{exact:true})).toBeVisible();await athleteForm.getByLabel('Name',{exact:true}).fill('Offline Runner');await expect(athleteForm.getByText(/No existing athlete matches|Matching athletes/)).toBeVisible();await athleteForm.getByRole('button',{name:'Add athlete',exact:true}).click();await expect(page.getByText('Participant added.',{exact:true})).toBeVisible();
-  await page.getByRole('link',{name:'Edit',exact:true}).click();await expect(page).toHaveURL(/\/participants\/\d+\/edit$/);await page.getByLabel('Bib number (optional)').fill('007');await page.getByLabel(/^Category/).fill('Open');const preRaceReason=page.getByLabel('Reason for change');if(await preRaceReason.count())await preRaceReason.fill('Bib assigned at registration');await expect(page.getByLabel('Bib number (optional)')).toHaveValue('007');await page.getByRole('button',{name:'Save participant'}).click();await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();await page.reload();await expect(page.getByLabel('Bib number (optional)')).toHaveValue('007');
-  await page.getByRole('link',{name:'Race workspace',exact:true}).click();const raceDayPath=await page.getByRole('link',{name:'Open race-day view',exact:true}).getAttribute('href');await page.getByRole('button',{name:'Start race',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Start race',exact:true}).click();await expect(page.getByRole('timer')).not.toHaveText('NOT STARTED');const timingContext=await page.context().browser()!.newContext();const publicTiming=await timingContext.newPage();await publicTiming.goto(new URL(raceDayPath!,page.url()).toString());await expect(publicTiming.getByText('No account needed.',{exact:false})).toBeVisible();await publicTiming.getByRole('dialog',{name:'Choose a checkpoint'}).getByRole('button',{name:'T1 (Bike Start)',exact:true}).click();await publicTiming.getByRole('button',{name:/#007.*Offline Runner.*Tap/}).click();await expect(publicTiming.getByRole('status').filter({hasText:'recorded at'})).toContainText('recorded at T1 (Bike Start)');await expect(publicTiming.getByRole('dialog')).toHaveCount(0);await publicTiming.reload();await expect(publicTiming.getByRole('button',{name:/Recording at T1 \(Bike Start\)/})).toBeVisible();await publicTiming.getByRole('button',{name:'Standings',exact:true}).click();const publicStandings=publicTiming.getByRole('region',{name:'Live standings table',exact:true});await expect(publicStandings.getByRole('row').filter({hasText:'Offline Runner'})).toContainText('T1 (Bike Start)');await expect(publicStandings.getByRole('row').filter({hasText:'Offline Runner'})).toContainText('Place 1');const organizerStandings=page.getByRole('region',{name:'Live standings table',exact:true});await expect(organizerStandings.getByRole('row').filter({hasText:'Offline Runner'})).toContainText('T1 (Bike Start)',{timeout:15000});await publicTiming.setViewportSize({width:390,height:844});expect(await publicTiming.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await publicTiming.getByRole('searchbox',{name:'Search standings'}).fill('does-not-exist');await expect(publicStandings).toContainText('No matching athlete.');await timingContext.close();
-  const station=await context.newPage();await station.goto(`${racePath}/station`);await station.getByRole('button',{name:'Open checkpoint'}).click();await expect(station.getByRole('button',{name:/#007.*Offline Runner.*Tap/})).toBeEnabled();
+async function login(page: Page, role = 'admin') {
+  await page.goto('/login');
+  await page.getByRole('textbox', { name: 'Email', exact: true }).fill(`${role}@example.test`);
+  await page.getByLabel('Password', { exact: true }).fill('browser-test-password-123');
+  await page.getByRole('button', { name: /sign in|log in/i }).click();
+  await expect(page).not.toHaveURL(/\/login/);
+}
+async function logout(page: Page) {
+  const account = page.locator('summary').filter({ hasText: 'Account' }).first();
+  if (!(await account.evaluate(el => (el.parentElement as HTMLDetailsElement)?.open))) await account.click();
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+}
+test('offline recovery, account isolation, audited edits, filtered results and frozen clocks', async ({ page, context }) => {
+  await login(page);
+  await page.goto('/races/create');
+  await page.getByPlaceholder('Halle Triathlon 2027').fill('Browser readiness');
+  await page.getByRole('button', { name: 'Create and continue', exact: true }).click();
+  await expect(page).toHaveURL(/\/races\/\d+$/);
+  const racePath = new URL(page.url()).pathname;
+  const editDetails = page.getByRole('button', { name: 'Edit details', exact: true });
+  await expect(page.locator('h1')).toBeVisible();
+  if (!(await editDetails.isVisible())) await page.locator('#prepare > button').first().click();
+  await editDetails.click();
+  await page.getByRole('button', { name: 'Save details', exact: true }).click();
+  await expect(page.getByText('Race settings updated.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Finish', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Run: 8 km · 44 km total', { exact: true })).toBeVisible();
+  await expect(page.getByText('Bike: 0 km · 1 km total', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Add checkpoint', exact: true }).click();
+  const checkpointForm = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add checkpoint', exact: true }) });
+  await expect(checkpointForm).toBeVisible();
+  await checkpointForm.getByLabel('Name', { exact: true }).fill('Run 4 km');
+  await checkpointForm.getByLabel('Sport', { exact: true }).selectOption('run');
+  await checkpointForm.getByLabel(/Distance into this sport/).fill('4');
+  await checkpointForm.getByRole('button', { name: 'Add checkpoint', exact: true }).click();
+  await expect(page.getByText('Checkpoint added.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Run 4 km', { exact: true }).first()).toBeVisible();
+  const runCheckpoint = page.locator('article').filter({ hasText: 'Run 4 km' });
+  await runCheckpoint.getByRole('button', { name: 'Edit', exact: true }).click();
+  const editCheckpointForm = runCheckpoint
+    .locator('form')
+    .filter({ has: page.getByRole('heading', { name: 'Edit checkpoint', exact: true }) });
+  await expect(editCheckpointForm).toBeVisible();
+  await editCheckpointForm.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Set up officials', exact: true }).click();
+  await runCheckpoint.getByRole('button', { name: 'Assign account', exact: true }).click();
+  const officialForm = runCheckpoint
+    .locator('form')
+    .filter({ has: page.getByRole('heading', { name: 'Optional Official account', exact: true }) });
+  await expect(officialForm).toBeVisible();
+  await expect(officialForm.getByText('Available officials', { exact: true })).toBeVisible();
+  await officialForm.getByRole('button', { name: /Test Official.*official@example\.test/ }).click();
+  await expect(officialForm.getByText('Existing Official selected', { exact: true })).toBeVisible();
+  await officialForm.getByRole('button', { name: 'Assign to checkpoint', exact: true }).click();
+  await expect(page.getByText('Official assigned to the checkpoint.', { exact: true })).toBeVisible();
+  await page
+    .getByRole('button', { name: /Athletes/ })
+    .first()
+    .click();
+  const athleteForm = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add athlete', exact: true }) });
+  await expect(athleteForm.getByText('Available athletes', { exact: true })).toBeVisible();
+  await athleteForm.getByLabel('Name', { exact: true }).fill('Offline Runner');
+  await expect(athleteForm.getByText(/No existing athlete matches|Matching athletes/)).toBeVisible();
+  await athleteForm.getByRole('button', { name: 'Add athlete', exact: true }).click();
+  await expect(page.getByText('Participant added.', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Edit', exact: true }).click();
+  await expect(page).toHaveURL(/\/participants\/\d+\/edit$/);
+  await page.getByLabel('Bib number (optional)').fill('007');
+  await page.getByLabel(/^Category/).fill('Open');
+  const preRaceReason = page.getByLabel('Reason for change');
+  if (await preRaceReason.count()) await preRaceReason.fill('Bib assigned at registration');
+  await expect(page.getByLabel('Bib number (optional)')).toHaveValue('007');
+  await page.getByRole('button', { name: 'Save participant' }).click();
+  await expect(page.getByText('Participant updated.', { exact: false })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Bib number (optional)')).toHaveValue('007');
+  await page.getByRole('link', { name: 'Race workspace', exact: true }).click();
+  const raceDayPath = await page.getByRole('link', { name: 'Open race-day view', exact: true }).getAttribute('href');
+  await page.getByRole('button', { name: 'Start race', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Start race', exact: true }).click();
+  await expect(page.getByRole('timer')).not.toHaveText('NOT STARTED');
+  const timingContext = await page.context().browser()!.newContext();
+  const publicTiming = await timingContext.newPage();
+  await publicTiming.goto(new URL(raceDayPath!, page.url()).toString());
+  await expect(publicTiming.getByText('No account needed.', { exact: false })).toBeVisible();
+  await publicTiming
+    .getByRole('dialog', { name: 'Choose a checkpoint' })
+    .getByRole('button', { name: 'T1 (Bike Start)', exact: true })
+    .click();
+  await publicTiming.getByRole('button', { name: /#007.*Offline Runner.*Tap/ }).click();
+  await expect(publicTiming.getByRole('status').filter({ hasText: 'recorded at' })).toContainText('recorded at T1 (Bike Start)');
+  await expect(publicTiming.getByRole('dialog')).toHaveCount(0);
+  await publicTiming.reload();
+  await expect(publicTiming.getByRole('button', { name: /Recording at T1 \(Bike Start\)/ })).toBeVisible();
+  await publicTiming.getByRole('button', { name: 'Standings', exact: true }).click();
+  const publicStandings = publicTiming.getByRole('region', { name: 'Live standings table', exact: true });
+  await expect(publicStandings.getByRole('row').filter({ hasText: 'Offline Runner' })).toContainText('T1 (Bike Start)');
+  await expect(publicStandings.getByRole('row').filter({ hasText: 'Offline Runner' })).toContainText('Place 1');
+  const organizerStandings = page.getByRole('region', { name: 'Live standings table', exact: true });
+  await expect(organizerStandings.getByRole('row').filter({ hasText: 'Offline Runner' })).toContainText('T1 (Bike Start)', {
+    timeout: 15000,
+  });
+  await publicTiming.setViewportSize({ width: 390, height: 844 });
+  expect(await publicTiming.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await publicTiming.getByRole('searchbox', { name: 'Search standings' }).fill('does-not-exist');
+  await expect(publicStandings).toContainText('No matching athlete.');
+  await timingContext.close();
+  const station = await context.newPage();
+  await station.goto(`${racePath}/station`);
+  await station.getByRole('button', { name: 'Open checkpoint' }).click();
+  await expect(station.getByRole('button', { name: /#007.*Offline Runner.*Tap/ })).toBeEnabled();
   // Simulate a transport outage while keeping HTML reload available to verify IndexedDB recovery.
-  await context.route('**/races/*/timings',route=>route.abort());await station.getByRole('button',{name:/#007.*Offline Runner.*Tap/}).click();await expect(station.getByRole('button',{name:'Export backup'})).toBeVisible();await station.reload();await expect(station.getByRole('button',{name:'Export backup'})).toBeVisible();await station.getByRole('button',{name:/Already recorded here/}).click();await expect(station.getByRole('button',{name:/#007.*Offline Runner.*Recorded/})).toBeDisabled();
-  await logout(station);await login(station,'official');await station.goto(`${racePath}/station`);await expect(station.getByText('Run 4 km',{exact:true}).first()).toBeVisible();await expect(station.getByText('pending timings belong to another account.',{exact:false})).toBeVisible();await expect(station.getByRole('button',{name:'Export backup'})).toHaveCount(0);
-  await station.goto('/races');await logout(station);await login(station);await station.goto(`${racePath}/station`);await expect(station.locator('h1')).toBeVisible();if(await station.getByRole('button',{name:'Open checkpoint'}).isVisible())await station.getByRole('button',{name:'Open checkpoint'}).click();await context.unroute('**/races/*/timings');await station.getByRole('button',{name:'Upload now',exact:true}).click();await expect(station.getByRole('button',{name:'Export backup'})).toHaveCount(0);await expect(station.getByRole('button',{name:'Undo',exact:true}).first()).toBeVisible();
-  await page.goto(racePath);await page.getByRole('button',{name:'End race now',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'End race',exact:true}).click();await expect(station.getByText('Race finished. The shared clock is stopped.',{exact:false})).toBeVisible({timeout:15000});const final=await station.getByRole('timer').innerText();await station.reload();await expect(station.getByRole('timer')).toHaveText(final);
-  await page.goto(`${racePath}/participants`);await page.getByRole('link',{name:'Edit',exact:true}).click();await expect(page).toHaveURL(/\/participants\/\d+\/edit$/);await expect(page.getByLabel('Result status')).toHaveValue('dnf');await page.getByLabel('Result status').selectOption('dnf');await expect(page.getByLabel('Reason for change')).toHaveValue('');await page.getByRole('button',{name:'Save participant'}).click();await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();await page.getByRole('link',{name:'Results',exact:true}).click();await page.getByLabel('Result status').selectOption('DNF');await expect(page.getByRole('cell',{name:'Open · DNF',exact:false})).toBeVisible();
-  await page.getByRole('button',{name:'View splits',exact:true}).click();await expect(page.getByRole('region',{name:'Results table'}).getByText(/^split \d{2}:\d{2}:\d{2}\.\d{2}$/).first()).toBeVisible();await page.getByText('Display options',{exact:true}).click();await page.getByLabel('Timing precision').selectOption('3');await expect(page.getByRole('region',{name:'Results table'}).getByText(/^split \d{2}:\d{2}:\d{2}\.\d{3}$/).first()).toBeVisible();
-  await page.getByRole('link',{name:'Race workspace',exact:true}).click();await page.locator('summary').filter({hasText:'More tools'}).click();await page.getByRole('link',{name:/Corrections & station health/}).click();
-  await page.getByLabel('Seconds',{exact:true}).fill('4');await page.getByLabel('Milliseconds',{exact:true}).fill('321');await expect(page.getByLabel('Reason (optional)',{exact:true})).toHaveValue('');await page.getByRole('button',{name:'Review correction',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('00:00:04.321');await page.getByRole('button',{name:'Save correction',exact:true}).click();await expect(page.getByText('Checkpoint timing corrected.',{exact:false})).toBeVisible();
-  await page.getByRole('link',{name:'Race workspace',exact:true}).click();await page.getByRole('button',{name:'Publish results',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Publish results',exact:true}).click();await expect(page.getByRole('link',{name:'Open public leaderboard',exact:false})).toBeVisible();
-  const publicPath=await page.getByRole('link',{name:'Open public leaderboard',exact:false}).getAttribute('href');const guestContext=await page.context().browser()!.newContext();const spectator=await guestContext.newPage();await spectator.goto(new URL(publicPath!,page.url()).toString());
-  await expect(spectator.getByRole('cell',{name:'Offline Runner',exact:false})).toBeVisible();await expect(spectator.getByRole('link',{name:'Race control',exact:true})).toHaveCount(0);await expect(spectator.getByRole('link',{name:'Export CSV'})).toHaveCount(0);await spectator.getByText('Display options',{exact:true}).click();await spectator.getByRole('button',{name:'Large-screen display'}).click();await expect(spectator.getByText('Page 1 of 1',{exact:true})).toBeVisible();await spectator.getByRole('button',{name:'Exit display mode'}).click();
-  await page.getByRole('button',{name:'Unpublish',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Unpublish',exact:true}).click();await expect(page.getByText('Public leaderboard unpublished.',{exact:false})).toBeVisible();await spectator.reload();await expect(spectator.getByRole('heading',{name:'404',exact:true})).toBeVisible();await guestContext.close();
+  await context.route('**/races/*/timings', route => route.abort());
+  await station.getByRole('button', { name: /#007.*Offline Runner.*Tap/ }).click();
+  await expect(station.getByRole('button', { name: 'Export backup' })).toBeVisible();
+  await station.reload();
+  await expect(station.getByRole('button', { name: 'Export backup' })).toBeVisible();
+  await station.getByRole('button', { name: /Already recorded here/ }).click();
+  await expect(station.getByRole('button', { name: /#007.*Offline Runner.*Recorded/ })).toBeDisabled();
+  await logout(station);
+  await login(station, 'official');
+  await station.goto(`${racePath}/station`);
+  await expect(station.getByText('Run 4 km', { exact: true }).first()).toBeVisible();
+  await expect(station.getByText('pending timings belong to another account.', { exact: false })).toBeVisible();
+  await expect(station.getByRole('button', { name: 'Export backup' })).toHaveCount(0);
+  await station.goto('/races');
+  await logout(station);
+  await login(station);
+  await station.goto(`${racePath}/station`);
+  await expect(station.locator('h1')).toBeVisible();
+  if (await station.getByRole('button', { name: 'Open checkpoint' }).isVisible())
+    await station.getByRole('button', { name: 'Open checkpoint' }).click();
+  await context.unroute('**/races/*/timings');
+  await station.getByRole('button', { name: 'Upload now', exact: true }).click();
+  await expect(station.getByRole('button', { name: 'Export backup' })).toHaveCount(0);
+  await expect(station.getByRole('button', { name: 'Undo', exact: true }).first()).toBeVisible();
+  await page.goto(racePath);
+  await page.getByRole('button', { name: 'End race now', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'End race', exact: true }).click();
+  await expect(station.getByText('Race finished. The shared clock is stopped.', { exact: false })).toBeVisible({ timeout: 15000 });
+  const final = await station.getByRole('timer').innerText();
+  await station.reload();
+  await expect(station.getByRole('timer')).toHaveText(final);
+  await page.goto(`${racePath}/participants`);
+  await page.getByRole('link', { name: 'Edit', exact: true }).click();
+  await expect(page).toHaveURL(/\/participants\/\d+\/edit$/);
+  await expect(page.getByLabel('Result status')).toHaveValue('dnf');
+  await page.getByLabel('Result status').selectOption('dnf');
+  await expect(page.getByLabel('Reason for change')).toHaveValue('');
+  await page.getByRole('button', { name: 'Save participant' }).click();
+  await expect(page.getByText('Participant updated.', { exact: false })).toBeVisible();
+  await page.getByRole('link', { name: 'Results', exact: true }).click();
+  await page.getByLabel('Result status').selectOption('DNF');
+  await expect(page.getByRole('cell', { name: 'Open · DNF', exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'View splits', exact: true }).click();
+  await expect(
+    page
+      .getByRole('region', { name: 'Results table' })
+      .getByText(/^split \d{2}:\d{2}:\d{2}\.\d{2}$/)
+      .first(),
+  ).toBeVisible();
+  await page.getByText('Display options', { exact: true }).click();
+  await page.getByLabel('Timing precision').selectOption('3');
+  await expect(
+    page
+      .getByRole('region', { name: 'Results table' })
+      .getByText(/^split \d{2}:\d{2}:\d{2}\.\d{3}$/)
+      .first(),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Race workspace', exact: true }).click();
+  await page.locator('summary').filter({ hasText: 'More tools' }).click();
+  await page.getByRole('link', { name: /Corrections & station health/ }).click();
+  await page.getByLabel('Seconds', { exact: true }).fill('4');
+  await page.getByLabel('Milliseconds', { exact: true }).fill('321');
+  await expect(page.getByLabel('Reason (optional)', { exact: true })).toHaveValue('');
+  await page.getByRole('button', { name: 'Review correction', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('00:00:04.321');
+  await page.getByRole('button', { name: 'Save correction', exact: true }).click();
+  await expect(page.getByText('Checkpoint timing corrected.', { exact: false })).toBeVisible();
+  await page.getByRole('link', { name: 'Race workspace', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish results', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Publish results', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Open public leaderboard', exact: false })).toBeVisible();
+  const publicPath = await page.getByRole('link', { name: 'Open public leaderboard', exact: false }).getAttribute('href');
+  const guestContext = await page.context().browser()!.newContext();
+  const spectator = await guestContext.newPage();
+  await spectator.goto(new URL(publicPath!, page.url()).toString());
+  await expect(spectator.getByRole('cell', { name: 'Offline Runner', exact: false })).toBeVisible();
+  await expect(spectator.getByRole('link', { name: 'Race control', exact: true })).toHaveCount(0);
+  await expect(spectator.getByRole('link', { name: 'Export CSV' })).toHaveCount(0);
+  await spectator.getByText('Display options', { exact: true }).click();
+  await spectator.getByRole('button', { name: 'Large-screen display' }).click();
+  await expect(spectator.getByText('Page 1 of 1', { exact: true })).toBeVisible();
+  await spectator.getByRole('button', { name: 'Exit display mode' }).click();
+  await page.getByRole('button', { name: 'Unpublish', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Unpublish', exact: true }).click();
+  await expect(page.getByText('Public leaderboard unpublished.', { exact: false })).toBeVisible();
+  await spectator.reload();
+  await expect(spectator.getByRole('heading', { name: '404', exact: true })).toBeVisible();
+  await guestContext.close();
 
   await page.goto(`${racePath}/control`);
-  const correctionForm=page.locator('form').filter({has:page.getByLabel('Seconds',{exact:true})});
+  const correctionForm = page.locator('form').filter({ has: page.getByLabel('Seconds', { exact: true }) });
   await expect(correctionForm).toContainText('00:00:04.321');
-  await correctionForm.getByRole('button',{name:/^Delete time:/}).click();
+  await correctionForm.getByRole('button', { name: /^Delete time:/ }).click();
   await expect(page.getByRole('dialog')).toContainText('00:00:04.321');
-  await page.getByRole('dialog').getByRole('button',{name:'Delete time',exact:true}).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete time', exact: true }).click();
   await expect(correctionForm).toContainText('Not recorded');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.goto(`${racePath}/participants`);
-  await page.getByRole('link',{name:'Edit',exact:true}).click();
+  await page.getByRole('link', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Result status').selectOption('dns');
   await expect(page.getByRole('status')).toContainText('Saving DNS deletes all time registrations');
-  await page.getByRole('button',{name:'Save participant'}).click();
-  await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();
+  await page.getByRole('button', { name: 'Save participant' }).click();
+  await expect(page.getByText('Participant updated.', { exact: false })).toBeVisible();
   await page.goto(`${racePath}/control`);
-  await page.getByText('Recent timings',{exact:true}).click();
-  await expect(page.getByText('No timings recorded yet.',{exact:true})).toBeVisible();
-
+  await page.getByText('Recent timings', { exact: true }).click();
+  await expect(page.getByText('No timings recorded yet.', { exact: true })).toBeVisible();
 });
 
-test('DNS participants disappear from all checkpoint pickers and return when competing again',async({page,context})=>{
+test('DNS participants disappear from all checkpoint pickers and return when competing again', async ({ page, context }) => {
   await login(page);
   await page.goto('/races/create');
   await page.getByPlaceholder('Halle Triathlon 2027').fill('DNS picker check');
-  await page.getByRole('button',{name:'Create and continue',exact:true}).click();
+  await page.getByRole('button', { name: 'Create and continue', exact: true }).click();
   await expect(page).toHaveURL(/\/races\/\d+$/);
-  const racePath=new URL(page.url()).pathname;
-  await page.getByRole('button',{name:/Athletes/}).first().click();
-  const athleteForm=page.locator('form').filter({has:page.getByRole('heading',{name:'Add athlete',exact:true})});
-  await athleteForm.getByLabel('Name',{exact:true}).fill('Absent Runner');
-  await athleteForm.getByRole('button',{name:'Add athlete',exact:true}).click();
-  await expect(page.getByText('Participant added.',{exact:true})).toBeVisible();
+  const racePath = new URL(page.url()).pathname;
+  await page
+    .getByRole('button', { name: /Athletes/ })
+    .first()
+    .click();
+  const athleteForm = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add athlete', exact: true }) });
+  await athleteForm.getByLabel('Name', { exact: true }).fill('Absent Runner');
+  await athleteForm.getByRole('button', { name: 'Add athlete', exact: true }).click();
+  await expect(page.getByText('Participant added.', { exact: true })).toBeVisible();
   await page.locator('#race-day > button').click();
-  const publicPath=await page.getByRole('link',{name:'Open race-day view',exact:true}).getAttribute('href');
-  await page.getByRole('button',{name:'Start race',exact:true}).click();
-  await page.getByRole('dialog').getByRole('button',{name:'Start race',exact:true}).click();
+  const publicPath = await page.getByRole('link', { name: 'Open race-day view', exact: true }).getAttribute('href');
+  await page.getByRole('button', { name: 'Start race', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Start race', exact: true }).click();
   await expect(page.getByRole('timer')).not.toHaveText('NOT STARTED');
   await page.goto(`${racePath}/participants`);
-  await page.getByRole('link',{name:'Edit',exact:true}).click();
+  await page.getByRole('link', { name: 'Edit', exact: true }).click();
   await expect(page).toHaveURL(/\/participants\/\d+\/edit$/);
-  const editPath=new URL(page.url()).pathname;
+  const editPath = new URL(page.url()).pathname;
   await page.getByLabel('Result status').selectOption('dns');
-  await page.getByRole('button',{name:'Save participant'}).click();
-  await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();
+  await page.getByRole('button', { name: 'Save participant' }).click();
+  await expect(page.getByText('Participant updated.', { exact: false })).toBeVisible();
   await page.goto(racePath);
-  await expect(page.locator('#race-day').getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
-  await page.locator('#race-day').getByRole('searchbox',{name:'Find athlete'}).fill('Absent');
-  await expect(page.locator('#race-day').getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
-  await expect(page.getByRole('region',{name:'Live standings table',exact:true})).toContainText('Absent Runner');
+  await expect(page.locator('#race-day').getByRole('button', { name: /Absent Runner/ })).toHaveCount(0);
+  await page.locator('#race-day').getByRole('searchbox', { name: 'Find athlete' }).fill('Absent');
+  await expect(page.locator('#race-day').getByRole('button', { name: /Absent Runner/ })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Live standings table', exact: true })).toContainText('Absent Runner');
   await page.goto(`${racePath}/station`);
   await expect(page.locator('h1')).toBeVisible();
-  if(await page.getByRole('button',{name:'Open checkpoint',exact:true}).isVisible())await page.getByRole('button',{name:'Open checkpoint',exact:true}).click();
-  await expect(page.getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
-  await expect(page.getByText('No matching athlete.',{exact:true})).toBeVisible();
-  const publicPage=await context.newPage();
-  await publicPage.goto(new URL(publicPath!,page.url()).toString());
-  await publicPage.getByRole('dialog',{name:'Choose a checkpoint'}).getByRole('button',{name:'Finish',exact:true}).click();
-  await expect(publicPage.getByRole('button',{name:/Absent Runner/})).toHaveCount(0);
+  if (await page.getByRole('button', { name: 'Open checkpoint', exact: true }).isVisible())
+    await page.getByRole('button', { name: 'Open checkpoint', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Absent Runner/ })).toHaveCount(0);
+  await expect(page.getByText('No matching athlete.', { exact: true })).toBeVisible();
+  const publicPage = await context.newPage();
+  await publicPage.goto(new URL(publicPath!, page.url()).toString());
+  await publicPage.getByRole('dialog', { name: 'Choose a checkpoint' }).getByRole('button', { name: 'Finish', exact: true }).click();
+  await expect(publicPage.getByRole('button', { name: /Absent Runner/ })).toHaveCount(0);
   await page.goto(editPath);
   await page.getByLabel('Result status').selectOption('registered');
-  await page.getByRole('button',{name:'Save participant'}).click();
-  await expect(page.getByText('Participant updated.',{exact:false})).toBeVisible();
-  await expect(publicPage.getByRole('button',{name:/Absent Runner.*Tap/})).toBeVisible({timeout:15000});
+  await page.getByRole('button', { name: 'Save participant' }).click();
+  await expect(page.getByText('Participant updated.', { exact: false })).toBeVisible();
+  await expect(publicPage.getByRole('button', { name: /Absent Runner.*Tap/ })).toBeVisible({ timeout: 15000 });
   await publicPage.close();
 });

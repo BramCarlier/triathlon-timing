@@ -2,7 +2,11 @@
  * Pure helpers for estimating the server clock from round-trip samples
  * (the midpoint method NTP uses). Kept free of browser APIs so they can be tested.
  */
-export interface ClockSample { offsetMs: number; rttMs: number; takenAt: number }
+export interface ClockSample {
+  offsetMs: number;
+  rttMs: number;
+  takenAt: number;
+}
 
 /** Offset that maps a local timestamp onto the server timeline. */
 export function sampleOffset(sentAt: number, receivedAt: number, serverMs: number): ClockSample {

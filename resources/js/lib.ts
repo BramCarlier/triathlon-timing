@@ -27,10 +27,20 @@ export async function jsonRequest<T>(url: string, options: RequestInit = {}): Pr
   const response = await fetch(url, {
     credentials: 'same-origin',
     ...options,
-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Device-Id': deviceId(), ...csrfHeaders(document.cookie,csrfToken()), ...(options.headers ?? {}) },
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-Device-Id': deviceId(),
+      ...csrfHeaders(document.cookie, csrfToken()),
+      ...(options.headers ?? {}),
+    },
   });
   let data: T;
-  try { data = await response.json() as T; } catch { data = {} as T; }
+  try {
+    data = (await response.json()) as T;
+  } catch {
+    data = {} as T;
+  }
   return { response, data };
 }
 
