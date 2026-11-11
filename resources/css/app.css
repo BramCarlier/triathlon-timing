@@ -142,11 +142,12 @@ input[type="checkbox"] { accent-color: var(--app-buoy); }
 .bib {
   --strip: var(--app-ink);
   position: relative;
-  display: inline-grid;
-  place-items: center;
+  display: inline-block;
   min-width: 4.25rem;
   max-width: 7rem;
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: center;
   padding: 0.55rem 0.6rem 0.3rem;
   border-radius: 0.35rem;

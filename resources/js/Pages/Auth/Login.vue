@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Logo from '../../Components/Logo.vue';
 import Icon from '../../Components/Icon.vue';
 import ThemeToggle from '../../Components/ThemeToggle.vue';
 import LocaleSwitcher from '../../Components/LocaleSwitcher.vue';
@@ -10,7 +11,7 @@ const submit = () => form.post('/login');
   <Head :title="$t('Log in')" />
   <div class="auth-screen grid min-h-screen place-items-center app-background px-4">
     <form class="panel-pad w-full max-w-md" @submit.prevent="submit">
-      <div class="mb-8 text-center"><div class="mx-auto mb-4 grid size-14 place-items-center rounded-lg bg-buoy text-2xl font-black text-on-buoy">T</div><h1 class="text-2xl font-bold">Triathlon Timing</h1><p class="mt-2 muted">{{ $t("Race control, checkpoint timing and athlete results.") }}</p></div>
+      <div class="mb-8 text-center"><div class="mx-auto mb-4 flex justify-center text-foreground [&_svg]:size-16"><Logo/></div><h1 class="text-4xl">Triathlon Timing</h1><p class="mt-2 muted">{{ $t("Race control, checkpoint timing and athlete results.") }}</p></div>
       <label class="label" for="email">{{ $t("Email") }}</label><input id="email" v-model="form.email" class="field mb-1" type="email" autocomplete="email" required><p v-if="form.errors.email" class="mb-4 text-sm text-error">{{ form.errors.email }}</p>
       <label class="label mt-4" for="password">{{ $t("Password") }}</label><input id="password" v-model="form.password" class="field" type="password" autocomplete="current-password" required><p v-if="form.errors.password" class="mt-1 text-sm text-error">{{ form.errors.password }}</p>
       <label class="mt-4 flex items-center gap-2 text-sm text-secondary"><input v-model="form.remember" type="checkbox" class="size-4"> {{ $t("Keep me signed in on this device") }}</label>

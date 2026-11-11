@@ -77,9 +77,13 @@ const stateText = (p: StationParticipant) => blocked(p) ? (p.status ?? '').toUpp
   : props.recorder.saving.value.has(p.id) ? tr('Saving')
   : props.recorder.isRecorded(p) ? tr('Recorded') : tr('Tap');
 const rowLabel = (p: StationParticipant) => `${bibLabel(p.bib_number)} ${p.name} ${stateText(p)}`;
-const subline = (p: StationParticipant) => p.type === 'relay'
-  ? p.members.map(member => `${disciplineLabel(member.discipline)}: ${member.name}`).join(', ')
-  : (p.category || tr('Solo athlete'));
+// For a relay, name the team member racing this leg first.
+const subline = (p: StationParticipant) => {
+  if (p.type !== 'relay') return p.category || tr('Solo athlete');
+  const leg = checkpoint.value?.discipline;
+  const members = [...p.members].sort((a, b) => Number(b.discipline === leg) - Number(a.discipline === leg));
+  return members.map(member => `${disciplineLabel(member.discipline)}: ${member.name}`).join(', ');
+};
 
 const lastTapped = ref<number | null>(null);
 async function tap(p: StationParticipant) {
