@@ -43,17 +43,17 @@ const checkpointId = ref<number | null>(timingCheckpoints.value.some(cp => cp.id
 watch(checkpointId, id => { try { if (id) localStorage.setItem(storageKey, String(id)); } catch { /* private mode */ } });
 watch(timingCheckpoints, list => { if (!list.some(cp => cp.id === checkpointId.value)) checkpointId.value = list[0]?.id ?? null; });
 
-const participants = ref<StationParticipant[]>([]);
+const roster = ref<StationParticipant[]>([]);
 const copyParticipants = (rows: StationParticipant[]) => rows.map(p => ({ ...p, completed_checkpoint_ids: [...p.completed_checkpoint_ids] }));
-participants.value = copyParticipants(props.participants);
-watch(() => props.participants, rows => { participants.value = copyParticipants(rows); });
+roster.value = copyParticipants(props.participants);
+watch(() => props.participants, rows => { roster.value = copyParticipants(rows); });
 
 const recorder = useTimingRecorder({
   url: `/races/${props.race.id}/timings`,
   owner: account.id,
   race: () => props.race,
   checkpoint: () => timingCheckpoints.value.find(cp => cp.id === checkpointId.value) ?? null,
-  participants,
+  participants: roster,
   extraPayload: () => ({ operator_id: account.id, workspace: true }),
   undoRemote: async tap => {
     if (!tap.id) return tr('Reconnect before undoing a synced timing.');
@@ -118,7 +118,7 @@ const changeClock = () => {
           :race="race"
           :server-now="serverNow"
           :checkpoints="timingCheckpoints"
-          :participants="participants"
+          :participants="roster"
           :recorder="recorder"
           :locked="!isAdmin"
           :sticky="false"

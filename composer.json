@@ -64,6 +64,13 @@
     ],
     "post-create-project-cmd": [
       "@php artisan key:generate --ansi"
+    ],
+    "format": [
+      "pint"
+    ],
+    "lint": [
+      "pint --test",
+      "@php -d memory_limit=1G vendor/bin/phpstan analyse --no-progress"
     ]
   },
   "extra": {

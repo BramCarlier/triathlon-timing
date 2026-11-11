@@ -30,17 +30,17 @@ const selectForm = useForm<{ checkpoint_id: number | null }>({ checkpoint_id: pr
 watch(() => props.checkpoint?.id, id => { selectForm.checkpoint_id = id ?? null; });
 const selectCheckpoint = () => selectForm.post(`/races/${props.race.id}/checkpoint-selection`, { preserveScroll: true });
 
-const participants = ref<StationParticipant[]>([]);
+const roster = ref<StationParticipant[]>([]);
 const copyParticipants = (rows: StationParticipant[]) => rows.map(p => ({ ...p, completed_checkpoint_ids: [...p.completed_checkpoint_ids] }));
-participants.value = copyParticipants(props.participants);
-watch(() => props.participants, rows => { participants.value = copyParticipants(rows); });
+roster.value = copyParticipants(props.participants);
+watch(() => props.participants, rows => { roster.value = copyParticipants(rows); });
 
 const recorder = useTimingRecorder({
   url: `/races/${props.race.id}/timings`,
   owner: account.id,
   race: () => props.race,
   checkpoint: () => props.checkpoint ?? null,
-  participants,
+  participants: roster,
   extraPayload: () => ({ operator_id: account.id }),
   undoRemote: async tap => {
     if (!tap.id) return tr('Reconnect before undoing a synced timing.');
@@ -97,11 +97,11 @@ onMounted(async () => {
       .listen('.race.started', () => router.reload({ only: ['race', 'serverNow'] }))
       .listen('.race.finished', () => router.reload({ only: ['race', 'serverNow', 'participants', 'recentTimings'] }))
       .listen('.timing.recorded', (event: { entry_id: number; checkpoint_id: number }) => {
-        const p = participants.value.find(item => item.id === event.entry_id);
+        const p = roster.value.find(item => item.id === event.entry_id);
         if (p && !p.completed_checkpoint_ids.includes(event.checkpoint_id)) p.completed_checkpoint_ids.push(event.checkpoint_id);
       })
       .listen('.timing.voided', (event: { entry_id: number; checkpoint_id: number }) => {
-        const p = participants.value.find(item => item.id === event.entry_id);
+        const p = roster.value.find(item => item.id === event.entry_id);
         if (p) p.completed_checkpoint_ids = p.completed_checkpoint_ids.filter(id => id !== event.checkpoint_id);
       });
   }
@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
           :server-now="serverNow"
           :checkpoints="checkpoints"
           :checkpoint-id="checkpoint.id"
-          :participants="participants"
+          :participants="roster"
           :recorder="recorder"
           locked
           storage-key="tt.keypad.station"

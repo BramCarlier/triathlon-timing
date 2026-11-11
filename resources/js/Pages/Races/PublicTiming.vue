@@ -35,10 +35,10 @@ const props = defineProps<{
   undoWindowSeconds: number;
 }>();
 
-const participants = ref<StationParticipant[]>([]);
+const roster = ref<StationParticipant[]>([]);
 const copyParticipants = (rows: StationParticipant[]) => rows.map(item => ({ ...item, completed_checkpoint_ids: [...item.completed_checkpoint_ids] }));
-participants.value = copyParticipants(props.participants);
-watch(() => props.participants, rows => { participants.value = copyParticipants(rows); });
+roster.value = copyParticipants(props.participants);
+watch(() => props.participants, rows => { roster.value = copyParticipants(rows); });
 
 // The selected checkpoint survives reloads and is never silently defaulted.
 const storageKey = `tt.checkpoint.${props.token}`;
@@ -72,7 +72,7 @@ const recorder = useTimingRecorder({
   owner: `link:${props.token}`,
   race: () => props.race,
   checkpoint: () => selectedCheckpoint.value,
-  participants,
+  participants: roster,
   undoRemote: async tap => {
     const { response, data } = await jsonRequest<{ message?: string }>(`/race/${props.token}/timings/${tap.client_uuid}/undo`, { method: 'POST' });
     return response.ok ? null : (data.message ?? tr('This tap can no longer be undone here. Ask the Organizer to correct it.'));
@@ -136,7 +136,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', keepAwake));
             :race="race"
             :server-now="serverNow"
             :checkpoints="race.checkpoints"
-            :participants="participants"
+            :participants="roster"
             :recorder="recorder"
             :storage-key="`tt.keypad.${token}`"
           />
