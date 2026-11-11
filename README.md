@@ -4,7 +4,7 @@ A race-day web application for organizers and athletes. It supports a shared rac
 
 ## Stack
 
-- Laravel 13 / PHP 8.3+
+- Laravel 13 / PHP 8.5
 - Vue 3 + TypeScript + Inertia
 - Vite 8 + Tailwind CSS 4
 - MySQL or PostgreSQL
