@@ -1,5 +1,16 @@
 # Laravel Forge production setup
 
+## Upgrading the existing site from PHP 8.4 to PHP 8.5
+
+This release requires PHP 8.5 (`composer.json` and `deploy/forge-deploy.sh` both enforce it). Do this **before** merging and deploying:
+
+1. Forge → Server → **PHP**: install PHP 8.5 (with the same extensions: `mbstring`, `dom`, `xml`, `fileinfo`, `curl`, `zip`, `gd`, `intl`, `pdo_mysql`). Installing it does not change other sites; Brotherhood Manager keeps its own PHP version.
+2. Forge → Site → **Settings → PHP version**: switch the triathlon site to PHP 8.5. Forge updates `$FORGE_PHP` and `$FORGE_COMPOSER` for deployments.
+3. Update the supervised **Reverb** and **queue** processes and the **scheduler** entry from `php8.4` to `php8.5` (commands below).
+4. Deploy. The deploy script stops before migrations if `php8.5` or Node 24 is missing.
+
+New migrations in this release: the Official role is renamed in the `users` table, the race-day link gains on/off columns, and `timing_records` gets a generated `active_key` column with a unique index. The last migration stops with a clear message if the database ever contained two active timings for the same athlete and checkpoint. Take a backup first (see **Backups**).
+
 ## Site and runtime
 
 Create a Laravel site for `BramCarlier/triathlon-timing`, branch `main`, with PHP 8.5 and web directory `/public`. Use Node.js **24 LTS** and the Yarn version pinned in `package.json` (currently 4.18.0). Corepack must be installed. Yarn 1's `--non-interactive` fails with Yarn 4; use `--immutable`.
@@ -10,7 +21,7 @@ When website isolation is enabled, replace `/home/forge` in every example with t
 
 Use an `on-forge.com` domain or point a custom domain's DNS to the server. Install/verify SSL and redirect HTTP to HTTPS before testing authentication and WebSockets.
 
-Create a separate MySQL 8+ database and a database user restricted to that database. PostgreSQL portability is not verified; use MySQL for this deployment (participant sorting currently includes MySQL-specific SQL). PHP needs the extensions required by `composer.lock`, including `mbstring`, `dom`, `xml`, `fileinfo`, `curl`, `zip`, `gd`, `intl` and `pdo_mysql` for MySQL. Do not use `--ignore-platform-reqs`.
+Create a separate MySQL 8+ database and a database user restricted to that database. PostgreSQL is not tested; use MySQL for this deployment. PHP needs the extensions required by `composer.lock`, including `mbstring`, `dom`, `xml`, `fileinfo`, `curl`, `zip`, `gd`, `intl` and `pdo_mysql` for MySQL. Do not use `--ignore-platform-reqs`.
 
 ## Environment and first installation
 
@@ -195,7 +206,7 @@ After changing Reverb credentials, rebuild Vite assets and restart Reverb. Exist
 
 The admin **Health** page and `php8.5 artisan timing:health` check application dependencies without showing credentials. Scheduler and queue heartbeats should appear within two minutes after deployment; Reverb handshake checks run every five minutes. The Forge scheduler must run as the isolated site user, and the queue worker must consume the default database queue. Failed jobs are retained for diagnosis; do not purge them as a substitute for resolving the cause.
 
-On the current Forge account, built-in backups and server monitoring are Business-plan features. This deployment does not automatically upgrade the account or establish off-server backups. Configure an approved storage provider, retention policy and independent alert destination, then rehearse restoring to a separate database. Never test a restoration against the live race database.
+On the current Forge account, built-in backups and server monitoring are Business-plan features. The repository includes a plan-independent alternative; see **Backups** and **Uptime monitoring** below.
 
 ## Email invitations and delivery
 
@@ -260,3 +271,42 @@ Run `php8.5 artisan timing:check-mail` from the current release. This refreshes 
 If the diagnostic reports expired/revoked authorization, repeat the consent/token step. If Google denies sending, check Gmail API activation, the `gmail.send` scope, matching sending account and quota. If an API send times out, check the sending account's Sent folder before resending: delivery may have happened. Automatic send retries are intentionally disabled to avoid duplicates. A successful API submission indicates acceptance, not guaranteed inbox placement.
 
 References: [Gmail sending guide](https://developers.google.com/workspace/gmail/api/guides/sending), [OAuth web-server flow](https://developers.google.com/identity/protocols/oauth2/web-server), [refresh-token expiration](https://developers.google.com/identity/protocols/oauth2#expiration).
+
+## Backups
+
+`deploy/backup-database.sh` writes a consistent, compressed `mysqldump` of the site's database (credentials are read from `.env` and never appear on the command line), uploads it with [rclone](https://rclone.org/) to off-server storage, and keeps 30 days. It works for any Laravel site on the server, so use it for Brotherhood Manager too.
+
+One-time setup as the site's Unix user (for the isolated triathlon site: `triathlon-timing`):
+
+```bash
+# 1. Install rclone for this user (no sudo needed)
+curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
+unzip -o /tmp/rclone.zip -d /tmp && install -D /tmp/rclone-*-linux-amd64/rclone ~/.local/bin/rclone
+# 2. Configure a remote, e.g. Backblaze B2, Hetzner Storage Box or S3 (interactive)
+~/.local/bin/rclone config
+```
+
+Then add a daily Forge **Scheduler** job as that user, outside race hours (e.g. 03:17):
+
+```bash
+PATH="$HOME/.local/bin:$PATH" BACKUP_REMOTE="b2:YOUR-BUCKET/triathlon-timing" bash /home/triathlon-timing/triathlon-timing.on-forge.com/current/deploy/backup-database.sh /home/triathlon-timing/triathlon-timing.on-forge.com/current
+```
+
+Optional variables: `BACKUP_KEEP_DAYS` (default 30), `BACKUP_DIR` (local copies, default `~/backups/<database>`), `BACKUP_PING_URL` (a heartbeat URL from your uptime monitor, so you are told when a nightly backup did not run).
+
+**Restore drill** (do this once, never against the live database): create an empty database, then `gunzip -c triathlon_timing-<stamp>.sql.gz | mysql -u USER -p EMPTY_DATABASE`, point a copy of the app at it and check that races, athletes and timings are there.
+
+Take an extra manual backup before every deployment that contains migrations: run the same command from Forge's terminal.
+
+## Uptime monitoring
+
+Both apps expose Laravel's `/up` health route. Add an HTTP monitor for `https://triathlon-timing.on-forge.com/up` and `https://brotherhood-manager.on-forge.com/up` in a free external service (for example UptimeRobot or Better Stack) with e-mail or app alerts, and use a heartbeat monitor for `BACKUP_PING_URL`. The in-app **System health** page shows queue, scheduler and Reverb status; it does not send alerts by itself.
+
+## Sharing the server with Brotherhood Manager
+
+The two sites are isolated from each other: separate Unix users, databases, Node versions (24 here, 22 there) and queue backends (database here, Redis there). Keep it that way:
+
+- **Ports.** Reverb for this site listens on `127.0.0.1:8080`. If Brotherhood Manager ever adds Reverb, give it another port.
+- **Redis.** If this site moves its cache or queue to the Redis server Brotherhood Manager uses, set a distinct `REDIS_PREFIX` (or `REDIS_DB`/`REDIS_CACHE_DB`) so keys never collide.
+- **Race days.** Both apps share CPU, memory and MySQL. Before an event, check the server's load during a test race and consider pausing Brotherhood Manager's heavy scheduled work for the race window.
+- **Backups.** Neither app has off-server backups unless the job above is set up for both.

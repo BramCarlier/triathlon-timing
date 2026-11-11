@@ -35,9 +35,16 @@ jobs:
       - run: composer audit --locked --no-interaction
       - run: yarn npm audit --all --recursive
       - run: bash -n deploy/forge-deploy.sh
+      - run: bash -n deploy/backup-database.sh
       - run: python3 -m unittest discover -s tests/Deployment -v
+      - name: PHP formatting (Pint)
+        run: vendor/bin/pint --test
+      - name: PHP static analysis (Larastan)
+        run: php -d memory_limit=1G vendor/bin/phpstan analyse --no-progress
       - run: cp .env.example .env && php artisan key:generate
       - run: php artisan test
+      - name: Frontend lint and formatting
+        run: yarn lint && yarn format:check
       - run: yarn test:frontend
       - run: yarn typecheck
       - run: yarn build
