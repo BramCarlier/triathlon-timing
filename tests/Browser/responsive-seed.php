@@ -4,7 +4,7 @@ use App\Models\{User,Race,Athlete,Entry,TimingRecord,AccessRole,CheckpointAssign
 use Illuminate\Support\Str;
 $admin=User::where('email','admin@example.test')->firstOrFail();
 $athlete=Athlete::forceCreate(['id'=>9001,'first_name'=>str_repeat('Alexandria',7),'last_name'=>'Van der Championship','email'=>str_repeat('long',20).'@example.test']);
-User::factory()->create(['id'=>9001,'name'=>str_repeat('Official',12),'email'=>'responsive-official@example.test','password'=>'browser-test-password-123','role'=>'organizer']);
+User::factory()->create(['id'=>9001,'name'=>str_repeat('Official',12),'email'=>'responsive-official@example.test','password'=>'browser-test-password-123','role'=>'official']);
 User::factory()->create(['id'=>9002,'name'=>'Responsive Athlete','email'=>'responsive-athlete@example.test','password'=>'browser-test-password-123','role'=>'athlete','athlete_id'=>$athlete->id]);
 $stationRole=AccessRole::create(['name'=>str_repeat('Checkpoint',8),'description'=>str_repeat('RoleDescription',20),'permissions'=>['timings.record']]);
 User::findOrFail(9001)->update(['access_role_id'=>$stationRole->id]);

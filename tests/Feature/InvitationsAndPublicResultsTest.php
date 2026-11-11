@@ -13,7 +13,7 @@ class InvitationsAndPublicResultsTest extends TestCase {
  private function admin():User { return User::factory()->create(['role'=>UserRole::Admin]); }
  public function test_invited_user_sets_password_once_and_can_then_sign_in():void {
   Notification::fake();config(['mail.default'=>'smtp']);$admin=$this->admin();
-  $this->actingAs($admin)->post('/users',['name'=>'Invited','email'=>'INVITED@example.test','role'=>'organizer','delivery'=>'email'])->assertSessionHasNoErrors();
+  $this->actingAs($admin)->post('/users',['name'=>'Invited','email'=>'INVITED@example.test','role'=>'official','delivery'=>'email'])->assertSessionHasNoErrors();
   $user=User::where('email','invited@example.test')->firstOrFail();$token=null;
   Notification::assertSentTo($user,AccountInvitation::class,function($notice)use(&$token,$user){$token=$notice->token;$this->assertStringContainsString('welcome=1',$notice->toMail($user)->actionUrl);return true;});
   $this->assertTrue($user->force_password_change);$this->assertNotNull($user->invitation_sent_at);
@@ -26,14 +26,14 @@ class InvitationsAndPublicResultsTest extends TestCase {
   $this->get('/races')->assertOk();
  }
  public function test_resending_invalidates_old_link_and_cannot_invite_disabled_users():void {
-  Notification::fake();config(['mail.default'=>'smtp']);$admin=$this->admin();$user=User::factory()->create(['role'=>'organizer','force_password_change'=>true]);
+  Notification::fake();config(['mail.default'=>'smtp']);$admin=$this->admin();$user=User::factory()->create(['role'=>'official','force_password_change'=>true]);
   $old=Password::createToken($user);$this->actingAs($admin)->post("/users/$user->id/invitation")->assertSessionHas('success');
   $this->assertFalse(Password::tokenExists($user,$old));
   $user->update(['is_active'=>false]);$this->post("/users/$user->id/invitation")->assertUnprocessable();
-  $this->actingAs(User::factory()->create(['role'=>'organizer']))->post("/users/$user->id/invitation")->assertForbidden();
+  $this->actingAs(User::factory()->create(['role'=>'official']))->post("/users/$user->id/invitation")->assertForbidden();
  }
  public function test_invitations_expire_and_log_mail_is_not_claimed_as_delivery():void {
-  config(['mail.default'=>'log']);$admin=$this->admin();$this->actingAs($admin)->post('/users',['name'=>'Invite','email'=>'invite@example.test','role'=>'organizer','delivery'=>'email'])->assertSessionHasErrors('delivery');
+  config(['mail.default'=>'log']);$admin=$this->admin();$this->actingAs($admin)->post('/users',['name'=>'Invite','email'=>'invite@example.test','role'=>'official','delivery'=>'email'])->assertSessionHasErrors('delivery');
   $this->assertDatabaseMissing('users',['email'=>'invite@example.test']);
   $user=User::factory()->create(['force_password_change'=>true]);$token=Password::createToken($user);$this->travel(61)->minutes();$this->assertFalse(Password::tokenExists($user,$token));
  }
@@ -43,11 +43,11 @@ class InvitationsAndPublicResultsTest extends TestCase {
  }
  public function test_failed_invitation_keeps_account_for_retry_without_claiming_sent():void {
   config(['mail.default'=>'smtp']);Notification::shouldReceive('send')->once()->andThrow(new \RuntimeException('SMTP transport failed'));
-  $this->actingAs($this->admin())->post('/users',['name'=>'Retry','email'=>'retry@example.test','role'=>'organizer','delivery'=>'email'])->assertSessionHas('error');
+  $this->actingAs($this->admin())->post('/users',['name'=>'Retry','email'=>'retry@example.test','role'=>'official','delivery'=>'email'])->assertSessionHas('error');
   $user=User::where('email','retry@example.test')->firstOrFail();$this->assertNull($user->invitation_sent_at);$this->assertTrue($user->force_password_change);
  }
  public function test_temporary_password_must_be_changed_and_cannot_be_reused():void {
-  $user=User::factory()->create(['role'=>'organizer','password'=>Hash::make('temporary-password-123'),'force_password_change'=>true]);
+  $user=User::factory()->create(['role'=>'official','password'=>Hash::make('temporary-password-123'),'force_password_change'=>true]);
   $this->actingAs($user)->get('/races')->assertRedirect('/account/password');
   $this->put('/account/password',['current_password'=>'temporary-password-123','password'=>'temporary-password-123','password_confirmation'=>'temporary-password-123'])->assertSessionHasErrors('password');
   $this->put('/account/password',['current_password'=>'temporary-password-123','password'=>'replacement-password-456','password_confirmation'=>'replacement-password-456'])->assertRedirect('/dashboard');
@@ -55,7 +55,7 @@ class InvitationsAndPublicResultsTest extends TestCase {
  }
  public function test_publication_is_opt_in_scoped_and_revocable_without_private_data():void {
   $admin=$this->admin();$race=Race::create(['name'=>'Public race','slug'=>'public-race','event_date'=>'2026-09-23','created_by'=>$admin->id]);
-  $organizer=User::factory()->create(['role'=>'organizer']);
+  $organizer=User::factory()->create(['role'=>'official']);
   $this->actingAs($organizer)->post("/races/$race->id/publication",['published'=>true])->assertForbidden();
   $organizer->races()->attach($race);$this->post("/races/$race->id/publication",['published'=>true])->assertForbidden();
   $this->actingAs($admin)->post("/races/$race->id/publication",['published'=>true])->assertSessionHasNoErrors();

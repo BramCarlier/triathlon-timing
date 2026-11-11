@@ -16,7 +16,7 @@ const form=useForm({
   name:props.account.name,email:props.account.email,role:props.account.role,access_role_id:props.account.access_role_id,
   is_active:props.account.is_active,athlete_id:props.account.athlete_id,race_ids:props.account.races.map(r=>r.id),password:'',
 });
-watch(()=>form.role,role=>{if(role!=='athlete')form.athlete_id=null;if(role!=='organizer'){form.race_ids=[];form.access_role_id=null;}});
+watch(()=>form.role,role=>{if(role!=='athlete')form.athlete_id=null;if(role!=='official'){form.race_ids=[];form.access_role_id=null;}});
 const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
 </script>
 
@@ -37,7 +37,7 @@ const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
         <h2 class="text-lg font-bold">{{ $t("Account") }}</h2>
         <label class="label">{{ $t("Name") }}<input v-model="form.name" class="field" required maxlength="255"></label>
         <label class="label">{{ $t("Email") }}<input v-model="form.email" type="email" class="field" required maxlength="255"></label>
-        <label class="label">{{ $t("Account type") }}<select v-model="form.role" class="field"><option value="admin">{{ $t("Organizer (admin)") }}</option><option value="organizer">{{ $t("Official") }}</option><option value="athlete">{{ $t("Athlete") }}</option></select></label>
+        <label class="label">{{ $t("Account type") }}<select v-model="form.role" class="field"><option value="admin">{{ $t("Organizer (admin)") }}</option><option value="official">{{ $t("Official") }}</option><option value="athlete">{{ $t("Athlete") }}</option></select></label>
         <label class="flex items-center gap-3"><input v-model="form.is_active" type="checkbox"><span><strong class="block text-sm">{{ $t("Account active") }}</strong><span class="text-xs muted">{{ $t("Disabled accounts cannot sign in.") }}</span></span></label>
         <details class="rounded-xl border border-outline p-3">
           <summary class="font-semibold">{{ $t("Password options") }}</summary>
@@ -49,7 +49,7 @@ const save=()=>form.put(`/users/${props.account.id}`,{preserveScroll:true});
       <section class="panel-pad space-y-4">
         <h2 class="text-lg font-bold">{{ form.role==='athlete'?$t('Athlete profile'):$t('Access') }}</h2>
         <AthletePicker v-if="form.role==='athlete'" v-model="form.athlete_id" :account-id="account.id" :initial="linkedAthlete"/>
-        <template v-else-if="form.role==='organizer'">
+        <template v-else-if="form.role==='official'">
           <p class="text-sm muted">{{ $t("Checkpoint assignments normally grant race access automatically. Only change the options below for exceptional access.") }}</p>
           <details class="rounded-xl border border-outline p-3">
             <summary class="font-semibold">{{ $t("Advanced Official access") }}</summary>

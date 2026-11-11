@@ -30,7 +30,7 @@ class EventReadinessTest extends TestCase {
         [$admin,$race,$entry,$athlete]=$this->fixture();
         $payload=['bib_number'=>'007','category'=>'Masters','status'=>'dnf','athletes'=>[$athlete->only(['id','first_name','last_name','email','club'])]];
         $this->put("/races/$race->id/participants/$entry->id",$payload+$reason)->assertSessionHasNoErrors();
-        $this->assertSame('007',$entry->fresh()->bib_number);$this->assertSame('Open',$entry->fresh()->category);$this->assertSame('dnf',$entry->fresh()->status);
+        $this->assertSame('007',$entry->fresh()->bib_number);$this->assertSame('Open',$entry->fresh()->category);$this->assertSame('dnf',$entry->fresh()->status->value);
         $this->assertDatabaseHas('entry_changes',['entry_id'=>$entry->id,'user_id'=>$admin->id,'reason'=>$expectedReason]);
     }
     public function test_athlete_and_unassigned_organizer_cannot_edit_participants_or_view_health():void {
@@ -46,7 +46,7 @@ class EventReadinessTest extends TestCase {
         $this->assertSame([],app(ResultsService::class)->filtered($race,['category'=>'Other']));
         $this->get("/races/$race->id/results.csv?status=DSQ")->assertOk()->assertDownload();
         $this->put("/races/$race->id/participants/$entry->id",['bib_number'=>null,'category'=>'Open','status'=>'dns','reason'=>'Incorrect status','athletes'=>$entry->members()->with('athlete')->get()->pluck('athlete')->unique('id')->map->only(['id','first_name','last_name','email','club'])->values()->all()])->assertSessionHasNoErrors();
-        $this->assertSame('dns', $entry->fresh()->status);
+        $this->assertSame('dns', $entry->fresh()->status->value);
         $this->assertSame(0, $entry->timings()->where('status', 'recorded')->count());
     }
     public function test_offline_replay_can_use_its_original_checkpoint_after_selection_changes():void {

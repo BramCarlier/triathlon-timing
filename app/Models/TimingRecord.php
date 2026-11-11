@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TimingRecord extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(fn (self $model) => \App\Support\ResultsCache::bump($model->race_id));
+        static::deleted(fn (self $model) => \App\Support\ResultsCache::bump($model->race_id));
+    }
+
     protected $fillable = ['client_uuid', 'race_id', 'entry_id', 'checkpoint_id', 'athlete_id', 'operator_id', 'recorded_at', 'elapsed_ms', 'source', 'status', 'warning_acknowledged', 'notes', 'voided_at', 'voided_by'];
     protected function casts(): array { return ['recorded_at' => 'datetime:Y-m-d H:i:s.v', 'elapsed_ms' => 'integer', 'source' => TimingSource::class, 'status' => TimingStatus::class, 'warning_acknowledged' => 'boolean', 'voided_at' => 'datetime:Y-m-d H:i:s.v']; }
     public function race(): BelongsTo { return $this->belongsTo(Race::class); }

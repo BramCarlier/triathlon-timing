@@ -8,13 +8,13 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 interface AccessRole { id:number; name:string; description:string|null; permissions:string[]; is_default:boolean }
 interface Athlete { id:number; first_name:string; last_name:string; email?:string }
 interface Race { id:number; name:string; event_date:string }
-interface User { id:number; name:string; email:string; role:'admin'|'organizer'|'athlete'; access_role?:AccessRole; is_active:boolean;force_password_change:boolean;invitation_sent_at?:string; athlete_id?:number; athlete?:Athlete; races:Race[] }
+interface User { id:number; name:string; email:string; role:'admin'|'official'|'athlete'; access_role?:AccessRole; is_active:boolean;force_password_change:boolean;invitation_sent_at?:string; athlete_id?:number; athlete?:Athlete; races:Race[] }
 
 const props = defineProps<{ accessRoles:AccessRole[]; users:{data:User[];current_page:number;last_page:number;prev_page_url:string|null;next_page_url:string|null;total:number}; filters:{q:string}; races:Race[]; mailConfigured:boolean }>();
 const search=ref(props.filters.q);
 const searchUsers=()=>router.get('/users',{q:search.value},{preserveState:true,preserveScroll:true});
-const form=useForm({name:'',email:'',password:'',delivery:props.mailConfigured?'email':'manual',role:'organizer',access_role_id:null as number|null,athlete_id:null as number|null,race_ids:[] as number[]});
-watch(()=>form.role,role=>{if(role!=='athlete')form.athlete_id=null;if(role!=='organizer'){form.race_ids=[];form.access_role_id=null;}});
+const form=useForm({name:'',email:'',password:'',delivery:props.mailConfigured?'email':'manual',role:'official',access_role_id:null as number|null,athlete_id:null as number|null,race_ids:[] as number[]});
+watch(()=>form.role,role=>{if(role!=='athlete')form.athlete_id=null;if(role!=='official'){form.race_ids=[];form.access_role_id=null;}});
 const submit=()=>form.post('/users',{preserveScroll:true,onSuccess:()=>{form.reset();form.delivery=props.mailConfigured?'email':'manual';}});
 const roleLabel=(user:User)=>user.role==='admin'?tr('Organizer (admin)'):user.role==='athlete'?tr('Athlete'):user.access_role?.name??tr('Official');
 </script>
@@ -31,11 +31,11 @@ const roleLabel=(user:User)=>user.role==='admin'?tr('Organizer (admin)'):user.ro
           <div class="mt-4 space-y-3">
             <label class="label">{{ $t("Name") }}<input v-model="form.name" class="field" required></label>
             <label class="label">{{ $t("Email") }}<input v-model="form.email" type="email" class="field" required></label>
-            <label class="label">{{ $t("Account type") }}<select v-model="form.role" class="field"><option value="organizer">{{ $t("Official") }}</option><option value="athlete">{{ $t("Athlete") }}</option><option value="admin">{{ $t("Organizer (admin)") }}</option></select></label>
+            <label class="label">{{ $t("Account type") }}<select v-model="form.role" class="field"><option value="official">{{ $t("Official") }}</option><option value="athlete">{{ $t("Athlete") }}</option><option value="admin">{{ $t("Organizer (admin)") }}</option></select></label>
             <AthletePicker v-if="form.role==='athlete'" v-model="form.athlete_id"/>
             <label class="label">{{ $t("Invitation") }}<select v-model="form.delivery" class="field"><option value="email" :disabled="!mailConfigured">{{ $t("Email a password setup link") }}</option><option value="manual">{{ $t("Use a temporary password") }}</option></select></label>
             <label v-if="form.delivery==='manual'" class="label">{{ $t("Temporary password") }}<input v-model="form.password" type="password" class="field" minlength="12" required></label>
-            <details v-if="form.role==='organizer'" class="rounded-xl border border-outline p-3">
+            <details v-if="form.role==='official'" class="rounded-xl border border-outline p-3">
               <summary class="font-semibold">{{ $t("Advanced Official access") }}</summary>
               <label class="label mt-3">{{ $t("Access preset") }}<select v-model="form.access_role_id" class="field"><option :value="null">{{ $t("Official (default)") }}</option><option v-for="role in accessRoles.filter(r=>!r.is_default)" :key="role.id" :value="role.id">{{ role.name }}</option></select></label>
               <p class="mt-2 text-xs muted">{{ $t("You normally do not need to choose races here. Assign this Official to a checkpoint from the Race workspace instead.") }}</p>

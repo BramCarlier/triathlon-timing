@@ -10,6 +10,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Checkpoint extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(fn (self $model) => \App\Support\ResultsCache::bump($model->race_id));
+        static::deleted(fn (self $model) => \App\Support\ResultsCache::bump($model->race_id));
+    }
+
     protected $fillable = [
         'race_id',
         'name',

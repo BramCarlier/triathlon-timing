@@ -47,12 +47,12 @@ class AutomaticDnfTest extends TestCase
             $this->assertDatabaseHas('entry_changes', ['entry_id' => $unfinished->id, 'user_id' => $admin->id, 'reason' => 'Marked DNF automatically: race finished without a finish time.']);
         }
         $this->assertSame('preserved', $entry->fresh()->metadata['custom']);
-        $this->assertSame('registered', $finisher->fresh()->status);
+        $this->assertSame('registered', $finisher->fresh()->status->value);
         foreach ($excluded as $status => $unchanged) {
-            $this->assertSame($status, $unchanged->fresh()->status);
+            $this->assertSame($status, $unchanged->fresh()->status->value);
             $this->assertFalse($unchanged->fresh()->isAutomaticDnf());
         }
-        $this->assertSame('registered', $otherEntry->fresh()->status);
+        $this->assertSame('registered', $otherEntry->fresh()->status->value);
         $this->assertSame('recorded', $swimTime->fresh()->status->value);
         $row = collect(app(ResultsService::class)->filtered($race->fresh()))->firstWhere('id', $entry->id);
         $this->assertSame('DNF', $row['result_status']);
@@ -75,7 +75,7 @@ class AutomaticDnfTest extends TestCase
             'client_uuid' => (string) Str::uuid(), 'source' => 'offline', 'observed_at' => $capturedAt->toISOString(),
         ]);
         $this->assertSame('recorded', $timing->status->value);
-        $this->assertSame('registered', $entry->fresh()->status);
+        $this->assertSame('registered', $entry->fresh()->status->value);
         $this->assertArrayNotHasKey('automatic_dnf', $entry->fresh()->metadata);
         $this->assertSame('FINISHED', app(ResultsService::class)->filtered($race->fresh())[0]['result_status']);
         $this->assertEquals($finishedAt, $race->fresh()->finished_at);
@@ -101,8 +101,8 @@ class AutomaticDnfTest extends TestCase
         app(RaceClockService::class)->finish($race, $admin);
         app(TimingService::class)->correct($race, $entry, $finish, $admin, 20000);
         app(TimingService::class)->correct($race, $manualDnf, $finish, $admin, 21000);
-        $this->assertSame('registered', $entry->fresh()->status);
-        $this->assertSame('dnf', $manualDnf->fresh()->status);
+        $this->assertSame('registered', $entry->fresh()->status->value);
+        $this->assertSame('dnf', $manualDnf->fresh()->status->value);
     }
 
     public function test_explicit_status_changes_cancel_automatic_recovery(): void

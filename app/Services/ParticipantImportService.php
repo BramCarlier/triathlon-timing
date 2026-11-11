@@ -170,9 +170,9 @@ class ParticipantImportService
     {
         $handle = fopen($path, 'rb');
         if (!$handle) return [];
-        $headers = fgetcsv($handle) ?: [];
+        $headers = fgetcsv($handle, escape: "") ?: [];
         $rows = [];
-        while (($values = fgetcsv($handle)) !== false) {
+        while (($values = fgetcsv($handle, escape: "")) !== false) {
             $values = array_pad($values, count($headers), null);
             $rows[] = array_combine($headers, array_slice($values, 0, count($headers)));
         }

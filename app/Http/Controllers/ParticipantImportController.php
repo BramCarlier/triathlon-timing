@@ -33,7 +33,7 @@ class ParticipantImportController extends Controller
         $request->validate(['file' => ['required','file','max:10240','mimes:csv,txt,json,xlsx,xls,ods']]);
         $file = $request->file('file');
         $token = (string) Str::uuid();
-        $path = $file->storeAs('imports', $token.'.'.$file->getClientOriginalExtension(), 'local');
+        $path = $file->storeAs('imports', $token.'.'.($file->extension() ?: 'txt'), 'local');
         $rows = $importer->parse(Storage::disk('local')->path($path), $file->getClientOriginalName());
         $preview = $importer->preview($rows);
         $batch = ImportBatch::create(['token' => $token, 'race_id' => $race->id, 'user_id' => $request->user()->id, 'original_name' => $file->getClientOriginalName(), 'stored_path' => $path, 'row_count' => count($rows), 'preview' => $preview, 'warnings' => $preview['warnings'], 'expires_at' => now()->addHours(6)]);

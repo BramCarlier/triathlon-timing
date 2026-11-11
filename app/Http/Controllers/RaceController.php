@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Services\RaceTimingData;
 use App\Services\ResultsService;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -74,13 +75,13 @@ class RaceController extends Controller
         return redirect()->route('races.show', $race)->with('success', __('Race created with default triathlon checkpoints.'));
     }
 
-    public function show(Request $request, Race $race, AthleteLookupService $athletes, RaceReadinessService $readiness): Response|RedirectResponse
+    public function show(Request $request, Race $race, AthleteLookupService $athletes, RaceReadinessService $readiness, RaceTimingData $data): Response|RedirectResponse
     {
         Gate::authorize('manage-race', $race);
         if (!$request->user()->isAdmin()) return redirect()->route('races.station', $race);
         $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence')])->loadCount('entries');
         $officials = $request->user()->isAdmin()
-            ? User::whereIn('role', ['admin', 'organizer'])->where('is_active', true)->orderBy('name')->get(['id','name','email','role'])
+            ? User::whereIn('role', ['admin', 'official'])->where('is_active', true)->orderBy('name')->get(['id','name','email','role'])
             : collect();
         $assignments = $race->checkpointAssignments()
             ->when(!$request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
@@ -91,51 +92,22 @@ class RaceController extends Controller
             ? $race->checkpoints->where('is_active', true)->where('kind', '!=', CheckpointKind::Start)->pluck('id')->values()
             : $assignments->where('user_id', $request->user()->id)->pluck('checkpoint_id')->values();
 
-        $participants = $race->entries()
-            ->with([
-                'members.athlete',
-                'timings' => fn ($query) => $query->where('status', TimingStatus::Recorded->value)->select('id', 'entry_id', 'checkpoint_id'),
-            ])
-            ->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')
-            ->get()
-            ->map(fn ($entry) => [
-                'id' => $entry->id,
-                'status' => $entry->status,
-                'bib_number' => $entry->bib_number,
-                'type' => $entry->type->value,
-                'name' => $entry->displayName(),
-                'members' => $entry->members->map(fn ($member) => ['discipline' => $member->discipline->value, 'name' => $member->athlete->full_name])->values()->all(),
-                'completed_checkpoint_ids' => $entry->timings->pluck('checkpoint_id')->values()->all(),
-            ])->values();
-
-        $recentTimings = $race->timings()
-            ->where('status', TimingStatus::Recorded->value)
-            ->when(!$request->user()->isAdmin(), fn ($query) => $query->whereIn('checkpoint_id', $allowedTimingCheckpointIds))
-            ->with(['entry.members.athlete', 'checkpoint:id,name', 'operator:id,name'])
-            ->latest('recorded_at')
-            ->limit(12)
-            ->get();
-
-        $completedCount = $race->timings()
-            ->where('status', TimingStatus::Recorded->value)
-            ->whereHas('checkpoint', fn ($query) => $query->where('kind', 'finish'))
-            ->distinct('entry_id')
-            ->count('entry_id');
-
         return Inertia::render('Races/Show', [
             'race' => $race,
-            'publicTimingUrl' => $request->user()->isAdmin() ? route('race.public', $race->public_timing_token, false) : null,
+            'publicTimingUrl' => route('race.public', $race->public_timing_token, false),
+            'publicTimingEnabled' => (bool) $race->public_timing_enabled,
+            'publicTimingRotatedAt' => $race->public_timing_rotated_at?->toISOString(),
             'officials' => $officials,
             'checkpointAssignments' => $assignments,
             'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
             'mailConfigured' => app(\App\Services\AccountInvitationService::class)->configured(),
             'athleteOptions' => $athletes->options($race),
             'readiness' => $readiness->for($race),
-            'participants' => $participants,
+            'participants' => fn () => $data->participants($race),
             'standings' => fn () => app(ResultsService::class)->live($race),
-            'recentTimings' => $recentTimings,
-            'completedCount' => $completedCount,
-            'serverNow' => now('UTC')->toISOString(),
+            'recentTimings' => fn () => $data->recentTimings($race),
+            'completedCount' => fn () => $data->finishedCount($race),
+            'serverNow' => fn () => now('UTC')->toISOString(),
         ]);
     }
 

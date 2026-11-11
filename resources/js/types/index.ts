@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'organizer' | 'athlete';
+export type UserRole = 'admin' | 'official' | 'athlete';
 export type Locale = 'en' | 'nl';
 export interface AuthUser { id: number; name: string; email: string; role: UserRole; permissions?:string[]; athlete_id?: number | null }
 export interface PageProps extends Record<string, unknown> { locale: Locale; auth: { user: AuthUser | null }; flash: { success?: string; error?: string } }

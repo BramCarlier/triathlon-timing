@@ -12,7 +12,7 @@ class AccessRoleController extends Controller
     public function index() {
         return Inertia::render('Admin/Roles',[
             'roles'=>AccessRole::withCount('users')->orderByDesc('is_default')->orderBy('name')->get()->map(function($role) {
-                if ($role->is_default) $role->users_count += \App\Models\User::where('role','organizer')->whereNull('access_role_id')->count();
+                if ($role->is_default) $role->users_count += \App\Models\User::where('role','official')->whereNull('access_role_id')->count();
                 return $role;
             }), 'permissions'=>Permissions::officialCatalogue(),
         ]);

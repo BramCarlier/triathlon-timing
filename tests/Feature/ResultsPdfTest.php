@@ -61,7 +61,7 @@ class ResultsPdfTest extends TestCase
         $race = $this->race();
         $this->get("/races/$race->id/results.pdf")->assertRedirect('/login');
         $this->actingAs(User::factory()->create(['role' => 'athlete']))->get("/races/$race->id/results.pdf")->assertForbidden();
-        $official = User::factory()->create(['role' => 'organizer']);
+        $official = User::factory()->create(['role' => 'official']);
         $this->actingAs($official)->get("/races/$race->id/results.pdf")->assertForbidden();
         $race->staff()->attach($official);
         $role = \App\Models\AccessRole::create(['name' => 'No exports', 'permissions' => []]);

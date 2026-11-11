@@ -2,7 +2,9 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Discipline;
+use App\Enums\EntryStatus;
 use App\Enums\EntryType;
+use App\Support\Like;
 use App\Models\Athlete;
 use App\Models\Entry;
 use App\Models\EntryChange;
@@ -26,13 +28,14 @@ class EntryController extends Controller
         Gate::authorize('manage-race', $race);
         abort_unless($request->user()->isAdmin(), 403);
         $search = trim((string) $request->query('search'));
-        $entries = $race->entries()->with('members.athlete')->when($search, function ($q) use ($search) {
-            $q->where(function ($query) use ($search) {
-                $query->where('bib_number', 'like', "%{$search}%")
-                    ->orWhere('team_name', 'like', "%{$search}%")
-                    ->orWhereHas('members.athlete', fn ($athlete) => $athlete->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"));
+        $pattern = Like::contains($search);
+        $entries = $race->entries()->with('members.athlete')->when($search, function ($q) use ($pattern) {
+            $q->where(function ($query) use ($pattern) {
+                $query->where('bib_number', 'like', $pattern)
+                    ->orWhere('team_name', 'like', $pattern)
+                    ->orWhereHas('members.athlete', fn ($athlete) => $athlete->where('first_name', 'like', $pattern)->orWhere('last_name', 'like', $pattern));
             });
-        })->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')->paginate(50)->withQueryString();
+        })->orderByBib()->paginate(50)->withQueryString();
         return Inertia::render('Participants/Index', ['race' => $race, 'entries' => $entries, 'search' => $search, 'athleteOptions' => $athletes->options($race)]);
     }
 
@@ -105,7 +108,7 @@ class EntryController extends Controller
         $data=$request->validate([
             'bib_number'=>['nullable','string','max:32',Rule::unique('entries')->where('race_id',$race->id)->ignore($entry->id)],
             'team_name'=>[$entry->type===EntryType::Relay?'required':'nullable','string','max:255'],
-            'category'=>['nullable','string','max:100'],'status'=>['required',Rule::in(['registered','dns','dnf','dsq'])],
+            'category'=>['nullable','string','max:100'],'status'=>['required',Rule::enum(EntryStatus::class)],
             'reason'=>['nullable','string','max:1000'],
             'athletes'=>['required','array'],'athletes.*.id'=>['required','integer','distinct'],
             'athletes.*.first_name'=>['required','string','max:100'],'athletes.*.last_name'=>['nullable','string','max:100'],
@@ -147,7 +150,7 @@ class EntryController extends Controller
     {
         $data = $request->validate([
             'bib_number' => ['sometimes','nullable','string','max:32',Rule::unique('entries')->where('race_id', $race->id)->ignore($entry->id)],
-            'status' => ['required', Rule::in(['registered','dns','dnf','dsq'])],
+            'status' => ['required', Rule::enum(EntryStatus::class)],
             'reason' => ['nullable','string','max:1000'],
         ]);
 

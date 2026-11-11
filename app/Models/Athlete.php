@@ -7,6 +7,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Athlete extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(function (self $athlete) {
+            $athlete->memberships()->with('entry:id,race_id')->get()
+                ->pluck('entry.race_id')->unique()
+                ->each(fn ($raceId) => \App\Support\ResultsCache::bump($raceId));
+        });
+    }
+
     protected $fillable = ['first_name', 'last_name', 'email', 'date_of_birth', 'gender', 'club', 'phone', 'metadata'];
     protected function casts(): array { return ['date_of_birth' => 'date', 'metadata' => 'array']; }
     protected $appends = ['full_name'];

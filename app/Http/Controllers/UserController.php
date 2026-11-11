@@ -42,7 +42,7 @@ class UserController extends Controller
         if ($data['role'] === UserRole::Athlete->value && empty($data['athlete_id'])) return back()->withErrors(['athlete_id' => __('Athlete accounts must be linked to an athlete.')]);
         $emailInvite=($data['delivery']??(empty($data['password'])?'email':'manual'))==='email';
         if($emailInvite && !app(\App\Services\AccountInvitationService::class)->configured()) return back()->withErrors(['delivery'=>__('Email sending is not configured. Connect email sending first, or choose a temporary password and share it yourself.')]);
-        $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($emailInvite ? \Illuminate\Support\Str::random(64) : $data['password']), 'role' => $data['role'], 'access_role_id'=>$data['role']==='organizer'?($data['access_role_id']??null):null, 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
+        $user = User::create(['name' => $data['name'], 'email' => strtolower($data['email']), 'password' => Hash::make($emailInvite ? \Illuminate\Support\Str::random(64) : $data['password']), 'role' => $data['role'], 'access_role_id'=>$data['role']==='official'?($data['access_role_id']??null):null, 'athlete_id' => $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null, 'force_password_change' => true]);
         if ($user->role === UserRole::Official) $user->races()->sync($data['race_ids'] ?? []);
         if($emailInvite && !app(\App\Services\AccountInvitationService::class)->send($user)) return back()->with('error',__('Account created, but the invitation could not be sent. Check email settings and use Resend invitation.'));
         return back()->with('success', $emailInvite ? __('Account created. Invitation accepted by the mail server; ask the recipient to check their inbox and spam folder.') : __('Account created. Share the temporary password privately; it must be changed at first login.'));
@@ -79,7 +79,7 @@ class UserController extends Controller
                 throw ValidationException::withMessages(['role' => __('Keep at least one active organizer (admin). Create or enable another organizer (admin) before changing this account.')]);
             }
             $account->fill(collect($data)->except(['race_ids','password'])->all());
-            $account->access_role_id = $data['role']==='organizer'?($data['access_role_id']??null):null;
+            $account->access_role_id = $data['role']==='official'?($data['access_role_id']??null):null;
             $account->athlete_id = $data['role'] === UserRole::Athlete->value ? $data['athlete_id'] : null;
             if (!empty($data['password'])) { $account->password = Hash::make($data['password']); $account->force_password_change = true; $account->invitation_sent_at=null; \Illuminate\Support\Facades\Password::deleteToken($account); }
             $account->save();

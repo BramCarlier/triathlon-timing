@@ -6,7 +6,7 @@ import AppLayout from '../Layouts/AppLayout.vue';
 import type { UserRole } from '../types';
 
 const props = defineProps<{ role: UserRole }>();
-const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)') : props.role === 'organizer' ? tr('Official') : tr('Athlete'));
+const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)') : props.role === 'official' ? tr('Official') : tr('Athlete'));
 </script>
 
 <template>
@@ -20,7 +20,7 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
         <div>
           <h2 class="text-xl font-bold">{{ $t("The simple race flow") }}</h2>
           <p v-if="role==='admin'" class="mt-2 muted">{{ $t("Everything important happens from the Race workspace: check the course, add athletes, start the race and share the race-day link. Official and athlete accounts are optional.") }}</p>
-          <p v-else-if="role==='organizer'" class="mt-2 muted">{{ $t("Official accounts are optional. If an Organizer gives you one, it can provide a named, checkpoint-specific timing station with offline recovery.") }}</p>
+          <p v-else-if="role==='official'" class="mt-2 muted">{{ $t("Official accounts are optional. If an Organizer gives you one, it can provide a named, checkpoint-specific timing station with offline recovery.") }}</p>
           <p v-else class="mt-2 muted">{{ $t("Your account is for viewing your race and results. You do not operate checkpoints or race controls.") }}</p>
         </div>
       </div>
@@ -70,7 +70,7 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
       </details>
     </template>
 
-    <template v-else-if="role==='organizer'">
+    <template v-else-if="role==='official'">
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
           <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">{{ $t("Open your race") }}</h2></div>

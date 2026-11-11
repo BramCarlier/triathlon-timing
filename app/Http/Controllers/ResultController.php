@@ -71,7 +71,7 @@ class ResultController extends Controller
 
         return response()->streamDownload(function () use ($rows, $headers) {
             $out = fopen('php://output', 'wb');
-            fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $headers));
+            fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $headers), escape: '');
 
             foreach ($rows as $row) {
                 $values = [$row['place'], $row['bib_number'], __($row['type']), $row['name'], $row['category'], __($row['result_status'])];
@@ -81,7 +81,7 @@ class ResultController extends Controller
                 }
                 $values[] = $row['finished'] ? __('yes') : __('no');
                 $values[] = $row['total_ms'];
-                fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $values));
+                fputcsv($out, array_map([SpreadsheetText::class, 'csv'], $values), escape: '');
             }
 
             fclose($out);

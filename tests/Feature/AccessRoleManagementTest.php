@@ -45,11 +45,11 @@ class AccessRoleManagementTest extends TestCase
     public function test_admin_can_assign_custom_roles_and_invalid_permissions_are_rejected(): void {
         $admin=User::factory()->create(['role'=>UserRole::Admin]);
         $role=AccessRole::create(['name'=>'Read only','permissions'=>[]]);
-        $this->actingAs($admin)->post('/users',['name'=>'New official','email'=>'official@example.test','password'=>'long-password-for-test','delivery'=>'manual','role'=>'organizer','access_role_id'=>$role->id])->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post('/users',['name'=>'New official','email'=>'official@example.test','password'=>'long-password-for-test','delivery'=>'manual','role'=>'official','access_role_id'=>$role->id])->assertSessionHasNoErrors();
         $user=User::where('email','official@example.test')->firstOrFail();
         $this->assertSame($role->id,$user->access_role_id);
         $this->assertSame([],$user->effectivePermissions());
-        $this->put('/users/'.$user->id,['name'=>$user->name,'email'=>$user->email,'role'=>'organizer','is_active'=>true,'access_role_id'=>null])->assertSessionHasNoErrors();
+        $this->put('/users/'.$user->id,['name'=>$user->name,'email'=>$user->email,'role'=>'official','is_active'=>true,'access_role_id'=>null])->assertSessionHasNoErrors();
         $this->assertTrue($user->fresh()->hasPermission('timings.record'));
         $this->post('/admin/roles',['name'=>'Bad role','permissions'=>['users.manage']])->assertSessionHasErrors('permissions.0');
         $this->post('/admin/roles',['name'=>'Admin','permissions'=>[]])->assertSessionHasErrors('name');

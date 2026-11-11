@@ -928,5 +928,12 @@
   "Results view": "Resultatenweergave",
   "Table": "Tabel",
   "Cards": "Kaarten",
-  "Select a column header to sort; select it again to reverse the order.": "Selecteer een kolomkop om te sorteren; selecteer opnieuw om de volgorde om te keren."
+  "Select a column header to sort; select it again to reverse the order.": "Selecteer een kolomkop om te sorteren; selecteer opnieuw om de volgorde om te keren.",
+  "This saved tap is too old to upload from the race-day link. Ask the Organizer to add it as a correction.": "Deze bewaarde tik is te oud om via de wedstrijdlink door te sturen. Vraag de organisator om hem als correctie toe te voegen.",
+  "This tap can no longer be undone here. Ask the Organizer to correct it.": "Deze tik kan hier niet meer ongedaan worden gemaakt. Vraag de organisator om hem te corrigeren.",
+  "Tap undone.": "Tik ongedaan gemaakt.",
+  "The Organizer has switched off this race-day link.": "De organisator heeft deze wedstrijdlink uitgeschakeld.",
+  "Race-day link switched on.": "Wedstrijdlink ingeschakeld.",
+  "Race-day link switched off. Devices using it can no longer record times.": "Wedstrijdlink uitgeschakeld. Toestellen met deze link kunnen geen tijden meer registreren.",
+  "New race-day link created. The old link no longer works; share the new one with your timers.": "Nieuwe wedstrijdlink aangemaakt. De oude link werkt niet meer; deel de nieuwe met je tijdopnemers."
 }

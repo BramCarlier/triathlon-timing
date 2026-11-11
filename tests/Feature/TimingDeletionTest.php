@@ -60,7 +60,7 @@ class TimingDeletionTest extends TestCase
         $otherRaceTime = app(TimingService::class)->correct($otherRace, $otherEntry, $otherCheckpoint, $admin, 16000);
 
         $this->put("/races/$race->id/participants/$entry->id", ['status' => 'dns'])->assertSessionHasNoErrors();
-        $this->assertSame('dns', $entry->fresh()->status);
+        $this->assertSame('dns', $entry->fresh()->status->value);
         $this->assertSame(0, $entry->timings()->where('status', 'recorded')->count());
         $this->assertSame(2, $entry->timings()->where('status', 'voided')->where('voided_by', $admin->id)->count());
         $this->assertSame('recorded', $otherTime->fresh()->status->value);

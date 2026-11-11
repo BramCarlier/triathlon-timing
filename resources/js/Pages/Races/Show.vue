@@ -20,7 +20,7 @@ interface Official {
   id: number;
   name: string;
   email: string;
-  role?: 'admin'|'organizer';
+  role?: 'admin'|'official';
 }
 
 interface CheckpointAssignment {
