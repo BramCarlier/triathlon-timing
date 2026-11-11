@@ -1,9 +1,13 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
-use App\Models\{Athlete, Entry, Race, User};
-use App\Services\{ResultsService, TimingService};
+use App\Models\Athlete;
+use App\Models\Race;
+use App\Models\User;
+use App\Services\ResultsService;
+use App\Services\TimingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -27,6 +31,7 @@ class TimingDeletionTest extends TestCase
         $service = app(TimingService::class);
         $first = $service->correct($race, $entry, $swim, $admin, 10000);
         $last = $service->correct($race, $entry, $finish, $admin, 20000);
+
         return compact('admin', 'race', 'athlete', 'entry', 'swim', 'finish', 'first', 'last');
     }
 

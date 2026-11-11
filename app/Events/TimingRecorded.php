@@ -1,18 +1,33 @@
 <?php
+
 namespace App\Events;
+
 use App\Models\TimingRecord;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+
 class TimingRecorded implements ShouldBroadcastNow
 {
     use Dispatchable, SerializesModels;
+
     public function __construct(public TimingRecord $timing) {}
-    public function broadcastOn(): array { return [new PrivateChannel('race.'.$this->timing->race_id)]; }
-    public function broadcastAs(): string { return 'timing.recorded'; }
-    public function broadcastWith(): array {
+
+    public function broadcastOn(): array
+    {
+        return [new PrivateChannel('race.'.$this->timing->race_id)];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'timing.recorded';
+    }
+
+    public function broadcastWith(): array
+    {
         $this->timing->loadMissing(['entry.members.athlete', 'checkpoint', 'operator']);
+
         return [
             'id' => $this->timing->id,
             'client_uuid' => $this->timing->client_uuid,

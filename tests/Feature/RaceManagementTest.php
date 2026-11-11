@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Athlete;
 use App\Models\Race;
+use App\Models\TimingRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -78,21 +80,22 @@ class RaceManagementTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $races = collect(['Koko Loco Challenge', 'test 1', 'test 2'])->map(function ($name) use ($admin) {
             $race = Race::create([
-                'name' => $name, 'slug' => \Illuminate\Support\Str::slug($name), 'event_date' => '2026-09-27',
+                'name' => $name, 'slug' => Str::slug($name), 'event_date' => '2026-09-27',
                 'created_by' => $admin->id, 'status' => 'finished', 'started_at' => now()->subHour(), 'finished_at' => now(),
-                'public_results_token' => \Illuminate\Support\Str::uuid(), 'results_published_at' => now(),
+                'public_results_token' => Str::uuid(), 'results_published_at' => now(),
             ]);
             $entry = $race->entries()->create(['type' => 'solo']);
             $checkpoint = $race->checkpoints()->create(['name' => 'Finish', 'code' => 'FINISH', 'sequence' => 50, 'kind' => 'finish']);
             $race->timings()->create([
-                'client_uuid' => \Illuminate\Support\Str::uuid(), 'entry_id' => $entry->id, 'checkpoint_id' => $checkpoint->id,
+                'client_uuid' => Str::uuid(), 'entry_id' => $entry->id, 'checkpoint_id' => $checkpoint->id,
                 'elapsed_ms' => 3600000, 'recorded_at' => now(), 'status' => 'recorded', 'source' => 'online',
             ]);
+
             return $race;
         });
         $protected = $races->first();
         $original = $protected->fresh()->getAttributes();
-        $timings = \App\Models\TimingRecord::orderBy('id')->get()->toArray();
+        $timings = TimingRecord::orderBy('id')->get()->toArray();
 
         $this->actingAs($admin);
         foreach ($races->skip(1) as $race) {
@@ -104,7 +107,7 @@ class RaceManagementTest extends TestCase
             $this->get("/live/{$race->public_results_token}")->assertNotFound();
         }
         $this->assertSame($original, $protected->fresh()->getAttributes());
-        $this->assertSame($timings, \App\Models\TimingRecord::orderBy('id')->get()->toArray());
+        $this->assertSame($timings, TimingRecord::orderBy('id')->get()->toArray());
         $this->get('/races')->assertInertia(fn (Assert $page) => $page
             ->has('races', 1)->where('races.0.id', $protected->id)->missing('deletedRaces'));
         $this->get('/admin/deleted-races')->assertInertia(fn (Assert $page) => $page->has('deletedRaces.data', 2));
@@ -117,7 +120,7 @@ class RaceManagementTest extends TestCase
         $official = User::factory()->create(['role' => UserRole::Official]);
         $race = Race::create(['name' => 'Test', 'slug' => 'test', 'event_date' => '2026-09-21', 'created_by' => $admin->id]);
         $race->organizers()->attach($admin);
-        $checkpoint = $race->checkpoints()->create(['name'=>'Finish','code'=>'FINISH','sequence'=>50,'kind'=>'finish','is_active'=>true,'is_required'=>true]);
+        $checkpoint = $race->checkpoints()->create(['name' => 'Finish', 'code' => 'FINISH', 'sequence' => 50, 'kind' => 'finish', 'is_active' => true, 'is_required' => true]);
 
         $this->actingAs($admin)->post("/races/{$race->id}/official-assignments", [
             'checkpoint_id' => $checkpoint->id,

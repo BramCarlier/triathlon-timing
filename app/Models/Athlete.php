@@ -1,6 +1,8 @@
 <?php
+
 namespace App\Models;
 
+use App\Support\ResultsCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -12,14 +14,31 @@ class Athlete extends Model
         static::saved(function (self $athlete) {
             $athlete->memberships()->with('entry:id,race_id')->get()
                 ->pluck('entry.race_id')->unique()
-                ->each(fn ($raceId) => \App\Support\ResultsCache::bump($raceId));
+                ->each(fn ($raceId) => ResultsCache::bump($raceId));
         });
     }
 
     protected $fillable = ['first_name', 'last_name', 'email', 'date_of_birth', 'gender', 'club', 'phone', 'metadata'];
-    protected function casts(): array { return ['date_of_birth' => 'date', 'metadata' => 'array']; }
+
+    protected function casts(): array
+    {
+        return ['date_of_birth' => 'date', 'metadata' => 'array'];
+    }
+
     protected $appends = ['full_name'];
-    public function getFullNameAttribute(): string { return trim($this->first_name.' '.$this->last_name); }
-    public function memberships(): HasMany { return $this->hasMany(EntryMember::class); }
-    public function user(): HasOne { return $this->hasOne(User::class); }
+
+    public function getFullNameAttribute(): string
+    {
+        return trim($this->first_name.' '.$this->last_name);
+    }
+
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(EntryMember::class);
+    }
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
 }

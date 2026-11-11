@@ -1,16 +1,16 @@
 <?php
+
 namespace App\Services;
 
-use App\Support\RaceBroadcast;
-
-use App\Enums\RaceStatus;
 use App\Enums\CheckpointKind;
+use App\Enums\RaceStatus;
 use App\Enums\TimingStatus;
-use App\Models\EntryChange;
-use App\Models\User;
 use App\Events\RaceFinished;
 use App\Events\RaceStarted;
+use App\Models\EntryChange;
 use App\Models\Race;
+use App\Models\User;
+use App\Support\RaceBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -26,7 +26,7 @@ class RaceClockService
                 throw ValidationException::withMessages(['race' => __('This race has already been started.')]);
             }
             $readiness = $this->readiness->for($locked);
-            if (!$readiness['ready_to_start']) {
+            if (! $readiness['ready_to_start']) {
                 $missing = collect($readiness['checks'])
                     ->where('required', true)
                     ->where('ready', false)
@@ -35,9 +35,11 @@ class RaceClockService
                 throw ValidationException::withMessages(['race' => $missing ?: __('Finish the required race setup before starting.')]);
             }
             $locked->forceFill(['started_at' => now('UTC'), 'status' => RaceStatus::Running])->save();
+
             return $locked->fresh();
         });
         RaceBroadcast::dispatch(new RaceStarted($race));
+
         return $race;
     }
 
@@ -45,8 +47,12 @@ class RaceClockService
     {
         $race = DB::transaction(function () use ($race, $operator) {
             $locked = Race::query()->lockForUpdate()->findOrFail($race->id);
-            if (!$locked->started_at) throw ValidationException::withMessages(['race' => __('The race has not started.')]);
-            if ($locked->finished_at) return $locked;
+            if (! $locked->started_at) {
+                throw ValidationException::withMessages(['race' => __('The race has not started.')]);
+            }
+            if ($locked->finished_at) {
+                return $locked;
+            }
             // Serialize against timing uploads and participant edits before deciding who finished.
             $entries = $locked->entries()->where('status', 'registered')->orderBy('id')->lockForUpdate()->get();
             $finishedIds = $locked->timings()
@@ -54,7 +60,9 @@ class RaceClockService
                 ->whereHas('checkpoint', fn ($query) => $query->where('kind', CheckpointKind::Finish->value))
                 ->pluck('entry_id')->flip();
             foreach ($entries as $entry) {
-                if ($finishedIds->has($entry->id)) continue;
+                if ($finishedIds->has($entry->id)) {
+                    continue;
+                }
                 $entry->update(['status' => 'dnf', 'metadata' => [...($entry->metadata ?? []), 'automatic_dnf' => true]]);
                 EntryChange::create([
                     'entry_id' => $entry->id, 'user_id' => $operator?->id,
@@ -64,9 +72,11 @@ class RaceClockService
                 ]);
             }
             $locked->forceFill(['finished_at' => now('UTC'), 'status' => RaceStatus::Finished])->save();
+
             return $locked->fresh();
         });
         RaceBroadcast::dispatch(new RaceFinished($race));
+
         return $race;
     }
 }

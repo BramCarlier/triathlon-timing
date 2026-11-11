@@ -53,7 +53,9 @@ class ResultsPdfService
 
     public static function formatDuration(?int $milliseconds): string
     {
-        if ($milliseconds === null) return '-';
+        if ($milliseconds === null) {
+            return '-';
+        }
 
         $milliseconds = max(0, $milliseconds);
 

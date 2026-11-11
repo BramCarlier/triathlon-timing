@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class);
 Route::get('/live/{token}/results.pdf', [ResultsPdfController::class, 'publicDownload'])->middleware('throttle:10,1')->name('results.public.pdf');
-Route::get('/live/{token}', [ResultController::class,'publicIndex'])->middleware('throttle:120,1')->name('results.public');
+Route::get('/live/{token}', [ResultController::class, 'publicIndex'])->middleware('throttle:120,1')->name('results.public');
 Route::get('/race/{token}', [PublicRaceController::class, 'show'])->middleware('throttle:race-day')->name('race.public');
 Route::post('/race/{token}/timings', [PublicRaceController::class, 'record'])->middleware('throttle:race-day')->name('race.public.timings');
 Route::post('/race/{token}/timings/{clientUuid}/undo', [PublicRaceController::class, 'undo'])->middleware('throttle:race-day')->whereUuid('clientUuid')->name('race.public.undo');
@@ -61,7 +61,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/races/create', [RaceController::class, 'create'])->middleware('permission:races.create')->name('races.create');
         Route::post('/races', [RaceController::class, 'store'])->middleware('permission:races.create')->name('races.store');
         Route::get('/races/{race}', [RaceController::class, 'show'])->name('races.show');
-        Route::post('/races/{race}/publication', [ResultController::class,'publish'])->middleware('permission:races.setup')->name('results.publish');
+        Route::post('/races/{race}/publication', [ResultController::class, 'publish'])->middleware('permission:races.setup')->name('results.publish');
         Route::put('/races/{race}', [RaceController::class, 'update'])->middleware('permission:races.setup')->name('races.update');
         Route::put('/races/{race}/race-day-link', [RaceDayLinkController::class, 'update'])->middleware('permission:races.setup')->name('races.link.update');
         Route::post('/races/{race}/race-day-link/rotate', [RaceDayLinkController::class, 'rotate'])->middleware('permission:races.setup')->name('races.link.rotate');
@@ -113,8 +113,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::post('/users/{user}/invitation', [UserController::class,'invite'])->middleware('throttle:5,1')->name('users.invite');
-        Route::post('/athletes/{athlete}/account-invitation', [UserController::class,'inviteAthlete'])->middleware('throttle:5,1')->name('athletes.invite');
+        Route::post('/users/{user}/invitation', [UserController::class, 'invite'])->middleware('throttle:5,1')->name('users.invite');
+        Route::post('/athletes/{athlete}/account-invitation', [UserController::class, 'inviteAthlete'])->middleware('throttle:5,1')->name('athletes.invite');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
     });
 });

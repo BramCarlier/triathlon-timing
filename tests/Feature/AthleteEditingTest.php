@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Athlete;
-use App\Models\Entry;
 use App\Models\EntryChange;
 use App\Models\Race;
 use App\Models\User;

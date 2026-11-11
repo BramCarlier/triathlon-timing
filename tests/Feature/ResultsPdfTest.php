@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccessRole;
 use App\Models\Race;
 use App\Models\User;
 use App\Services\ResultsPdfService;
@@ -64,7 +65,7 @@ class ResultsPdfTest extends TestCase
         $official = User::factory()->create(['role' => 'official']);
         $this->actingAs($official)->get("/races/$race->id/results.pdf")->assertForbidden();
         $race->staff()->attach($official);
-        $role = \App\Models\AccessRole::create(['name' => 'No exports', 'permissions' => []]);
+        $role = AccessRole::create(['name' => 'No exports', 'permissions' => []]);
         $official->update(['access_role_id' => $role->id]);
         $this->get("/races/$race->id/results.pdf")->assertForbidden();
         $this->actingAs($race->creator)->get("/races/$race->id/results.pdf")->assertOk()->assertHeader('Content-Type', 'application/pdf');

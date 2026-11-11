@@ -4,7 +4,8 @@ use App\Support\Permissions;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         DB::table('access_roles')->orderBy('id')->get(['id', 'permissions'])->each(function ($role) {

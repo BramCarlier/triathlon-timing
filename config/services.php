@@ -1,4 +1,5 @@
 <?php
+
 return [
     'gmail' => [
         'client_id' => env('GMAIL_CLIENT_ID'),

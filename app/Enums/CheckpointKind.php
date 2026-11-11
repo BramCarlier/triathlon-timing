@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Enums;
+
 enum CheckpointKind: string
 {
     case Start = 'start';

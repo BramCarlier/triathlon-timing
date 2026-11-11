@@ -3,10 +3,16 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
-use App\Models\{Athlete, Checkpoint, Entry, Race, TimingRecord, User};
+use App\Models\Athlete;
+use App\Models\Checkpoint;
+use App\Models\Entry;
+use App\Models\Race;
+use App\Models\TimingRecord;
+use App\Models\User;
 use App\Services\ResultsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -62,7 +68,9 @@ class LiveStandingsTest extends TestCase
         $this->timing($race, $entries['millisecond'], $bike, 60001);
         $this->timing($race, $entries['winner'], $finish, 120000);
         $this->timing($race, $entries['inactive'], $inactive, 90000);
-        foreach (['dns', 'dnf', 'dsq'] as $name) $this->timing($race, $entries[$name], $finish, 1000);
+        foreach (['dns', 'dnf', 'dsq'] as $name) {
+            $this->timing($race, $entries[$name], $finish, 1000);
+        }
 
         $rows = app(ResultsService::class)->live($race);
         $this->assertSame([1, 2, 2, 4, 5, null, null, null, null, null], array_column($rows, 'place'));
@@ -128,7 +136,9 @@ class LiveStandingsTest extends TestCase
             $this->assertSame(1, $place($rows, $b, $bike));
             $this->assertNull($place($rows, $c, $bike));
             $this->assertNull($place($rows, $waiting, $swim));
-            foreach ($unranked as $entry) $this->assertNull($place($rows, $entry, $swim));
+            foreach ($unranked as $entry) {
+                $this->assertNull($place($rows, $entry, $swim));
+            }
         }
         $this->assertSame(2, $place($service->filtered($race, ['type' => 'solo']), $c, $swim));
         $this->assertSame(1, $place($service->filtered($race, ['category' => 'Masters']), $c, $swim));
@@ -154,7 +164,7 @@ class LiveStandingsTest extends TestCase
         $this->actingAs($race->creator)->get("/races/{$race->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Races/Show')->where('standings.0.place', 1));
         $this->get("/races/{$race->id}", [
-            'X-Inertia' => 'true', 'X-Inertia-Version' => \Inertia\Inertia::getVersion(),
+            'X-Inertia' => 'true', 'X-Inertia-Version' => Inertia::getVersion(),
             'X-Inertia-Partial-Component' => 'Races/Show',
             'X-Inertia-Partial-Data' => 'standings',
         ])->assertOk()->assertJsonPath('props.standings.0.latest_elapsed_ms', 12345)->assertJsonMissingPath('props.participants');

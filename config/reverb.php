@@ -1,4 +1,5 @@
 <?php
+
 return [
     'default' => env('REVERB_SERVER', 'reverb'),
     'servers' => [

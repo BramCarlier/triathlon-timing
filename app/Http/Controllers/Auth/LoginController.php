@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -13,7 +14,10 @@ use Inertia\Response;
 
 class LoginController extends Controller
 {
-    public function create(): Response { return Inertia::render('Auth/Login'); }
+    public function create(): Response
+    {
+        return Inertia::render('Auth/Login');
+    }
 
     public function store(Request $request): RedirectResponse
     {
@@ -29,12 +33,13 @@ class LoginController extends Controller
         $remember = (bool) ($credentials['remember'] ?? false);
         unset($credentials['remember']);
         $user = User::where('email', strtolower($credentials['email']))->first();
-        if (!$user || !$user->is_active || !Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password']], $remember)) {
+        if (! $user || ! $user->is_active || ! Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password']], $remember)) {
             RateLimiter::hit($throttleKey, 60);
             throw ValidationException::withMessages(['email' => __('The provided credentials are invalid.')]);
         }
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
+
         return redirect()->intended(route('dashboard'));
     }
 
@@ -43,6 +48,7 @@ class LoginController extends Controller
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('login');
     }
 }
