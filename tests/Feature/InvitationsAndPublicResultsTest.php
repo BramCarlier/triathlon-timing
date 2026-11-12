@@ -157,7 +157,7 @@ class InvitationsAndPublicResultsTest extends TestCase
         $race->update(['started_at' => now(), 'status' => 'running']);
         $data['status'] = 'running';
         $data['bike_km'] = 41;
-        $this->put("/races/$race->id",$data)->assertSessionHasErrors('race');
-        $this->assertEquals(40,$race->fresh()->settings['bike_km']);
+        $this->put("/races/$race->id", $data)->assertSessionHasErrors('race');
+        $this->assertEquals(40, $race->fresh()->settings['bike_km']);
     }
 }
