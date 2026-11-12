@@ -85,7 +85,7 @@ import {
   WifiOff,
   Wrench,
   X,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 const icons = {
   xmark: X,

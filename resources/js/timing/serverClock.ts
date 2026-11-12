@@ -17,6 +17,8 @@ export const clockRttMs = ref<number | null>(null);
 // Cancel in-flight samples when the page is left, so navigation does not report failed requests.
 let leaving = new AbortController();
 if (typeof window !== 'undefined') {
+  // beforeunload fires before the browser cancels requests itself (WebKit reports those as errors).
+  window.addEventListener('beforeunload', () => leaving.abort());
   window.addEventListener('pagehide', () => leaving.abort());
   window.addEventListener('pageshow', () => {
     if (leaving.signal.aborted) leaving = new AbortController();
@@ -76,6 +78,8 @@ export function startServerClock(serverNowIso?: string | null): () => void {
   return () => {
     users = Math.max(0, users - 1);
     if (users === 0) {
+      leaving.abort();
+      leaving = new AbortController();
       window.clearInterval(timer);
       window.removeEventListener('online', onWake);
       document.removeEventListener('visibilitychange', onWake);

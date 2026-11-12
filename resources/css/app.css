@@ -342,7 +342,7 @@ summary {
 dialog {
     overflow-wrap: anywhere;
 }
-.app-shell :where(.grid, .flex) > *,
+.app-shell :where(.grid, .flex) > :not(.bib),
 .auth-screen form,
 fieldset {
     min-width: 0;
