@@ -22,7 +22,8 @@ async function startedRace(page: Page, name: string, athlete: string): Promise<s
   const athleteForm = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add athlete', exact: true }) });
   await athleteForm.getByLabel('Name', { exact: true }).fill(athlete);
   await athleteForm.getByRole('button', { name: 'Add athlete', exact: true }).click();
-  await expect(page.getByText('Participant added.', { exact: true })).toBeVisible();
+  // Check the lasting state: the flash message can be cleared by the workspace's background refresh.
+  await expect(page.getByRole('button', { name: `${athlete} Already added` })).toBeDisabled();
   await page
     .getByRole('button', { name: /Start & timing/ })
     .first()
