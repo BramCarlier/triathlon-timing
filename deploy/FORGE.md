@@ -13,7 +13,7 @@ New migrations in this release: the Official role is renamed in the `users` tabl
 
 ## Site and runtime
 
-Create a Laravel site for `BramCarlier/triathlon-timing`, branch `main`, with PHP 8.5 and web directory `/public`. Use Node.js **24 LTS** and the Yarn version pinned in `package.json` (currently 4.18.0). Corepack must be installed. Yarn 1's `--non-interactive` fails with Yarn 4; use `--immutable`.
+Create a Laravel site for `BramCarlier/triathlon-timing`, branch `main`, with PHP 8.5 and web directory `/public`. Use Node.js **24 LTS** and the Yarn version pinned in `package.json` (currently 4.18.1). Corepack must be installed. Yarn 1's `--non-interactive` fails with Yarn 4; use `--immutable`.
 
 Keep Forge's default zero-downtime deployment enabled. Add `storage` to shared paths; `.env` is shared automatically. Commands and background processes must use `/home/forge/YOUR_SITE/current`, not a numbered release. Disable initial automatic deployment until environment and deployment settings are ready. Enable push-to-deploy for `main` after the first successful deployment.
 
