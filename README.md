@@ -1,7 +1,6 @@
 # Triathlon Timing
 
 [![Laravel Forge Site Deployment Status](https://img.shields.io/endpoint?url=https%3A%2F%2Fforge.laravel.com%2Fsite-badges%2Fee9c2f10-94ad-4bea-89a9-ad51c7508bc1%3Fdate%3D1%26label%3D1%26commit%3D1&style=flat)](https://forge.laravel.com/bram-carlier/brotherhood/3392503)
-[![Quality](https://github.com/BramCarlier/triathlon-timing/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/BramCarlier/triathlon-timing/actions/workflows/quality.yml)
 
 Race-day timing for small triathlons and relays. The Organizer sets up a race, shares one link with the volunteers at the transitions and the finish, starts the clock, and gets live standings and final results without timing chips.
 
