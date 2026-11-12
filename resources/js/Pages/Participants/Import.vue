@@ -1,13 +1,135 @@
 <script setup lang="ts">
+import Icon from '../../Components/Icon.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import type { Race } from '../../types';
-interface Batch { id:number; token:string; original_name:string; row_count:number; preview:{row_count:number;entry_count:number;solo_count:number;relay_count:number;sample:Array<Record<string,unknown>>;warnings:string[]} }
-const props = defineProps<{ race:Race; batch?:Batch }>();
-const form = useForm<{file:File|null}>({file:null});
-const fileChanged = (event:Event) => { form.file = (event.target as HTMLInputElement).files?.[0] ?? null; };
-const preview = () => form.post(`/races/${props.race.id}/participants/import/preview`, { forceFormData:true });
-const confirmImport = () => { if (props.batch) router.post(`/races/${props.race.id}/participants/import/${props.batch.id}/confirm`); };
+interface Batch {
+  id: number;
+  token: string;
+  original_name: string;
+  row_count: number;
+  preview: {
+    row_count: number;
+    entry_count: number;
+    solo_count: number;
+    relay_count: number;
+    sample: Array<Record<string, unknown>>;
+    warnings: string[];
+  };
+}
+const props = defineProps<{ race: Race; batch?: Batch }>();
+const form = useForm<{ file: File | null }>({ file: null });
+const fileChanged = (event: Event) => {
+  form.file = (event.target as HTMLInputElement).files?.[0] ?? null;
+};
+const preview = () => form.post(`/races/${props.race.id}/participants/import/preview`, { forceFormData: true });
+const confirmImport = () => {
+  if (props.batch) router.post(`/races/${props.race.id}/participants/import/${props.batch.id}/confirm`);
+};
 </script>
-<template><Head :title="$t('Import participants')"/><AppLayout :title="`${race.name} · ${$t('Import participants')}`"><div class="mb-5"><Link :href="`/races/${race.id}/participants`" class="btn-secondary"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>{{ $t("Back to participants") }}</Link></div><div class="grid gap-5 lg:grid-cols-2"><form class="panel-pad" @submit.prevent="preview"><h2 class="text-lg font-bold">{{ $t("Upload participant file") }}</h2><p class="mt-2 muted">{{ $t("Upload an Excel or CSV file. XLS, ODS and JSON are also supported. Nothing is imported until you confirm the preview.") }}</p><input class="mt-5 block w-full rounded-xl border border-dashed border-outline-strong bg-canvas p-5" :aria-label="$t('Participant file')" type="file" accept=".xlsx,.xls,.ods,.csv,.json" @change="fileChanged" required><p v-if="form.errors.file" class="mt-2 text-sm text-error">{{ form.errors.file }}</p><div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary" :disabled="!form.file || form.processing"><i class="fa-solid fa-eye" aria-hidden="true"></i>{{ $t("Preview file") }}</button><a href="/participant-import-template.csv" class="btn-secondary"><i class="fa-solid fa-download" aria-hidden="true"></i>{{ $t("Download CSV template") }}</a></div><details class="mt-5 rounded-xl bg-canvas p-4 text-sm text-secondary"><summary class="font-semibold">{{ $t("File format help") }}</summary><p class="mt-2 muted">{{ $t("The easiest option is to download the CSV template. Bibs are optional. Solo participants use one row per athlete. Relays use one row per athlete with the same team name and a swim, bike or run discipline. Advanced imports can use entry_key when teams share a name and have no bib.") }}</p></details></form>
-<section v-if="batch" class="panel-pad"><div class="flex items-start justify-between gap-4"><div><span class="badge">{{ $t("Preview") }}</span><h2 class="mt-2 text-lg font-bold">{{ batch.original_name }}</h2></div><div class="text-right text-sm muted">{{ batch.preview.row_count }} {{ $t("rows") }}</div></div><div class="mt-4 grid grid-cols-3 gap-2"><div class="rounded-xl bg-canvas p-3 text-center"><div class="text-xl font-bold">{{ batch.preview.entry_count }}</div><div class="muted text-xs">{{ $t("Participants") }}</div></div><div class="rounded-xl bg-canvas p-3 text-center"><div class="text-xl font-bold">{{ batch.preview.solo_count }}</div><div class="muted text-xs">{{ $t("Solo") }}</div></div><div class="rounded-xl bg-canvas p-3 text-center"><div class="text-xl font-bold">{{ batch.preview.relay_count }}</div><div class="muted text-xs">{{ $t("Relay") }}</div></div></div><div v-if="batch.preview.warnings.length" class="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"><div class="font-semibold text-warning">{{ $t("Warnings") }}</div><ul class="mt-2 list-disc pl-5 text-sm text-warning"><li v-for="warning in batch.preview.warnings" :key="warning">{{ warning }}</li></ul></div><div tabindex="0" role="region" :aria-label="$t('Import preview rows')" class="scroll-region mt-4 max-h-64 overflow-auto rounded-xl border border-outline"><table class="w-full text-left text-xs"><thead class="sticky top-0 bg-surface"><tr><th class="p-2">{{ $t("Bib") }}</th><th class="p-2">{{ $t("Type") }}</th><th class="p-2">{{ $t("Name") }}</th><th class="p-2">{{ $t("Discipline") }}</th></tr></thead><tbody><tr v-for="(row,index) in batch.preview.sample" :key="index" class="border-t border-outline"><td class="p-2">{{ row.bib || '—' }}</td><td class="p-2">{{ $t(String(row.type ?? 'solo')) }}</td><td class="p-2">{{ row.first_name }} {{ row.last_name }}</td><td class="p-2">{{ row.discipline ? $t(String(row.discipline)) : $t('All disciplines') }}</td></tr></tbody></table></div><button class="btn-primary mt-5 w-full" @click="confirmImport"><i class="fa-solid fa-check" aria-hidden="true"></i>{{ $t("Confirm import") }}</button></section></div></AppLayout></template>
+<template>
+  <Head :title="$t('Import participants')" />
+  <AppLayout :title="`${race.name} · ${$t('Import participants')}`">
+    <div class="mb-5">
+      <Link :href="`/races/${race.id}/participants`" class="btn-secondary">
+        <Icon name="arrow-left" />
+        {{ $t('Back to participants') }}
+      </Link>
+    </div>
+    <div class="grid gap-5 lg:grid-cols-2">
+      <form class="panel-pad" @submit.prevent="preview">
+        <h2 class="text-lg font-bold">{{ $t('Upload participant file') }}</h2>
+        <p class="mt-2 muted">
+          {{ $t('Upload an Excel or CSV file. XLS, ODS and JSON are also supported. Nothing is imported until you confirm the preview.') }}
+        </p>
+        <input
+          class="mt-5 block w-full rounded-md border border-dashed border-outline-strong bg-canvas p-5"
+          :aria-label="$t('Participant file')"
+          type="file"
+          accept=".xlsx,.xls,.ods,.csv,.json"
+          @change="fileChanged"
+          required
+        />
+        <p v-if="form.errors.file" class="mt-2 text-sm text-error">{{ form.errors.file }}</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button class="btn-primary" :disabled="!form.file || form.processing">
+            <Icon name="eye" />
+            {{ $t('Preview file') }}
+          </button>
+          <a href="/participant-import-template.csv" class="btn-secondary">
+            <Icon name="download" />
+            {{ $t('Download CSV template') }}
+          </a>
+        </div>
+        <details class="mt-5 rounded-md bg-canvas p-4 text-sm text-secondary">
+          <summary class="font-semibold">{{ $t('File format help') }}</summary>
+          <p class="mt-2 muted">
+            {{
+              $t(
+                'The easiest option is to download the CSV template. Bibs are optional. Solo participants use one row per athlete. Relays use one row per athlete with the same team name and a swim, bike or run discipline. Advanced imports can use entry_key when teams share a name and have no bib.',
+              )
+            }}
+          </p>
+        </details>
+      </form>
+      <section v-if="batch" class="panel-pad">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <span class="badge">{{ $t('Preview') }}</span>
+            <h2 class="mt-2 text-lg font-bold">{{ batch.original_name }}</h2>
+          </div>
+          <div class="text-right text-sm muted">{{ batch.preview.row_count }} {{ $t('rows') }}</div>
+        </div>
+        <div class="mt-4 grid grid-cols-3 gap-2">
+          <div class="rounded-md bg-canvas p-3 text-center">
+            <div class="text-xl font-bold">{{ batch.preview.entry_count }}</div>
+            <div class="muted text-xs">{{ $t('Participants') }}</div>
+          </div>
+          <div class="rounded-md bg-canvas p-3 text-center">
+            <div class="text-xl font-bold">{{ batch.preview.solo_count }}</div>
+            <div class="muted text-xs">{{ $t('Solo') }}</div>
+          </div>
+          <div class="rounded-md bg-canvas p-3 text-center">
+            <div class="text-xl font-bold">{{ batch.preview.relay_count }}</div>
+            <div class="muted text-xs">{{ $t('Relay') }}</div>
+          </div>
+        </div>
+        <div v-if="batch.preview.warnings.length" class="mt-4 rounded-md border border-warning/40 bg-warning/10 p-4">
+          <div class="font-semibold text-warning">{{ $t('Warnings') }}</div>
+          <ul class="mt-2 list-disc pl-5 text-sm text-warning">
+            <li v-for="warning in batch.preview.warnings" :key="warning">{{ warning }}</li>
+          </ul>
+        </div>
+        <div
+          tabindex="0"
+          role="region"
+          :aria-label="$t('Import preview rows')"
+          class="scroll-region mt-4 max-h-64 overflow-auto rounded-md border border-outline"
+        >
+          <table class="w-full text-left text-xs">
+            <thead class="sticky top-0 bg-surface">
+              <tr>
+                <th class="p-2">{{ $t('Bib') }}</th>
+                <th class="p-2">{{ $t('Type') }}</th>
+                <th class="p-2">{{ $t('Name') }}</th>
+                <th class="p-2">{{ $t('Discipline') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in batch.preview.sample" :key="index" class="border-t border-outline">
+                <td class="p-2">{{ row.bib || '—' }}</td>
+                <td class="p-2">{{ $t(String(row.type ?? 'solo')) }}</td>
+                <td class="p-2">{{ row.first_name }} {{ row.last_name }}</td>
+                <td class="p-2">{{ row.discipline ? $t(String(row.discipline)) : $t('All disciplines') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="btn-primary mt-5 w-full" @click="confirmImport">
+          <Icon name="check" />
+          {{ $t('Confirm import') }}
+        </button>
+      </section>
+    </div>
+  </AppLayout>
+</template>

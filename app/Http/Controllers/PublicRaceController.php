@@ -8,72 +8,32 @@ use App\Exceptions\TimingConflictException;
 use App\Models\Checkpoint;
 use App\Models\Entry;
 use App\Models\Race;
-use App\Services\RaceClockService;
+use App\Models\TimingRecord;
+use App\Services\RaceTimingData;
+use App\Services\ResultsService;
 use App\Services\TimingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use App\Services\ResultsService;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * The account-free race-day timing link. Anyone holding the unguessable token can
+ * record a crossing for this race. They cannot read or change anything else.
+ */
 class PublicRaceController extends Controller
 {
-    public function show(Request $request, string $token)
+    /** A tap saved on a device may be uploaded this long after it was observed. */
+    public const MAX_QUEUED_AGE_MS = 30 * 60 * 1000;
+
+    /** A device may undo its own tap for this long. */
+    public const UNDO_WINDOW_SECONDS = 60;
+
+    public function show(Request $request, string $token, RaceTimingData $data): Response
     {
-        $race = $this->race($token);
-        $race->load(['checkpoints' => fn ($query) => $query
-            ->where('is_active', true)
-            ->orderBy('sequence')]);
-
-        $participants = $race->entries()
-            ->with([
-                'members.athlete',
-                'timings' => fn ($query) => $query
-                    ->where('status', TimingStatus::Recorded->value)
-                    ->select('id', 'entry_id', 'checkpoint_id'),
-            ])
-            ->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')
-            ->get()
-            ->map(fn ($entry) => [
-                'id' => $entry->id,
-                'status' => $entry->status,
-                'bib_number' => $entry->bib_number,
-                'type' => $entry->type->value,
-                'name' => $entry->displayName(),
-                'members' => $entry->members->map(fn ($member) => [
-                    'discipline' => $member->discipline->value,
-                    'name' => $member->athlete->full_name,
-                ])->values()->all(),
-                'completed_checkpoint_ids' => $entry->timings->pluck('checkpoint_id')->values()->all(),
-            ])->values();
-
-        $recentTimings = $race->timings()
-            ->where('status', TimingStatus::Recorded->value)
-            ->with(['entry.members.athlete', 'checkpoint:id,name'])
-            ->latest('recorded_at')
-            ->limit(12)
-            ->get()
-            ->map(fn ($timing) => [
-                'id' => $timing->id,
-                'client_uuid' => $timing->client_uuid,
-                'elapsed_ms' => $timing->elapsed_ms,
-                'recorded_at' => $timing->recorded_at?->toISOString(),
-                'entry' => [
-                    'id' => $timing->entry_id,
-                    'bib_number' => $timing->entry?->bib_number,
-                    'display_name' => $timing->entry?->displayName(),
-                ],
-                'checkpoint' => [
-                    'id' => $timing->checkpoint_id,
-                    'name' => $timing->checkpoint?->name,
-                ],
-            ])->values();
-
-        $completedCount = $race->timings()
-            ->where('status', TimingStatus::Recorded->value)
-            ->whereHas('checkpoint', fn ($query) => $query->where('kind', CheckpointKind::Finish->value))
-            ->distinct('entry_id')
-            ->count('entry_id');
+        $race = $this->race($token, requireEnabled: false);
+        $race->load(['checkpoints' => fn ($query) => $query->where('is_active', true)->orderBy('sequence')]);
 
         $response = Inertia::render('Races/PublicTiming', [
             'race' => [
@@ -83,32 +43,26 @@ class PublicRaceController extends Controller
                 'status' => $race->status->value,
                 'started_at' => $race->started_at?->toISOString(),
                 'finished_at' => $race->finished_at?->toISOString(),
-                'settings' => $race->settings,
+                'timing_enabled' => (bool) $race->public_timing_enabled,
                 'checkpoints' => $race->checkpoints
                     ->where('kind', '!=', CheckpointKind::Start)
                     ->values()
-                    ->map(fn ($checkpoint) => [
-                        'id' => $checkpoint->id,
-                        'race_id' => $checkpoint->race_id,
-                        'name' => $checkpoint->name,
-                        'code' => $checkpoint->code,
-                        'sequence' => $checkpoint->sequence,
-                        'discipline' => $checkpoint->discipline?->value,
-                        'kind' => $checkpoint->kind->value,
-                        'distance_km' => $checkpoint->distance_km,
-                        'is_required' => $checkpoint->is_required,
-                        'is_active' => $checkpoint->is_active,
-                    ])->all(),
+                    ->map(fn (Checkpoint $checkpoint) => $data->checkpoint($checkpoint))
+                    ->all(),
                 'results_url' => $race->results_published_at && $race->public_results_token
                     ? route('results.public', $race->public_results_token, false)
                     : null,
             ],
             'token' => $token,
-            'participants' => $participants,
+            'participants' => fn () => $race->public_timing_enabled ? $data->participants($race) : [],
             'standings' => fn () => app(ResultsService::class)->live($race),
-            'recentTimings' => $recentTimings,
-            'completedCount' => $completedCount,
-            'serverNow' => now('UTC')->toISOString(),
+            // Client UUIDs are omitted: knowing one is what lets a device undo its own tap.
+            'recentTimings' => fn () => $race->public_timing_enabled
+                ? $data->recentTimings($race)->map(fn (array $timing) => collect($timing)->except(['client_uuid', 'operator', 'source'])->all())
+                : [],
+            'completedCount' => fn () => $data->finishedCount($race),
+            'serverNow' => fn () => now('UTC')->toISOString(),
+            'undoWindowSeconds' => self::UNDO_WINDOW_SECONDS,
         ])->toResponse($request);
 
         $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
@@ -117,85 +71,84 @@ class PublicRaceController extends Controller
         return $response;
     }
 
-    public function record(
-        Request $request,
-        string $token,
-        TimingService $service,
-        RaceClockService $clock,
-    ): JsonResponse {
+    public function record(Request $request, string $token, TimingService $service, RaceTimingData $data): JsonResponse
+    {
         $race = $this->race($token);
 
-        $data = $request->validate([
+        $input = $request->validate([
             'entry_id' => ['required', Rule::exists('entries', 'id')->where('race_id', $race->id)],
             'checkpoint_id' => ['required', Rule::exists('checkpoints', 'id')->where('race_id', $race->id)],
             'client_uuid' => ['required', 'uuid'],
             'observed_at' => ['nullable', 'date'],
+            'source' => ['nullable', Rule::in(['online', 'offline'])],
             'override_warning' => ['nullable', 'boolean'],
         ]);
 
-        $data['source'] = 'online';
+        $input['source'] ??= 'online';
+        // Saved taps keep the time they were observed, but only for a bounded period.
+        $input['max_offline_age_ms'] = self::MAX_QUEUED_AGE_MS;
 
         try {
             $timing = $service->record(
                 $race,
-                Entry::findOrFail($data['entry_id']),
-                Checkpoint::findOrFail($data['checkpoint_id']),
+                Entry::findOrFail($input['entry_id']),
+                Checkpoint::findOrFail($input['checkpoint_id']),
                 null,
-                $data,
+                $input,
             );
-
             $timing->load(['entry.members.athlete', 'checkpoint']);
-            $label = $timing->entry->displayName()
-                .($timing->entry->bib_number !== null ? " (#{$timing->entry->bib_number})" : '');
-
-            $autoFinished = false;
-            if ($timing->checkpoint->kind === CheckpointKind::Finish && !$race->finished_at) {
-                $hasUnfinishedParticipants = $race->entries()
-                    ->where('status', 'registered')
-                    ->whereDoesntHave('timings', fn ($query) => $query
-                        ->where('status', TimingStatus::Recorded->value)
-                        ->whereHas('checkpoint', fn ($checkpointQuery) => $checkpointQuery
-                            ->where('kind', CheckpointKind::Finish->value)))
-                    ->exists();
-
-                if (!$hasUnfinishedParticipants) {
-                    $clock->finish($race->fresh());
-                    $autoFinished = true;
-                }
-            }
+            $autoFinished = $service->finishIfComplete($race, $timing, null);
 
             return response()->json([
-                'timing' => [
-                    'id' => $timing->id,
-                    'client_uuid' => $timing->client_uuid,
-                    'elapsed_ms' => $timing->elapsed_ms,
-                    'recorded_at' => $timing->recorded_at?->toISOString(),
-                    'entry' => [
-                        'id' => $timing->entry_id,
-                        'bib_number' => $timing->entry->bib_number,
-                        'display_name' => $timing->entry->displayName(),
-                    ],
-                    'checkpoint' => [
-                        'id' => $timing->checkpoint_id,
-                        'name' => $timing->checkpoint->name,
-                    ],
-                ],
+                'timing' => collect($data->timing($timing))->except(['operator', 'source'])->all(),
                 'auto_finished' => $autoFinished,
-                'message' => __(':label recorded at :checkpoint.', ['label'=>$label, 'checkpoint'=>__($timing->checkpoint->name)])
-                    .($autoFinished ? ' '.__('All active participants are finished, so the race was finished automatically.') : ''),
+                'undo_until' => $timing->created_at?->addSeconds(self::UNDO_WINDOW_SECONDS)->toISOString(),
+                'message' => $this->recordedMessage($timing, $autoFinished),
             ]);
         } catch (TimingConflictException $e) {
-            return response()->json([
-                'conflict' => true,
-                'message' => $e->getMessage(),
-            ], 409);
+            return response()->json(['conflict' => true, 'message' => $e->getMessage()], 409);
         }
     }
 
-    private function race(string $token): Race
+    /** Undo a tap from the same device shortly after it was recorded. */
+    public function undo(Request $request, string $token, string $clientUuid, TimingService $service): JsonResponse
     {
-        return Race::query()
-            ->where('public_timing_token', $token)
+        $race = $this->race($token);
+        $timing = TimingRecord::query()
+            ->where('race_id', $race->id)
+            ->where('client_uuid', $clientUuid)
+            ->whereNull('operator_id')
             ->firstOrFail();
+
+        if ($timing->status === TimingStatus::Voided) {
+            return response()->json(['ok' => true]);
+        }
+        if ($race->finished_at || $timing->created_at->lt(now()->subSeconds(self::UNDO_WINDOW_SECONDS))) {
+            return response()->json([
+                'conflict' => true,
+                'message' => __('This tap can no longer be undone here. Ask the Organizer to correct it.'),
+            ], 409);
+        }
+
+        $service->void($timing, null, 'Undone from the race-day link');
+
+        return response()->json(['ok' => true, 'message' => __('Tap undone.')]);
+    }
+
+    private function recordedMessage(TimingRecord $timing, bool $autoFinished): string
+    {
+        $label = $timing->entry->displayName()
+            .($timing->entry->bib_number !== null ? " (#{$timing->entry->bib_number})" : '');
+
+        return __(':label recorded at :checkpoint.', ['label' => $label, 'checkpoint' => __($timing->checkpoint->name)])
+            .($autoFinished ? ' '.__('All active participants are finished, so the race was finished automatically.') : '');
+    }
+
+    private function race(string $token, bool $requireEnabled = true): Race
+    {
+        $race = Race::query()->where('public_timing_token', $token)->firstOrFail();
+        abort_if($requireEnabled && ! $race->public_timing_enabled, 403, __('The Organizer has switched off this race-day link.'));
+
+        return $race;
     }
 }

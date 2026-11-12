@@ -12,7 +12,7 @@ class RaceReadinessService
         $settings = $race->settings ?? [];
         $distanceKeys = ['swim_km', 'bike_km', 'run_km'];
         $hasExplicitCourse = collect($distanceKeys)->contains(fn (string $key) => array_key_exists($key, $settings));
-        $courseReady = !$hasExplicitCourse || collect($distanceKeys)
+        $courseReady = ! $hasExplicitCourse || collect($distanceKeys)
             ->every(fn (string $key) => (float) ($settings[$key] ?? 0) > 0);
 
         $finishReady = $race->checkpoints()

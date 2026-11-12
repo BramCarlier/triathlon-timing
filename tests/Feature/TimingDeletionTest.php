@@ -1,9 +1,13 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
-use App\Models\{Athlete, Entry, Race, User};
-use App\Services\{ResultsService, TimingService};
+use App\Models\Athlete;
+use App\Models\Race;
+use App\Models\User;
+use App\Services\ResultsService;
+use App\Services\TimingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -27,6 +31,7 @@ class TimingDeletionTest extends TestCase
         $service = app(TimingService::class);
         $first = $service->correct($race, $entry, $swim, $admin, 10000);
         $last = $service->correct($race, $entry, $finish, $admin, 20000);
+
         return compact('admin', 'race', 'athlete', 'entry', 'swim', 'finish', 'first', 'last');
     }
 
@@ -60,7 +65,7 @@ class TimingDeletionTest extends TestCase
         $otherRaceTime = app(TimingService::class)->correct($otherRace, $otherEntry, $otherCheckpoint, $admin, 16000);
 
         $this->put("/races/$race->id/participants/$entry->id", ['status' => 'dns'])->assertSessionHasNoErrors();
-        $this->assertSame('dns', $entry->fresh()->status);
+        $this->assertSame('dns', $entry->fresh()->status->value);
         $this->assertSame(0, $entry->timings()->where('status', 'recorded')->count());
         $this->assertSame(2, $entry->timings()->where('status', 'voided')->where('voided_by', $admin->id)->count());
         $this->assertSame('recorded', $otherTime->fresh()->status->value);

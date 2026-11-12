@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '../../Components/Icon.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch, onBeforeUnmount } from 'vue';
 import ConfirmDialog from '../../Components/ConfirmDialog.vue';
@@ -7,77 +8,258 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import { bibLabel } from '../../lib';
 import { tr } from '../../i18n';
 import type { Race } from '../../types';
-interface Athlete { id:number; full_name:string; first_name:string; last_name:string; email?:string; club?:string }
-interface AthleteChoice { id:number; full_name:string; first_name:string; last_name:string; email:string|null; club:string|null; race_count:number; already_in_race:boolean; races:Array<{id:number;name:string;event_date:string}>; recent_bibs:string[] }
-interface Member { id:number; discipline:string; athlete:Athlete }
-interface Entry { id:number; bib_number:string|null; type:'solo'|'relay'; team_name?:string; category?:string; members:Member[] }
-interface Paginator { data:Entry[]; current_page:number; last_page:number; prev_page_url?:string|null; next_page_url?:string|null; total:number }
-const props = defineProps<{ race:Race; entries:Paginator; search:string; athleteOptions:AthleteChoice[] }>();
+interface Athlete {
+  id: number;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  club?: string;
+}
+interface AthleteChoice {
+  id: number;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  club: string | null;
+  race_count: number;
+  already_in_race: boolean;
+  races: Array<{ id: number; name: string; event_date: string }>;
+  recent_bibs: string[];
+}
+interface Member {
+  id: number;
+  discipline: string;
+  athlete: Athlete;
+}
+interface Entry {
+  id: number;
+  bib_number: string | null;
+  type: 'solo' | 'relay';
+  team_name?: string;
+  category?: string;
+  members: Member[];
+}
+interface Paginator {
+  data: Entry[];
+  current_page: number;
+  last_page: number;
+  prev_page_url?: string | null;
+  next_page_url?: string | null;
+  total: number;
+}
+const props = defineProps<{ race: Race; entries: Paginator; search: string; athleteOptions: AthleteChoice[] }>();
 const searchValue = ref(props.search);
-let searchTimer:number|undefined;
-watch(searchValue, value => { clearTimeout(searchTimer); searchTimer = window.setTimeout(() => router.get(`/races/${props.race.id}/participants`, value ? {search:value} : {}, {preserveState:true, replace:true}), 250); });
-const form = useForm({ bib_number:'', type:'solo' as 'solo'|'relay', team_name:'', category:'', members:[{discipline:'swim',athlete_id:null as number|null,first_name:'',last_name:'',email:'',club:''}] });
-watch(() => form.type, type => { form.members = type === 'solo' ? [{discipline:'swim',athlete_id:null,first_name:'',last_name:'',email:'',club:''}] : ['swim','bike','run'].map(discipline => ({discipline,athlete_id:null as number|null,first_name:'',last_name:'',email:'',club:''})); });
-const submit = () => form.post(`/races/${props.race.id}/participants`, { preserveScroll:true, onSuccess:()=>form.reset() });
+let searchTimer: number | undefined;
+watch(searchValue, value => {
+  clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(
+    () => router.get(`/races/${props.race.id}/participants`, value ? { search: value } : {}, { preserveState: true, replace: true }),
+    250,
+  );
+});
+const form = useForm({
+  bib_number: '',
+  type: 'solo' as 'solo' | 'relay',
+  team_name: '',
+  category: '',
+  members: [{ discipline: 'swim', athlete_id: null as number | null, first_name: '', last_name: '', email: '', club: '' }],
+});
+watch(
+  () => form.type,
+  type => {
+    form.members =
+      type === 'solo'
+        ? [{ discipline: 'swim', athlete_id: null, first_name: '', last_name: '', email: '', club: '' }]
+        : ['swim', 'bike', 'run'].map(discipline => ({
+            discipline,
+            athlete_id: null as number | null,
+            first_name: '',
+            last_name: '',
+            email: '',
+            club: '',
+          }));
+  },
+);
+const submit = () => form.post(`/races/${props.race.id}/participants`, { preserveScroll: true, onSuccess: () => form.reset() });
 onBeforeUnmount(() => clearTimeout(searchTimer));
-const displayName = (entry:Entry) => (entry.type === 'relay' ? entry.team_name : entry.members[0]?.athlete.full_name) ?? tr('Participant');
-const removing=ref<Entry|null>(null);
-const removeError=ref('');
-const remove=(entry:Entry)=>{removing.value=entry;};
-const confirmRemove=()=>{if(removing.value)router.delete(`/races/${props.race.id}/participants/${removing.value.id}`,{preserveScroll:true,onSuccess:()=>{removing.value=null;removeError.value='';},onError:(errors)=>{removeError.value=Object.values(errors)[0];removing.value=null;}});};
-const disciplineLabel = (d:string) => tr(d.charAt(0).toUpperCase()+d.slice(1));
+const displayName = (entry: Entry) => (entry.type === 'relay' ? entry.team_name : entry.members[0]?.athlete.full_name) ?? tr('Participant');
+const removing = ref<Entry | null>(null);
+const removeError = ref('');
+const remove = (entry: Entry) => {
+  removing.value = entry;
+};
+const confirmRemove = () => {
+  if (removing.value)
+    router.delete(`/races/${props.race.id}/participants/${removing.value.id}`, {
+      preserveScroll: true,
+      onSuccess: () => {
+        removing.value = null;
+        removeError.value = '';
+      },
+      onError: errors => {
+        removeError.value = Object.values(errors)[0];
+        removing.value = null;
+      },
+    });
+};
+const disciplineLabel = (d: string) => tr(d.charAt(0).toUpperCase() + d.slice(1));
 </script>
-<template><Head :title="`${race.name} · ${$t('Participants')}`"/><AppLayout :title="`${race.name} · ${$t('Participants')}`">
-  <p class="mb-4 text-sm muted">{{ $t("Use Edit to add or change a bib number and update athlete details.") }}</p>
-  <div v-if="!race.started_at" class="mb-5 flex flex-wrap gap-2"><Link :href="`/races/${race.id}/participants/import`" class="btn-primary"><i class="fa-solid fa-file-import" aria-hidden="true"></i>{{ $t("Import file") }}</Link></div>
-  <div v-else class="mb-5 rounded-xl border border-outline bg-canvas p-4"><strong>{{ $t("Registration is locked.") }}</strong><p class="mt-1 text-sm muted">{{ $t("The race has started. You can still edit bib numbers and result statuses; adding or removing athletes is locked.") }}</p></div>
-  <p v-if="removeError" role="alert" class="mb-4 text-error">{{ removeError }}</p>
-  <div class="grid gap-5" :class="!race.started_at?'xl:grid-cols-[1fr_420px]':''">
-    <section class="panel overflow-hidden"><div class="border-b border-outline p-4"><div class="flex items-center gap-3"><input :aria-label="$t('Search participants')" v-model="searchValue" class="field" :placeholder="$t('Search bib, athlete or team…')"><span class="whitespace-nowrap muted text-sm">{{ entries.total }} {{ $t("participants") }}</span></div></div><div class="divide-y divide-outline"><div v-for="entry in entries.data" :key="entry.id" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:p-4"><div :title="bibLabel(entry.bib_number)" :aria-label="bibLabel(entry.bib_number)" class="max-w-16 break-all rounded-lg bg-raised px-2 py-1 font-mono text-xs font-semibold sm:max-w-24">{{ entry.bib_number ? bibLabel(entry.bib_number) : '—' }}</div><div class="min-w-0 flex-1"><div class="break-words text-sm font-semibold [overflow-wrap:anywhere] sm:text-base">{{ displayName(entry) }}</div><div class="muted text-sm">{{ entry.type === 'relay' ? $t('Trio relay') : $t('Solo') }}<span v-if="entry.category"> · {{ entry.category }}</span></div><div v-if="entry.type === 'relay'" class="mt-1 flex flex-wrap gap-x-3 text-xs text-muted"><span v-for="member in entry.members" :key="member.id">{{ disciplineLabel(member.discipline) }}: {{ member.athlete.full_name }}</span></div></div><div class="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-1"><Link class="btn-secondary !px-3 !py-1.5 !text-xs" :href="`/races/${race.id}/participants/${entry.id}/edit`"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>{{ $t('Edit') }}</Link><button v-if="!race.started_at" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-error hover:bg-red-500/10" @click="remove(entry)"><i class="fa-solid fa-trash" aria-hidden="true"></i>{{ $t("Remove") }}</button></div></div><div v-if="!entries.data.length" class="p-8 text-center muted">{{ $t("No participants found.") }}</div></div><div class="flex flex-wrap items-center justify-between gap-2 border-t border-outline p-4"><Link v-if="entries.prev_page_url" :href="entries.prev_page_url" class="btn-secondary"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i>{{ $t("Previous") }}</Link><span v-else></span><span class="muted text-sm">{{ $t("Page") }} {{ entries.current_page }} {{ $t("of") }} {{ entries.last_page }}</span><Link v-if="entries.next_page_url" :href="entries.next_page_url" class="btn-secondary">{{ $t("Next") }}<i class="fa-solid fa-chevron-right" aria-hidden="true"></i></Link><span v-else></span></div></section>
-    <form v-if="!race.started_at" class="panel-pad h-fit" @submit.prevent="submit">
-      <div>
-        <h2 class="text-lg font-bold">{{ $t("Add athlete") }}</h2>
-        <p class="mt-1 text-sm muted">{{ $t("For a normal solo entry, a name is enough. Everything else is optional.") }}</p>
-      </div>
-
-      <div class="mt-4">
-        <label for="participant-bib" class="label">{{ $t("Bib number") }} <span class="font-normal muted">{{ $t("(optional)") }}</span></label>
-        <input id="participant-bib" v-model="form.bib_number" class="field" maxlength="32" :placeholder="$t('Leave blank if you do not use bibs')">
-      </div>
-
-      <details class="mt-4 rounded-xl border border-outline p-3">
-        <summary class="cursor-pointer text-sm font-semibold">{{ $t("Relay, category & other race options") }}</summary>
-        <div class="mt-3 grid gap-3">
-          <label for="participants-index-field-1" class="label">{{ $t("Entry type") }}
-            <select id="participants-index-field-1" v-model="form.type" class="field">
-              <option value="solo">{{ $t("Solo athlete") }}</option>
-              <option value="relay">{{ $t("3-person relay") }}</option>
-            </select>
-          </label>
-          <label v-if="form.type==='relay'" for="participants-index-field-2" class="label">{{ $t("Team name") }}
-            <input id="participants-index-field-2" v-model="form.team_name" class="field" required>
-          </label>
-          <label for="participants-index-field-3" class="label">{{ $t("Category") }} <span class="font-normal muted">{{ $t("(optional)") }}</span>
-            <input id="participants-index-field-3" v-model="form.category" class="field" :placeholder="$t('For example: Open')">
-          </label>
+<template>
+  <Head :title="`${race.name} · ${$t('Participants')}`" />
+  <AppLayout :title="`${race.name} · ${$t('Participants')}`">
+    <p class="mb-4 text-sm muted">{{ $t('Use Edit to add or change a bib number and update athlete details.') }}</p>
+    <div v-if="!race.started_at" class="mb-5 flex flex-wrap gap-2">
+      <Link :href="`/races/${race.id}/participants/import`" class="btn-primary">
+        <Icon name="file-import" />
+        {{ $t('Import file') }}
+      </Link>
+    </div>
+    <div v-else class="mb-5 rounded-md border border-outline bg-canvas p-4">
+      <strong>{{ $t('Registration is locked.') }}</strong>
+      <p class="mt-1 text-sm muted">
+        {{ $t('The race has started. You can still edit bib numbers and result statuses; adding or removing athletes is locked.') }}
+      </p>
+    </div>
+    <p v-if="removeError" role="alert" class="mb-4 text-error">{{ removeError }}</p>
+    <div class="grid gap-5" :class="!race.started_at ? 'xl:grid-cols-[1fr_420px]' : ''">
+      <section class="panel overflow-hidden">
+        <div class="border-b border-outline p-4">
+          <div class="flex items-center gap-3">
+            <input
+              :aria-label="$t('Search participants')"
+              v-model="searchValue"
+              class="field"
+              :placeholder="$t('Search bib, athlete or team…')"
+            />
+            <span class="whitespace-nowrap muted text-sm">{{ entries.total }} {{ $t('participants') }}</span>
+          </div>
         </div>
-      </details>
+        <div class="divide-y divide-outline">
+          <div
+            v-for="entry in entries.data"
+            :key="entry.id"
+            class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:p-4"
+          >
+            <div
+              :title="bibLabel(entry.bib_number)"
+              :aria-label="bibLabel(entry.bib_number)"
+              class="max-w-16 break-all rounded-lg bg-raised px-2 py-1 tabular text-xs font-semibold sm:max-w-24"
+            >
+              {{ entry.bib_number ? bibLabel(entry.bib_number) : '—' }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="break-words text-sm font-semibold [overflow-wrap:anywhere] sm:text-base">{{ displayName(entry) }}</div>
+              <div class="muted text-sm">
+                {{ entry.type === 'relay' ? $t('Trio relay') : $t('Solo') }}
+                <span v-if="entry.category">· {{ entry.category }}</span>
+              </div>
+              <div v-if="entry.type === 'relay'" class="mt-1 flex flex-wrap gap-x-3 text-xs text-muted">
+                <span v-for="member in entry.members" :key="member.id">
+                  {{ disciplineLabel(member.discipline) }}: {{ member.athlete.full_name }}
+                </span>
+              </div>
+            </div>
+            <div class="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-1">
+              <Link class="btn-secondary !px-3 !py-1.5 !text-xs" :href="`/races/${race.id}/participants/${entry.id}/edit`">
+                <Icon name="pen-to-square" />
+                {{ $t('Edit') }}
+              </Link>
+              <button
+                v-if="!race.started_at"
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-error hover:bg-error/10"
+                @click="remove(entry)"
+              >
+                <Icon name="trash" />
+                {{ $t('Remove') }}
+              </button>
+            </div>
+          </div>
+          <div v-if="!entries.data.length" class="p-8 text-center muted">{{ $t('No participants found.') }}</div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-outline p-4">
+          <Link v-if="entries.prev_page_url" :href="entries.prev_page_url" class="btn-secondary">
+            <Icon name="chevron-left" />
+            {{ $t('Previous') }}
+          </Link>
+          <span v-else></span>
+          <span class="muted text-sm">{{ $t('Page') }} {{ entries.current_page }} {{ $t('of') }} {{ entries.last_page }}</span>
+          <Link v-if="entries.next_page_url" :href="entries.next_page_url" class="btn-secondary">
+            {{ $t('Next') }}
+            <Icon name="chevron-right" />
+          </Link>
+          <span v-else></span>
+        </div>
+      </section>
+      <form v-if="!race.started_at" class="panel-pad h-fit" @submit.prevent="submit">
+        <div>
+          <h2 class="text-lg font-bold">{{ $t('Add athlete') }}</h2>
+          <p class="mt-1 text-sm muted">{{ $t('For a normal solo entry, a name is enough. Everything else is optional.') }}</p>
+        </div>
 
-      <div class="mt-4 space-y-4">
-        <RaceAthletePicker
-          v-for="(member,index) in form.members"
-          :key="member.discipline"
-          v-model="form.members[index]"
-          :race-id="race.id"
-          :bib-number="form.bib_number"
-          :initial-options="athleteOptions"
-          :title="form.type==='solo' ? $t('Athlete name') : disciplineLabel(member.discipline)"
-        />
-      </div>
+        <div class="mt-4">
+          <label for="participant-bib" class="label">
+            {{ $t('Bib number') }}
+            <span class="font-normal muted">{{ $t('(optional)') }}</span>
+          </label>
+          <input
+            id="participant-bib"
+            v-model="form.bib_number"
+            class="field"
+            maxlength="32"
+            :placeholder="$t('Leave blank if you do not use bibs')"
+          />
+        </div>
 
-      <p v-if="Object.keys(form.errors).length" class="mt-3 text-sm text-error">{{ Object.values(form.errors)[0] }}</p>
-      <button class="btn-primary mt-5 w-full" :disabled="form.processing"><i class="fa-solid fa-plus" aria-hidden="true"></i>{{ $t("Add athlete") }}</button>
-    </form>
-  </div>
-<ConfirmDialog v-if="removing" :title="$t('Remove participant?')" :message="$t('Remove :name? Participants with timing history cannot be removed.', {name:displayName(removing)})" :confirm-label="$t('Remove participant')" @cancel="removing=null" @confirm="confirmRemove"/>
-</AppLayout></template>
+        <details class="mt-4 rounded-md border border-outline p-3">
+          <summary class="cursor-pointer text-sm font-semibold">{{ $t('Relay, category & other race options') }}</summary>
+          <div class="mt-3 grid gap-3">
+            <label for="participants-index-field-1" class="label">
+              {{ $t('Entry type') }}
+              <select id="participants-index-field-1" v-model="form.type" class="field">
+                <option value="solo">{{ $t('Solo athlete') }}</option>
+                <option value="relay">{{ $t('3-person relay') }}</option>
+              </select>
+            </label>
+            <label v-if="form.type === 'relay'" for="participants-index-field-2" class="label">
+              {{ $t('Team name') }}
+              <input id="participants-index-field-2" v-model="form.team_name" class="field" required />
+            </label>
+            <label for="participants-index-field-3" class="label">
+              {{ $t('Category') }}
+              <span class="font-normal muted">{{ $t('(optional)') }}</span>
+              <input id="participants-index-field-3" v-model="form.category" class="field" :placeholder="$t('For example: Open')" />
+            </label>
+          </div>
+        </details>
+
+        <div class="mt-4 space-y-4">
+          <RaceAthletePicker
+            v-for="(member, index) in form.members"
+            :key="member.discipline"
+            v-model="form.members[index]"
+            :race-id="race.id"
+            :bib-number="form.bib_number"
+            :initial-options="athleteOptions"
+            :title="form.type === 'solo' ? $t('Athlete name') : disciplineLabel(member.discipline)"
+          />
+        </div>
+
+        <p v-if="Object.keys(form.errors).length" class="mt-3 text-sm text-error">{{ Object.values(form.errors)[0] }}</p>
+        <button class="btn-primary mt-5 w-full" :disabled="form.processing">
+          <Icon name="plus" />
+          {{ $t('Add athlete') }}
+        </button>
+      </form>
+    </div>
+    <ConfirmDialog
+      v-if="removing"
+      :title="$t('Remove participant?')"
+      :message="$t('Remove :name? Participants with timing history cannot be removed.', { name: displayName(removing) })"
+      :confirm-label="$t('Remove participant')"
+      @cancel="removing = null"
+      @confirm="confirmRemove"
+    />
+  </AppLayout>
+</template>

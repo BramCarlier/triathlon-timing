@@ -1,4 +1,5 @@
 <?php
+
 return [
     'pages' => [
         'ensure_pages_exist' => false,

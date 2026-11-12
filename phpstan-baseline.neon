@@ -1,0 +1,697 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Events/RaceFinished.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Events/RaceStarted.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bib_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Events/TimingRecorded.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Events/TimingRecorded.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Events/TimingRecorded.php
+
+		-
+			message: '#^Property App\\Models\\AccessRole\:\:\$users_count is not writable\.$#'
+			identifier: assign.propertyReadOnly
+			count: 1
+			path: app/Http/Controllers/AccessRoleController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:memberships\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/AthleteDashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/AthleteDashboardController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\CheckpointKind\:\:Start will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/CheckpointController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\UserRole\:\:Athlete will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:members\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/EntryController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:orderByBib\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/EntryController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\EntryChange model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/EntryController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\EntryType\:\:Relay will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/EntryController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/GuideController.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/ParticipantImportController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/PresenceController.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/PresenceController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bib_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:displayName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\Checkpoint\)\: array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\TimingStatus\:\:Voided will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/PublicRaceController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:orderByBib\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/RaceControlController.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/RaceController.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/RaceController.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 2
+			path: app/Http/Controllers/RaceController.php
+
+		-
+			message: '#^Call to function abort_unless\(\) with false and 404 will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Controllers/RaceOfficialController.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\UserRole\:\:Admin, App\\Enums\\UserRole\:\:Official\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Http/Controllers/RaceOfficialController.php
+
+		-
+			message: '#^Left side of && is always false\.$#'
+			identifier: booleanAnd.leftAlwaysFalse
+			count: 1
+			path: app/Http/Controllers/RaceOfficialController.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 2
+			path: app/Http/Controllers/RaceOfficialController.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/RaceOfficialController.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/RaceOfficialController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/ResultController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:memberships\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/ResultController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\HttpFoundation\\Response\:\:withHeaders\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/ResultController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/ResultController.php
+
+		-
+			message: '#^Parameter \#1 \$keys of method Illuminate\\Support\\Collection\<int,string\>\:\:only\(\) expects array\<0\>\|Illuminate\\Support\\Enumerable\<\(int\|string\), 0\>\|string\|null, array\{''swim_km'', ''bike_km'', ''run_km''\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ResultController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bib_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$checkpoint_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:displayName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:orderByBib\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Call to function abort_if\(\) with arguments false, 422 and \(array\|string\) will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Parameter \#1 \$checkpoint of method App\\Services\\RaceTimingData\:\:checkpoint\(\) expects App\\Models\\Checkpoint, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Parameter \#3 \$scope of method App\\Services\\RaceTimingData\:\:recentTimings\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Builder\)\: void\)\|null, Closure\(mixed\)\: Illuminate\\Database\\Eloquent\\Builder given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\CheckpointKind\:\:Start will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/TimingController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$force_password_change\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Services\\AccountInvitationService\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\UserRole\:\:Athlete will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\UserRole\:\:Official will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Middleware/HandleInertiaRequests.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Middleware/RoleMiddleware.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Mail/GmailApiTransport.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Symfony\\Component\\Mime\\Part\\AbstractPart\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Mail/GmailApiTransport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$athlete\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Cannot unset offset ''automatic_dnf'' on array\{\}\|string\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Offset ''automatic_dnf'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Property ''display_name'' does not exist in model\.$#'
+			identifier: rules.modelAppends
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between false and true will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\EntryStatus\:\:Dnf will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\EntryStatus\:\:Registered will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\EntryType\:\:Relay will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Entry.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$race_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/EntryMember.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Models/Race.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\RaceStatus\:\:Running will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Race.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$permissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\UserRole\:\:Admin, App\\Enums\\UserRole\:\:Official\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\UserRole\:\:Admin will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>permissions" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/RaceClockService.php
+
+		-
+			message: '#^Call to function array_key_exists\(\) with string and array\{\}\|string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/RaceReadinessService.php
+
+		-
+			message: '#^Comparison operation "\>" between 0\.0 and 0 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 1
+			path: app/Services/RaceReadinessService.php
+
+		-
+			message: '#^Offset string on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/RaceReadinessService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$athlete\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bib_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$discipline\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:displayName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:orderByBib\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 5
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\TimingRecord\)\: array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(Illuminate\\Database\\Eloquent\\Builder\)\: void expects Illuminate\\Database\\Eloquent\\Builder, Illuminate\\Database\\Eloquent\\Relations\\HasMany given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/RaceTimingData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bib_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$members\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$timings\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:displayName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:sortBy\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/ResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$athlete_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$kind\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Cannot call method resultLabel\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Parameter \#1 \$date of static method Carbon\\CarbonImmutable\:\:instance\(\) expects DateTimeInterface, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Parameter \#1 \$date of static method Carbon\\CarbonImmutable\:\:instance\(\) expects DateTimeInterface, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Parameter \#1 \$timing of method App\\Services\\TimingService\:\:void\(\) expects App\\Models\\TimingRecord, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\CheckpointKind\:\:Finish will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\CheckpointKind\:\:Start will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\EntryStatus\:\:Dns will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\TimingStatus\:\:Voided will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Services/TimingService.php
+
+		-
+			message: '#^Cannot call method getTimestampMs\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Support/ResultsCache.php

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccessRoleController;
 use App\Http\Controllers\AthleteDashboardController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EntryController;
 use App\Http\Controllers\GuideController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ParticipantImportController;
@@ -16,21 +18,25 @@ use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\PublicRaceController;
 use App\Http\Controllers\RaceControlController;
 use App\Http\Controllers\RaceController;
+use App\Http\Controllers\RaceDayLinkController;
 use App\Http\Controllers\RaceOfficialController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\ResultsPdfController;
+use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TimingController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class);
 Route::get('/live/{token}/results.pdf', [ResultsPdfController::class, 'publicDownload'])->middleware('throttle:10,1')->name('results.public.pdf');
-Route::get('/live/{token}', [ResultController::class,'publicIndex'])->middleware('throttle:120,1')->name('results.public');
-Route::get('/race/{token}', [PublicRaceController::class, 'show'])->middleware('throttle:1200,1')->name('race.public');
+Route::get('/live/{token}', [ResultController::class, 'publicIndex'])->middleware('throttle:120,1')->name('results.public');
+Route::get('/race/{token}', [PublicRaceController::class, 'show'])->middleware('throttle:race-day')->name('race.public');
+Route::post('/race/{token}/timings', [PublicRaceController::class, 'record'])->middleware('throttle:race-day')->name('race.public.timings');
+Route::post('/race/{token}/timings/{clientUuid}/undo', [PublicRaceController::class, 'undo'])->middleware('throttle:race-day')->whereUuid('clientUuid')->name('race.public.undo');
+Route::get('/time', TimeController::class)->middleware('throttle:race-day')->name('time');
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 // Keep the selected language for unknown URLs as well as application pages.
 Route::fallback(fn () => abort(404));
-Route::post('/race/{token}/timings', [PublicRaceController::class, 'record'])->middleware('throttle:1200,1')->name('race.public.timings');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -50,13 +56,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/athlete', AthleteDashboardController::class)->middleware('role:athlete')->name('athlete.dashboard');
     Route::get('/races/{race}/results', [ResultController::class, 'index'])->name('races.results');
 
-    Route::middleware('role:admin,organizer')->group(function () {
+    Route::middleware('role:admin,official')->group(function () {
         Route::get('/races', [RaceController::class, 'index'])->name('races.index');
         Route::get('/races/create', [RaceController::class, 'create'])->middleware('permission:races.create')->name('races.create');
         Route::post('/races', [RaceController::class, 'store'])->middleware('permission:races.create')->name('races.store');
         Route::get('/races/{race}', [RaceController::class, 'show'])->name('races.show');
-        Route::post('/races/{race}/publication', [ResultController::class,'publish'])->middleware('permission:races.setup')->name('results.publish');
+        Route::post('/races/{race}/publication', [ResultController::class, 'publish'])->middleware('permission:races.setup')->name('results.publish');
         Route::put('/races/{race}', [RaceController::class, 'update'])->middleware('permission:races.setup')->name('races.update');
+        Route::put('/races/{race}/race-day-link', [RaceDayLinkController::class, 'update'])->middleware('permission:races.setup')->name('races.link.update');
+        Route::post('/races/{race}/race-day-link/rotate', [RaceDayLinkController::class, 'rotate'])->middleware('permission:races.setup')->name('races.link.rotate');
         Route::post('/races/{race}/official-assignments', [RaceOfficialController::class, 'store'])->name('races.officials.store');
         Route::delete('/races/{race}/official-assignments/{official}', [RaceOfficialController::class, 'destroy'])->name('races.officials.destroy');
 
@@ -94,19 +102,19 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/deleted-races', [RaceController::class, 'deleted'])->name('admin.races.deleted');
-        Route::get('/admin/roles', [\App\Http\Controllers\AccessRoleController::class,'index'])->name('roles.index');
-        Route::post('/admin/roles', [\App\Http\Controllers\AccessRoleController::class,'store'])->name('roles.store');
-        Route::put('/admin/roles/{accessRole}', [\App\Http\Controllers\AccessRoleController::class,'update'])->name('roles.update');
-        Route::delete('/admin/roles/{accessRole}', [\App\Http\Controllers\AccessRoleController::class,'destroy'])->name('roles.destroy');
-        Route::get('/admin/health', \App\Http\Controllers\HealthController::class)->name('admin.health');
+        Route::get('/admin/roles', [AccessRoleController::class, 'index'])->name('roles.index');
+        Route::post('/admin/roles', [AccessRoleController::class, 'store'])->name('roles.store');
+        Route::put('/admin/roles/{accessRole}', [AccessRoleController::class, 'update'])->name('roles.update');
+        Route::delete('/admin/roles/{accessRole}', [AccessRoleController::class, 'destroy'])->name('roles.destroy');
+        Route::get('/admin/health', HealthController::class)->name('admin.health');
         Route::delete('/races/{race}', [RaceController::class, 'destroy'])->name('races.destroy');
         Route::post('/races/{race}/restore', [RaceController::class, 'restore'])->withTrashed()->name('races.restore');
         Route::get('/users/athletes', [UserController::class, 'athletes'])->name('users.athletes');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::post('/users/{user}/invitation', [UserController::class,'invite'])->middleware('throttle:5,1')->name('users.invite');
-        Route::post('/athletes/{athlete}/account-invitation', [UserController::class,'inviteAthlete'])->middleware('throttle:5,1')->name('athletes.invite');
+        Route::post('/users/{user}/invitation', [UserController::class, 'invite'])->middleware('throttle:5,1')->name('users.invite');
+        Route::post('/athletes/{athlete}/account-invitation', [UserController::class, 'inviteAthlete'])->middleware('throttle:5,1')->name('athletes.invite');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
     });
 });

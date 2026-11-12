@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Enums;
+
 enum RaceStatus: string
 {
     case Draft = 'draft';

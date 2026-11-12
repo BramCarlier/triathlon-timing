@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '../Components/Icon.vue';
 import { tr } from '../i18n';
 import { computed } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -6,91 +7,204 @@ import AppLayout from '../Layouts/AppLayout.vue';
 import type { UserRole } from '../types';
 
 const props = defineProps<{ role: UserRole }>();
-const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)') : props.role === 'organizer' ? tr('Official') : tr('Athlete'));
+const roleLabel = computed(() =>
+  props.role === 'admin' ? tr('Organizer (admin)') : props.role === 'official' ? tr('Official') : tr('Athlete'),
+);
 </script>
 
 <template>
-  <Head :title="$t(':role guide', {role:roleLabel})" />
-  <AppLayout :title="$t(':role guide', {role:roleLabel})">
+  <Head :title="$t(':role guide', { role: roleLabel })" />
+  <AppLayout :title="$t(':role guide', { role: roleLabel })">
     <section class="panel-pad mb-5">
       <div class="flex items-start gap-4">
-        <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-400 text-xl text-slate-950">
-          <i class="fa-solid fa-compass" aria-hidden="true"></i>
+        <span class="grid size-12 shrink-0 place-items-center rounded-lg bg-buoy text-xl text-on-buoy">
+          <Icon name="compass" />
         </span>
         <div>
-          <h2 class="text-xl font-bold">{{ $t("The simple race flow") }}</h2>
-          <p v-if="role==='admin'" class="mt-2 muted">{{ $t("Everything important happens from the Race workspace: check the course, add athletes, start the race and share the race-day link. Official and athlete accounts are optional.") }}</p>
-          <p v-else-if="role==='organizer'" class="mt-2 muted">{{ $t("Official accounts are optional. If an Organizer gives you one, it can provide a named, checkpoint-specific timing station with offline recovery.") }}</p>
-          <p v-else class="mt-2 muted">{{ $t("Your account is for viewing your race and results. You do not operate checkpoints or race controls.") }}</p>
+          <h2 class="text-xl font-bold">{{ $t('The simple race flow') }}</h2>
+          <p v-if="role === 'admin'" class="mt-2 muted">
+            {{
+              $t(
+                'Everything important happens from the Race workspace: check the course, add athletes, start the race and share the race-day link. Official and athlete accounts are optional.',
+              )
+            }}
+          </p>
+          <p v-else-if="role === 'official'" class="mt-2 muted">
+            {{
+              $t(
+                'Official accounts are optional. If an Organizer gives you one, it can provide a named, checkpoint-specific timing station with offline recovery.',
+              )
+            }}
+          </p>
+          <p v-else class="mt-2 muted">
+            {{ $t('Your account is for viewing your race and results. You do not operate checkpoints or race controls.') }}
+          </p>
         </div>
       </div>
     </section>
 
-    <template v-if="role==='admin'">
+    <template v-if="role === 'admin'">
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">{{ $t("Create the race") }}</h2></div>
-          <p class="muted">{{ $t("Enter a race name and continue. The date can be left blank to use today, and the standard 1 km swim / 35 km bike / 8 km run course is already filled in. The normal triathlon checkpoints are created automatically.") }}</p>
-          <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>{{ $t("Open races") }}</Link>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">1</span>
+            <h2 class="text-lg font-bold">{{ $t('Create the race') }}</h2>
+          </div>
+          <p class="muted">
+            {{
+              $t(
+                'Enter a race name and continue. The date can be left blank to use today, and the standard 1 km swim / 35 km bike / 8 km run course is already filled in. The normal triathlon checkpoints are created automatically.',
+              )
+            }}
+          </p>
+          <Link href="/races" class="btn-primary mt-4">
+            <Icon name="flag-checkered" />
+            {{ $t('Open races') }}
+          </Link>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">{{ $t("Check the course") }}</h2></div>
-          <p class="muted">{{ $t("The default checkpoints are ready to use, including Swim Exit, T1, Bike Finish, T2 and Finish. Only edit or add checkpoints when this race needs something different. Official accounts and checkpoint assignments are optional.") }}</p>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">2</span>
+            <h2 class="text-lg font-bold">{{ $t('Check the course') }}</h2>
+          </div>
+          <p class="muted">
+            {{
+              $t(
+                'The default checkpoints are ready to use, including Swim Exit, T1, Bike Finish, T2 and Finish. Only edit or add checkpoints when this race needs something different. Official accounts and checkpoint assignments are optional.',
+              )
+            }}
+          </p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">{{ $t("Add athletes") }}</h2></div>
-          <p class="muted">{{ $t("For a normal solo athlete, a name is enough. Existing athletes appear automatically so you can reuse them across races. Bib, email, club and category are optional; relay and file-import tools are available when needed. Open Athletes and choose Edit to add or change bib numbers later. After the start, bib and result status corrections can include an optional reason; other registration details are locked.") }}</p>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">3</span>
+            <h2 class="text-lg font-bold">{{ $t('Add athletes') }}</h2>
+          </div>
+          <p class="muted">
+            {{
+              $t(
+                'For a normal solo athlete, a name is enough. Existing athletes appear automatically so you can reuse them across races. Bib, email, club and category are optional; relay and file-import tools are available when needed. Open Athletes and choose Edit to add or change bib numbers later. After the start, bib and result status corrections can include an optional reason; other registration details are locked.',
+              )
+            }}
+          </p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">4</span><h2 class="text-lg font-bold">{{ $t("Share the link, start and record") }}</h2></div>
-          <p class="muted">{{ $t("Open or copy the race-day link and share it with the people helping at transitions or the finish. No account is needed: they choose the checkpoint, then tap the correct athlete. Start the shared race clock when the race begins.") }}</p>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">4</span>
+            <h2 class="text-lg font-bold">{{ $t('Share the link, start and record') }}</h2>
+          </div>
+          <p class="muted">
+            {{
+              $t(
+                'Open or copy the race-day link and share it with the people helping at transitions or the finish. No account is needed: they choose the checkpoint, then tap the correct athlete. Start the shared race clock when the race begins.',
+              )
+            }}
+          </p>
         </article>
 
         <article class="panel-pad lg:col-span-2">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">5</span><h2 class="text-lg font-bold">{{ $t("End the race") }}</h2></div>
-          <p class="muted">{{ $t("There is no automatic-finish setting to configure. The backend closes the race when the last active athlete receives a finish time. If the event needs to end earlier, use") }} <strong>{{ $t("End race now") }}</strong>. {{ $t("Competing athletes without a finish time will automatically be marked DNF. DNS and disqualified statuses stay unchanged.") }}</p>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">5</span>
+            <h2 class="text-lg font-bold">{{ $t('End the race') }}</h2>
+          </div>
+          <p class="muted">
+            {{
+              $t(
+                'There is no automatic-finish setting to configure. The backend closes the race when the last active athlete receives a finish time. If the event needs to end earlier, use',
+              )
+            }}
+            <strong>{{ $t('End race now') }}</strong>
+            .
+            {{
+              $t('Competing athletes without a finish time will automatically be marked DNF. DNS and disqualified statuses stay unchanged.')
+            }}
+          </p>
         </article>
       </section>
 
       <details class="panel-pad mt-5">
-        <summary class="cursor-pointer font-bold">{{ $t("Occasional admin tools") }}</summary>
+        <summary class="cursor-pointer font-bold">{{ $t('Occasional admin tools') }}</summary>
         <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <Link href="/admin/roles" class="rounded-xl border border-outline p-4 hover:bg-raised">
-            <strong><i class="fa-solid fa-key mr-2" aria-hidden="true"></i>{{ $t("Access & permissions") }}</strong>
-            <p class="mt-2 text-sm muted">{{ $t("Optional advanced setup for named Official or Athlete accounts. Normal race-day timing works from the shared link without these accounts.") }}</p>
+          <Link href="/admin/roles" class="rounded-md border border-outline p-4 hover:bg-raised">
+            <strong>
+              <Icon name="key" class="mr-2" />
+              {{ $t('Access & permissions') }}
+            </strong>
+            <p class="mt-2 text-sm muted">
+              {{
+                $t(
+                  'Optional advanced setup for named Official or Athlete accounts. Normal race-day timing works from the shared link without these accounts.',
+                )
+              }}
+            </p>
           </Link>
-          <Link href="/admin/health" class="rounded-xl border border-outline p-4 hover:bg-raised">
-            <strong><i class="fa-solid fa-heart-pulse mr-2" aria-hidden="true"></i>{{ $t("System health") }}</strong>
-            <p class="mt-2 text-sm muted">{{ $t("Troubleshooting information. You normally do not need this during a race.") }}</p>
+          <Link href="/admin/health" class="rounded-md border border-outline p-4 hover:bg-raised">
+            <strong>
+              <Icon name="heart-pulse" class="mr-2" />
+              {{ $t('System health') }}
+            </strong>
+            <p class="mt-2 text-sm muted">{{ $t('Troubleshooting information. You normally do not need this during a race.') }}</p>
           </Link>
         </div>
       </details>
     </template>
 
-    <template v-else-if="role==='organizer'">
+    <template v-else-if="role === 'official'">
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">1</span><h2 class="text-lg font-bold">{{ $t("Open your race") }}</h2></div>
-          <p class="muted">{{ $t("Open the race assigned to your account. Your checkpoint assignment follows your account, so you do not have to choose a station yourself.") }}</p>
-          <Link href="/races" class="btn-primary mt-4"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>{{ $t("Open my races") }}</Link>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">1</span>
+            <h2 class="text-lg font-bold">{{ $t('Open your race') }}</h2>
+          </div>
+          <p class="muted">
+            {{
+              $t(
+                'Open the race assigned to your account. Your checkpoint assignment follows your account, so you do not have to choose a station yourself.',
+              )
+            }}
+          </p>
+          <Link href="/races" class="btn-primary mt-4">
+            <Icon name="flag-checkered" />
+            {{ $t('Open my races') }}
+          </Link>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">2</span><h2 class="text-lg font-bold">{{ $t("Wait for the start") }}</h2></div>
-          <p class="muted">{{ $t("The Organizer starts the shared race clock. Your timing station becomes active automatically when the race starts.") }}</p>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">2</span>
+            <h2 class="text-lg font-bold">{{ $t('Wait for the start') }}</h2>
+          </div>
+          <p class="muted">
+            {{ $t('The Organizer starts the shared race clock. Your timing station becomes active automatically when the race starts.') }}
+          </p>
         </article>
 
         <article class="panel-pad">
-          <div class="mb-3 flex items-center gap-3"><span class="badge">3</span><h2 class="text-lg font-bold">{{ $t("Tap participants as they pass") }}</h2></div>
-          <p class="muted">{{ $t("Search by bib or name and tap the participant once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.") }}</p>
+          <div class="mb-3 flex items-center gap-3">
+            <span class="badge">3</span>
+            <h2 class="text-lg font-bold">{{ $t('Tap participants as they pass') }}</h2>
+          </div>
+          <p class="muted">
+            {{
+              $t(
+                'Search by bib or name and tap the participant once. Your checkpoint is fixed; only the Organizer can switch between checkpoints.',
+              )
+            }}
+          </p>
         </article>
 
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">{{ $t("Poor connection?") }}</h2>
-          <p class="mt-2 muted">{{ $t("Open your Timing station before moving to the checkpoint. It stores unsent timings on the device and synchronizes them when the connection returns.") }}</p>
+          <h2 class="text-lg font-bold">{{ $t('Poor connection?') }}</h2>
+          <p class="mt-2 muted">
+            {{
+              $t(
+                'Open your Timing station before moving to the checkpoint. It stores unsent timings on the device and synchronizes them when the connection returns.',
+              )
+            }}
+          </p>
         </article>
       </section>
     </template>
@@ -98,13 +212,24 @@ const roleLabel = computed(() => props.role === 'admin' ? tr('Organizer (admin)'
     <template v-else>
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">{{ $t("Your races") }}</h2>
-          <p class="mt-2 muted">{{ $t("Open My races to see every event linked to your athlete profile. You do not need to choose checkpoints or operate the race clock.") }}</p>
-          <Link href="/athlete" class="btn-primary mt-4"><i class="fa-solid fa-person-running" aria-hidden="true"></i>{{ $t("Open my races") }}</Link>
+          <h2 class="text-lg font-bold">{{ $t('Your races') }}</h2>
+          <p class="mt-2 muted">
+            {{
+              $t(
+                'Open My races to see every event linked to your athlete profile. You do not need to choose checkpoints or operate the race clock.',
+              )
+            }}
+          </p>
+          <Link href="/athlete" class="btn-primary mt-4">
+            <Icon name="person-running" />
+            {{ $t('Open my races') }}
+          </Link>
         </article>
         <article class="panel-pad">
-          <h2 class="text-lg font-bold">{{ $t("Results") }}</h2>
-          <p class="mt-2 muted">{{ $t("Your race history shows recorded progress and results for each event when they become available.") }}</p>
+          <h2 class="text-lg font-bold">{{ $t('Results') }}</h2>
+          <p class="mt-2 muted">
+            {{ $t('Your race history shows recorded progress and results for each event when they become available.') }}
+          </p>
         </article>
       </section>
     </template>

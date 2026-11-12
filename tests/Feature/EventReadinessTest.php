@@ -1,82 +1,133 @@
 <?php
+
 namespace Tests\Feature;
+
 use App\Enums\UserRole;
-use App\Models\{Athlete,CheckpointAssignment,Entry,Race,User};
-use App\Services\{ResultsService,TimingService};
+use App\Models\Athlete;
+use App\Models\CheckpointAssignment;
+use App\Models\Race;
+use App\Models\User;
+use App\Services\ResultsService;
+use App\Services\TimingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
-class EventReadinessTest extends TestCase {
+
+class EventReadinessTest extends TestCase
+{
     use RefreshDatabase;
-    private function fixture():array {
-        $admin=User::factory()->create(['role'=>UserRole::Admin]);$this->actingAs($admin);
-        $race=Race::create(['name'=>'Event','slug'=>'event','event_date'=>'2026-09-22','started_at'=>now()->subHour(),'created_by'=>$admin->id]);
-        $athlete=Athlete::create(['first_name'=>'Test','last_name'=>'Person']);
-        $entry=$race->entries()->create(['type'=>'solo','category'=>'Open']);
-        foreach(['swim','bike','run'] as $i=>$discipline)$entry->members()->create(['athlete_id'=>$athlete->id,'discipline'=>$discipline,'position'=>$i+1]);
-        return [$admin,$race,$entry,$athlete];
+
+    private function fixture(): array
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $this->actingAs($admin);
+        $race = Race::create(['name' => 'Event', 'slug' => 'event', 'event_date' => '2026-09-22', 'started_at' => now()->subHour(), 'created_by' => $admin->id]);
+        $athlete = Athlete::create(['first_name' => 'Test', 'last_name' => 'Person']);
+        $entry = $race->entries()->create(['type' => 'solo', 'category' => 'Open']);
+        foreach (['swim', 'bike', 'run'] as $i => $discipline) {
+            $entry->members()->create(['athlete_id' => $athlete->id, 'discipline' => $discipline, 'position' => $i + 1]);
+        }
+
+        return [$admin, $race, $entry, $athlete];
     }
-    public static function correctionReasons(): array {
+
+    public static function correctionReasons(): array
+    {
         return [
             'omitted' => [[], 'Participant details updated'],
-            'empty' => [['reason'=>''], 'Participant details updated'],
-            'null' => [['reason'=>null], 'Participant details updated'],
-            'whitespace' => [['reason'=>'   '], 'Participant details updated'],
-            'provided' => [['reason'=>'Withdrew during bike'], 'Withdrew during bike'],
+            'empty' => [['reason' => ''], 'Participant details updated'],
+            'null' => [['reason' => null], 'Participant details updated'],
+            'whitespace' => [['reason' => '   '], 'Participant details updated'],
+            'provided' => [['reason' => 'Withdrew during bike'], 'Withdrew during bike'],
         ];
     }
-    #[\PHPUnit\Framework\Attributes\DataProvider('correctionReasons')]
-    public function test_live_bib_and_status_edits_are_audited_and_other_registration_fields_stay_locked(array $reason, string $expectedReason):void {
-        [$admin,$race,$entry,$athlete]=$this->fixture();
-        $payload=['bib_number'=>'007','category'=>'Masters','status'=>'dnf','athletes'=>[$athlete->only(['id','first_name','last_name','email','club'])]];
-        $this->put("/races/$race->id/participants/$entry->id",$payload+$reason)->assertSessionHasNoErrors();
-        $this->assertSame('007',$entry->fresh()->bib_number);$this->assertSame('Open',$entry->fresh()->category);$this->assertSame('dnf',$entry->fresh()->status);
-        $this->assertDatabaseHas('entry_changes',['entry_id'=>$entry->id,'user_id'=>$admin->id,'reason'=>$expectedReason]);
+
+    #[DataProvider('correctionReasons')]
+    public function test_live_bib_and_status_edits_are_audited_and_other_registration_fields_stay_locked(array $reason, string $expectedReason): void
+    {
+        [$admin,$race,$entry,$athlete] = $this->fixture();
+        $payload = ['bib_number' => '007', 'category' => 'Masters', 'status' => 'dnf', 'athletes' => [$athlete->only(['id', 'first_name', 'last_name', 'email', 'club'])]];
+        $this->put("/races/$race->id/participants/$entry->id", $payload + $reason)->assertSessionHasNoErrors();
+        $this->assertSame('007', $entry->fresh()->bib_number);
+        $this->assertSame('Open', $entry->fresh()->category);
+        $this->assertSame('dnf', $entry->fresh()->status->value);
+        $this->assertDatabaseHas('entry_changes', ['entry_id' => $entry->id, 'user_id' => $admin->id, 'reason' => $expectedReason]);
     }
-    public function test_athlete_and_unassigned_organizer_cannot_edit_participants_or_view_health():void {
-        [$admin,$race,$entry]=$this->fixture();
-        foreach([UserRole::Athlete,UserRole::Official] as $role){$this->actingAs(User::factory()->create(['role'=>$role]))->get("/races/$race->id/participants/$entry->id/edit")->assertForbidden();$this->get('/admin/health')->assertForbidden();}
+
+    public function test_athlete_and_unassigned_organizer_cannot_edit_participants_or_view_health(): void
+    {
+        [$admin,$race,$entry] = $this->fixture();
+        foreach ([UserRole::Athlete, UserRole::Official] as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]))->get("/races/$race->id/participants/$entry->id/edit")->assertForbidden();
+            $this->get('/admin/health')->assertForbidden();
+        }
     }
-    public function test_result_status_excludes_places_but_preserves_times_and_filters_exports():void {
-        Event::fake();[$admin,$race,$entry]=$this->fixture();
-        $finish=$race->checkpoints()->create(['name'=>'Finish','code'=>'FINISH','kind'=>'finish','sequence'=>30]);
-        app(TimingService::class)->correct($race,$entry,$finish,$admin,120000);
-        $entry->update(['status'=>'dsq']);$row=app(ResultsService::class)->filtered($race)[0];
-        $this->assertNull($row['place']);$this->assertSame(120000,$row['total_ms']);$this->assertSame('DSQ',$row['result_status']);
-        $this->assertSame([],app(ResultsService::class)->filtered($race,['category'=>'Other']));
+
+    public function test_result_status_excludes_places_but_preserves_times_and_filters_exports(): void
+    {
+        Event::fake();
+        [$admin,$race,$entry] = $this->fixture();
+        $finish = $race->checkpoints()->create(['name' => 'Finish', 'code' => 'FINISH', 'kind' => 'finish', 'sequence' => 30]);
+        app(TimingService::class)->correct($race, $entry, $finish, $admin, 120000);
+        $entry->update(['status' => 'dsq']);
+        $row = app(ResultsService::class)->filtered($race)[0];
+        $this->assertNull($row['place']);
+        $this->assertSame(120000, $row['total_ms']);
+        $this->assertSame('DSQ', $row['result_status']);
+        $this->assertSame([], app(ResultsService::class)->filtered($race, ['category' => 'Other']));
         $this->get("/races/$race->id/results.csv?status=DSQ")->assertOk()->assertDownload();
-        $this->put("/races/$race->id/participants/$entry->id",['bib_number'=>null,'category'=>'Open','status'=>'dns','reason'=>'Incorrect status','athletes'=>$entry->members()->with('athlete')->get()->pluck('athlete')->unique('id')->map->only(['id','first_name','last_name','email','club'])->values()->all()])->assertSessionHasNoErrors();
-        $this->assertSame('dns', $entry->fresh()->status);
+        $this->put("/races/$race->id/participants/$entry->id", ['bib_number' => null, 'category' => 'Open', 'status' => 'dns', 'reason' => 'Incorrect status', 'athletes' => $entry->members()->with('athlete')->get()->pluck('athlete')->unique('id')->map->only(['id', 'first_name', 'last_name', 'email', 'club'])->values()->all()])->assertSessionHasNoErrors();
+        $this->assertSame('dns', $entry->fresh()->status->value);
         $this->assertSame(0, $entry->timings()->where('status', 'recorded')->count());
     }
-    public function test_offline_replay_can_use_its_original_checkpoint_after_selection_changes():void {
-        Event::fake();[$admin,$race,$entry]=$this->fixture();$organizer=User::factory()->create(['role'=>UserRole::Official]);$organizer->races()->attach($race);
-        $cp=$race->checkpoints()->create(['name'=>'Swim','code'=>'SWIM','kind'=>'transition','sequence'=>10]);
-        CheckpointAssignment::create(['race_id'=>$race->id,'checkpoint_id'=>$cp->id,'user_id'=>$organizer->id]);
-        $this->actingAs($organizer)->withSession(["checkpoint.$race->id"=>999])->postJson("/races/$race->id/timings",['operator_id'=>$organizer->id,'entry_id'=>$entry->id,'checkpoint_id'=>$cp->id,'client_uuid'=>(string)\Illuminate\Support\Str::uuid(),'source'=>'offline','observed_at'=>now()->subSeconds(10)->toISOString()])->assertOk();
-    }
-    public function test_offline_replay_rejects_a_different_operator():void {
-        [$admin,$race,$entry]=$this->fixture();$other=User::factory()->create(['role'=>UserRole::Admin]);
-        $cp=$race->checkpoints()->create(['name'=>'Swim','code'=>'SWIM','kind'=>'transition','sequence'=>10]);
-        $this->postJson("/races/$race->id/timings",['operator_id'=>$other->id,'entry_id'=>$entry->id,'checkpoint_id'=>$cp->id,'client_uuid'=>(string)\Illuminate\Support\Str::uuid(),'source'=>'offline','observed_at'=>now()->toISOString()])->assertUnprocessable()->assertJsonValidationErrors('operator_id');
-        $this->assertDatabaseCount('timing_records',0);
-    }
-    public function test_official_cannot_change_participant_registration_or_shared_profiles():void {
-        [$admin,$race,$entry,$athlete]=$this->fixture();$organizer=User::factory()->create(['role'=>UserRole::Official]);$organizer->races()->attach($race);
-        $other=Race::create(['name'=>'Other','slug'=>'other','event_date'=>'2026-09-23','created_by'=>$admin->id]);$otherEntry=$other->entries()->create(['type'=>'solo']);$otherEntry->members()->create(['athlete_id'=>$athlete->id,'discipline'=>'swim','position'=>1]);
-        $person=$athlete->only(['id','first_name','last_name','email','club']);$person['first_name']='Changed';
-        $payload=['bib_number'=>'008','category'=>'Open','status'=>'registered','reason'=>'Registration correction','athletes'=>[$person]];
-        $this->actingAs($organizer)->put("/races/$race->id/participants/$entry->id",$payload)->assertForbidden();
-        $this->assertSame('Test',$athlete->fresh()->first_name);$this->assertNull($entry->fresh()->bib_number);
+
+    public function test_offline_replay_can_use_its_original_checkpoint_after_selection_changes(): void
+    {
+        Event::fake();
+        [$admin,$race,$entry] = $this->fixture();
+        $organizer = User::factory()->create(['role' => UserRole::Official]);
+        $organizer->races()->attach($race);
+        $cp = $race->checkpoints()->create(['name' => 'Swim', 'code' => 'SWIM', 'kind' => 'transition', 'sequence' => 10]);
+        CheckpointAssignment::create(['race_id' => $race->id, 'checkpoint_id' => $cp->id, 'user_id' => $organizer->id]);
+        $this->actingAs($organizer)->withSession(["checkpoint.$race->id" => 999])->postJson("/races/$race->id/timings", ['operator_id' => $organizer->id, 'entry_id' => $entry->id, 'checkpoint_id' => $cp->id, 'client_uuid' => (string) Str::uuid(), 'source' => 'offline', 'observed_at' => now()->subSeconds(10)->toISOString()])->assertOk();
     }
 
-    public function test_user_search_and_athlete_picker_are_paginated_and_admin_only():void {
-        [$admin,$race,$entry,$athlete]=$this->fixture();
-        for($i=0;$i<30;$i++)Athlete::create(['first_name'=>'Other','last_name'=>'Athlete'.$i]);
-        $this->getJson('/users/athletes')->assertOk()->assertJsonCount(25,'data');
-        $this->getJson('/users/athletes?q=Person')->assertOk()->assertJsonPath('data.0.id',$athlete->id);
+    public function test_offline_replay_rejects_a_different_operator(): void
+    {
+        [$admin,$race,$entry] = $this->fixture();
+        $other = User::factory()->create(['role' => UserRole::Admin]);
+        $cp = $race->checkpoints()->create(['name' => 'Swim', 'code' => 'SWIM', 'kind' => 'transition', 'sequence' => 10]);
+        $this->postJson("/races/$race->id/timings", ['operator_id' => $other->id, 'entry_id' => $entry->id, 'checkpoint_id' => $cp->id, 'client_uuid' => (string) Str::uuid(), 'source' => 'offline', 'observed_at' => now()->toISOString()])->assertUnprocessable()->assertJsonValidationErrors('operator_id');
+        $this->assertDatabaseCount('timing_records', 0);
+    }
+
+    public function test_official_cannot_change_participant_registration_or_shared_profiles(): void
+    {
+        [$admin,$race,$entry,$athlete] = $this->fixture();
+        $organizer = User::factory()->create(['role' => UserRole::Official]);
+        $organizer->races()->attach($race);
+        $other = Race::create(['name' => 'Other', 'slug' => 'other', 'event_date' => '2026-09-23', 'created_by' => $admin->id]);
+        $otherEntry = $other->entries()->create(['type' => 'solo']);
+        $otherEntry->members()->create(['athlete_id' => $athlete->id, 'discipline' => 'swim', 'position' => 1]);
+        $person = $athlete->only(['id', 'first_name', 'last_name', 'email', 'club']);
+        $person['first_name'] = 'Changed';
+        $payload = ['bib_number' => '008', 'category' => 'Open', 'status' => 'registered', 'reason' => 'Registration correction', 'athletes' => [$person]];
+        $this->actingAs($organizer)->put("/races/$race->id/participants/$entry->id", $payload)->assertForbidden();
+        $this->assertSame('Test', $athlete->fresh()->first_name);
+        $this->assertNull($entry->fresh()->bib_number);
+    }
+
+    public function test_user_search_and_athlete_picker_are_paginated_and_admin_only(): void
+    {
+        [$admin,$race,$entry,$athlete] = $this->fixture();
+        for ($i = 0; $i < 30; $i++) {
+            Athlete::create(['first_name' => 'Other', 'last_name' => 'Athlete'.$i]);
+        }
+        $this->getJson('/users/athletes')->assertOk()->assertJsonCount(25, 'data');
+        $this->getJson('/users/athletes?q=Person')->assertOk()->assertJsonPath('data.0.id', $athlete->id);
         $this->get('/users?q='.urlencode($admin->email))->assertOk();
-        $this->actingAs(User::factory()->create(['role'=>UserRole::Official]))->getJson('/users/athletes')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => UserRole::Official]))->getJson('/users/athletes')->assertForbidden();
     }
-
 }
