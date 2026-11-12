@@ -1,22 +1,24 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Enums\CheckpointKind;
 use App\Enums\Discipline;
 use App\Enums\RaceStatus;
-use App\Enums\TimingStatus;
 use App\Models\Race;
 use App\Models\User;
+use App\Services\AccountInvitationService;
 use App\Services\AthleteLookupService;
 use App\Services\RaceReadinessService;
+use App\Services\RaceTimingData;
+use App\Services\ResultsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Services\ResultsService;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,9 +27,12 @@ class RaceController extends Controller
     public function index(Request $request): Response
     {
         $query = Race::withCount('entries')->latest('event_date');
-        if (!$request->user()->isAdmin()) $query->whereHas('staff', fn ($q) => $q->whereKey($request->user()->id));
+        if (! $request->user()->isAdmin()) {
+            $query->whereHas('staff', fn ($q) => $q->whereKey($request->user()->id));
+        }
+
         return Inertia::render('Races/Index', [
-            'races' => $query->get(), 'serverNow'=>now('UTC')->toISOString(),
+            'races' => $query->get(), 'serverNow' => now('UTC')->toISOString(),
         ]);
     }
 
@@ -44,7 +49,12 @@ class RaceController extends Controller
         ]);
     }
 
-    public function create(): Response { abort_unless(request()->user()->isAdmin(), 403); return Inertia::render('Races/Create'); }
+    public function create(): Response
+    {
+        abort_unless(request()->user()->isAdmin(), 403);
+
+        return Inertia::render('Races/Create');
+    }
 
     public function store(Request $request): RedirectResponse
     {
@@ -69,21 +79,25 @@ class RaceController extends Controller
                 ['name' => 'T2 (Run Start)', 'code' => 'RUN_START', 'sequence' => 40, 'kind' => CheckpointKind::Transition, 'discipline' => Discipline::Run, 'distance_km' => 0, 'is_required' => true],
                 ['name' => 'Finish', 'code' => 'RUN_FINISH', 'sequence' => 50, 'kind' => CheckpointKind::Finish, 'discipline' => Discipline::Run, 'distance_km' => $data['run_km'] ?? 8, 'is_required' => true],
             ]);
+
             return $race;
         });
+
         return redirect()->route('races.show', $race)->with('success', __('Race created with default triathlon checkpoints.'));
     }
 
-    public function show(Request $request, Race $race, AthleteLookupService $athletes, RaceReadinessService $readiness): Response|RedirectResponse
+    public function show(Request $request, Race $race, AthleteLookupService $athletes, RaceReadinessService $readiness, RaceTimingData $data): Response|RedirectResponse
     {
         Gate::authorize('manage-race', $race);
-        if (!$request->user()->isAdmin()) return redirect()->route('races.station', $race);
+        if (! $request->user()->isAdmin()) {
+            return redirect()->route('races.station', $race);
+        }
         $race->load(['checkpoints' => fn ($query) => $query->orderBy('sequence')])->loadCount('entries');
         $officials = $request->user()->isAdmin()
-            ? User::whereIn('role', ['admin', 'organizer'])->where('is_active', true)->orderBy('name')->get(['id','name','email','role'])
+            ? User::whereIn('role', ['admin', 'official'])->where('is_active', true)->orderBy('name')->get(['id', 'name', 'email', 'role'])
             : collect();
         $assignments = $race->checkpointAssignments()
-            ->when(!$request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
+            ->when(! $request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
             ->with(['user:id,name,email', 'checkpoint:id,name'])
             ->orderBy('checkpoint_id')
             ->get();
@@ -91,51 +105,22 @@ class RaceController extends Controller
             ? $race->checkpoints->where('is_active', true)->where('kind', '!=', CheckpointKind::Start)->pluck('id')->values()
             : $assignments->where('user_id', $request->user()->id)->pluck('checkpoint_id')->values();
 
-        $participants = $race->entries()
-            ->with([
-                'members.athlete',
-                'timings' => fn ($query) => $query->where('status', TimingStatus::Recorded->value)->select('id', 'entry_id', 'checkpoint_id'),
-            ])
-            ->orderByRaw('CAST(bib_number AS UNSIGNED), bib_number')
-            ->get()
-            ->map(fn ($entry) => [
-                'id' => $entry->id,
-                'status' => $entry->status,
-                'bib_number' => $entry->bib_number,
-                'type' => $entry->type->value,
-                'name' => $entry->displayName(),
-                'members' => $entry->members->map(fn ($member) => ['discipline' => $member->discipline->value, 'name' => $member->athlete->full_name])->values()->all(),
-                'completed_checkpoint_ids' => $entry->timings->pluck('checkpoint_id')->values()->all(),
-            ])->values();
-
-        $recentTimings = $race->timings()
-            ->where('status', TimingStatus::Recorded->value)
-            ->when(!$request->user()->isAdmin(), fn ($query) => $query->whereIn('checkpoint_id', $allowedTimingCheckpointIds))
-            ->with(['entry.members.athlete', 'checkpoint:id,name', 'operator:id,name'])
-            ->latest('recorded_at')
-            ->limit(12)
-            ->get();
-
-        $completedCount = $race->timings()
-            ->where('status', TimingStatus::Recorded->value)
-            ->whereHas('checkpoint', fn ($query) => $query->where('kind', 'finish'))
-            ->distinct('entry_id')
-            ->count('entry_id');
-
         return Inertia::render('Races/Show', [
             'race' => $race,
-            'publicTimingUrl' => $request->user()->isAdmin() ? route('race.public', $race->public_timing_token, false) : null,
+            'publicTimingUrl' => route('race.public', $race->public_timing_token, false),
+            'publicTimingEnabled' => (bool) $race->public_timing_enabled,
+            'publicTimingRotatedAt' => $race->public_timing_rotated_at?->toISOString(),
             'officials' => $officials,
             'checkpointAssignments' => $assignments,
             'allowedTimingCheckpointIds' => $allowedTimingCheckpointIds,
-            'mailConfigured' => app(\App\Services\AccountInvitationService::class)->configured(),
+            'mailConfigured' => app(AccountInvitationService::class)->configured(),
             'athleteOptions' => $athletes->options($race),
             'readiness' => $readiness->for($race),
-            'participants' => $participants,
+            'participants' => fn () => $data->participants($race),
             'standings' => fn () => app(ResultsService::class)->live($race),
-            'recentTimings' => $recentTimings,
-            'completedCount' => $completedCount,
-            'serverNow' => now('UTC')->toISOString(),
+            'recentTimings' => fn () => $data->recentTimings($race),
+            'completedCount' => fn () => $data->finishedCount($race),
+            'serverNow' => fn () => now('UTC')->toISOString(),
         ]);
     }
 
@@ -150,16 +135,23 @@ class RaceController extends Controller
         }
 
         $allowedStatuses = [RaceStatus::Draft->value, RaceStatus::Ready->value];
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'status' => ['required', Rule::in($allowedStatuses)], 'swim_km'=>['sometimes','numeric','min:0.001'],'bike_km'=>['sometimes','numeric','min:0.001'],'run_km'=>['sometimes','numeric','min:0.001']]);
-        $settings=$race->settings??[];
-        foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code){
-            if(!array_key_exists($key,$data))continue;
-            $settings[$key]=$data[$key];
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'event_date' => ['required', 'date'], 'timezone' => ['required', 'timezone'], 'status' => ['required', Rule::in($allowedStatuses)], 'swim_km' => ['sometimes', 'numeric', 'min:0.001'], 'bike_km' => ['sometimes', 'numeric', 'min:0.001'], 'run_km' => ['sometimes', 'numeric', 'min:0.001']]);
+        $settings = $race->settings ?? [];
+        foreach (['swim_km' => 'SWIM_FINISH', 'bike_km' => 'BIKE_FINISH', 'run_km' => 'RUN_FINISH'] as $key => $code) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+            $settings[$key] = $data[$key];
         }
-        DB::transaction(function()use($race,$data,$settings){
-            $race->update([...collect($data)->except(['swim_km','bike_km','run_km'])->all(),'settings'=>$settings]);
-            foreach(['swim_km'=>'SWIM_FINISH','bike_km'=>'BIKE_FINISH','run_km'=>'RUN_FINISH'] as $key=>$code)if(array_key_exists($key,$data))$race->checkpoints()->where('code',$code)->update(['distance_km'=>$data[$key]]);
+        DB::transaction(function () use ($race, $data, $settings) {
+            $race->update([...collect($data)->except(['swim_km', 'bike_km', 'run_km'])->all(), 'settings' => $settings]);
+            foreach (['swim_km' => 'SWIM_FINISH', 'bike_km' => 'BIKE_FINISH', 'run_km' => 'RUN_FINISH'] as $key => $code) {
+                if (array_key_exists($key, $data)) {
+                    $race->checkpoints()->where('code', $code)->update(['distance_km' => $data[$key]]);
+                }
+            }
         });
+
         return back()->with('success', __('Race settings updated.'));
     }
 
@@ -167,6 +159,7 @@ class RaceController extends Controller
     {
         abort_unless($request->user()->isAdmin(), 403);
         $race->delete();
+
         return redirect()->route('races.index')->with('success', __('Race moved to Deleted races. Its participants and timings are preserved and can be restored.'));
     }
 
@@ -174,6 +167,7 @@ class RaceController extends Controller
     {
         abort_unless($request->user()->isAdmin(), 403);
         $race->restore();
+
         return redirect()->route('races.show', $race)->with('success', __('Race restored.'));
     }
 }

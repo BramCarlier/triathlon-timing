@@ -24,7 +24,7 @@ Forge deployed PR 10; its log confirmed the frontend public key matches the serv
 3. Rehearse on actual phones and mobile networks: screen lock/wake, long sessions, lost signal and simultaneous taps. Browser CI and the MySQL concurrency tests below do not establish cellular reliability or full event load capacity.
 4. Independent uptime alerting needs a selected service and notification destination. The application health page provides diagnostics, not external alert delivery.
 
-The application is deployed on MySQL. PostgreSQL portability is not currently verified: participant sorting uses MySQL-specific `CAST(... AS UNSIGNED)` and should be changed and tested before advertising PostgreSQL support.
+The application is deployed on MySQL. Participant sorting no longer uses MySQL-specific SQL (November 2026), but PostgreSQL is still not tested and therefore not supported.
 
 ## Event-readiness implementation
 
@@ -39,3 +39,20 @@ The application is deployed on MySQL. PostgreSQL portability is not currently ve
 ### Forge inspection
 
 The server's **Storage → Backups** and **Observe → Monitoring** screens both report **Upgrade to Business**. No backup configuration or server monitor was enabled through these gated features, and no subscription was changed. An off-server storage destination and retention policy are still needed, or the owner can choose the Forge upgrade. Application health visibility does not replace independent uptime alerting or off-server backups. SMTP delivery still needs provider credentials. Actual device power management and mobile reception require a rehearsal on the event devices.
+
+## November 2026 update
+
+A full review found that the account-free race-day link, the recommended flow, lacked protections the authenticated station already had. Changes:
+
+- **Clock.** All timing screens stamp taps on the server clock, sampled from `GET /time` with the NTP midpoint method, instead of `new Date()`. Before, a phone clock that was up to 10 s off went straight into results. A browser test runs a device 8 s fast and checks the recorded time.
+- **Lost taps.** The race-day link now saves failed taps on the device with their observed time and uploads them later (accepted for 30 minutes). Before, a failed tap was lost and a re-tap recorded a later time.
+- **Checkpoint on reload.** The race-day link no longer defaults to Swim Exit. It asks once and remembers the checkpoint per device.
+- **Undo.** The tapping device can undo a race-day link tap for 60 seconds, proven by the tap's UUID, which is no longer exposed in public payloads.
+- **Link control.** The Organizer can switch the link off or rotate it.
+- **Database guard.** A generated `active_key` column with a unique index makes a second active timing for the same entry and checkpoint impossible at the database level as well.
+- **Destructive migration.** The one-time production reset migration of 24 September 2026 is now a no-op, so restoring an older backup cannot trigger it again.
+- **Roles.** The Official role is stored as `official` (it was `organizer`).
+- **Results.** While a race runs, results show provisional places; live standings are cached per race version so polling devices share one computation.
+- **Tooling.** PHP 8.5, PHPUnit 13, Larastan, Pint, ESLint and Prettier in CI; the Feature suite also runs on MySQL.
+
+Still external: off-server backups (see `deploy/FORGE.md` → Backups, with `deploy/backup-database.sh`) and an uptime monitor.

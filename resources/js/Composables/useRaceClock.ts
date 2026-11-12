@@ -1,20 +1,28 @@
-import { computed, onBeforeUnmount, ref, toValue, watchEffect, type MaybeRefOrGetter } from 'vue';
-import { parseRaceTimestamp, raceElapsedMs } from '../raceTime';
+import { computed, onBeforeUnmount, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { raceElapsedMs } from '../raceTime';
+import { seedServerClock, serverNowMs, startServerClock } from '../timing/serverClock';
 
-export function useRaceClock(startedAt: MaybeRefOrGetter<string | null | undefined>, serverNow: MaybeRefOrGetter<string>, finishedAt: MaybeRefOrGetter<string | null | undefined> = null) {
-  let serverAnchor = parseRaceTimestamp(toValue(serverNow));
-  let performanceAnchor = performance.now();
-  watchEffect(() => {
-    const value = toValue(serverNow);
-    serverAnchor = parseRaceTimestamp(value);
-    performanceAnchor = performance.now();
-  });
+/** Elapsed race time on the server's timeline, refreshed every 50 ms. */
+export function useRaceClock(
+  startedAt: MaybeRefOrGetter<string | null | undefined>,
+  serverNow: MaybeRefOrGetter<string>,
+  finishedAt: MaybeRefOrGetter<string | null | undefined> = null,
+) {
+  const stop = startServerClock(toValue(serverNow));
+  watch(
+    () => toValue(serverNow),
+    value => seedServerClock(value),
+  );
 
   const tick = ref(0);
-  const timer = window.setInterval(() => tick.value++, 50);
-  onBeforeUnmount(() => window.clearInterval(timer));
+  const timer = window.setInterval(() => {
+    tick.value += 1;
+  }, 50);
+  onBeforeUnmount(() => {
+    window.clearInterval(timer);
+    stop();
+  });
 
-  const serverNowMs = () => serverAnchor + (performance.now() - performanceAnchor);
   const elapsedMs = computed(() => {
     void tick.value;
     return raceElapsedMs(toValue(startedAt), toValue(finishedAt), serverNowMs());

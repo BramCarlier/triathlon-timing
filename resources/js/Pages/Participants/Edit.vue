@@ -1,100 +1,247 @@
 <script setup lang="ts">
+import Icon from '../../Components/Icon.vue';
 import { formatDateTime } from '../../presentation';
 import { tr } from '../../i18n';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import type { Race } from '../../types';
 
-interface Athlete {id:number;first_name:string;last_name:string;email:string|null;club:string|null;user?:{id:number;email:string;is_active:boolean;force_password_change:boolean}|null}
-interface Snapshot {entry?:Record<string,unknown>;athletes?:Array<Record<string,unknown>>}
-interface Change {id:number;reason:string;created_at:string;user?:{name:string};before:Snapshot;after:Snapshot}
+interface Athlete {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  club: string | null;
+  user?: { id: number; email: string; is_active: boolean; force_password_change: boolean } | null;
+}
+interface Snapshot {
+  entry?: Record<string, unknown>;
+  athletes?: Array<Record<string, unknown>>;
+}
+interface Change {
+  id: number;
+  reason: string;
+  created_at: string;
+  user?: { name: string };
+  before: Snapshot;
+  after: Snapshot;
+}
 
-const props=defineProps<{race:Race;entry:{id:number;bib_number:string|null;type:string;team_name:string|null;category:string|null;status:string;members:{athlete:Athlete}[]};changes:Change[];mailConfigured:boolean}>();
-const form=useForm({bib_number:props.entry.bib_number??'',team_name:props.entry.team_name??'',category:props.entry.category??'',status:props.entry.status,reason:'',athletes:[...new Map(props.entry.members.map(m=>[m.athlete.id,{...m.athlete}])).values()]});
-const save=()=>form.put(`/races/${props.race.id}/participants/${props.entry.id}`,{preserveScroll:true,onSuccess:()=>form.reset('reason')});
+const props = defineProps<{
+  race: Race;
+  entry: {
+    id: number;
+    bib_number: string | null;
+    type: string;
+    team_name: string | null;
+    category: string | null;
+    status: string;
+    members: { athlete: Athlete }[];
+  };
+  changes: Change[];
+  mailConfigured: boolean;
+}>();
+const form = useForm({
+  bib_number: props.entry.bib_number ?? '',
+  team_name: props.entry.team_name ?? '',
+  category: props.entry.category ?? '',
+  status: props.entry.status,
+  reason: '',
+  athletes: [...new Map(props.entry.members.map(m => [m.athlete.id, { ...m.athlete }])).values()],
+});
+const save = () =>
+  form.put(`/races/${props.race.id}/participants/${props.entry.id}`, { preserveScroll: true, onSuccess: () => form.reset('reason') });
 
-const value=(input:unknown)=>input===null||input===undefined||input===''?'—':String(input);
-const entryLabels:Record<string,string>={bib_number:'Bib number',team_name:'Team name',category:'Category',status:'Result status'};
-const athleteLabels:Record<string,string>={first_name:'First name',last_name:'Last name',email:'Email',club:'Club'};
+const value = (input: unknown) => (input === null || input === undefined || input === '' ? '—' : String(input));
+const entryLabels: Record<string, string> = {
+  bib_number: 'Bib number',
+  team_name: 'Team name',
+  category: 'Category',
+  status: 'Result status',
+};
+const athleteLabels: Record<string, string> = { first_name: 'First name', last_name: 'Last name', email: 'Email', club: 'Club' };
 
-function changeLines(change:Change):string[] {
-  const lines:string[]=[];
-  const beforeEntry=change.before?.entry??{};
-  const afterEntry=change.after?.entry??{};
-  for(const [key,label] of Object.entries(entryLabels)) {
-    if(value(beforeEntry[key])!==value(afterEntry[key])) lines.push(`${tr(label)}: ${key==='status'?tr(value(beforeEntry[key])):value(beforeEntry[key])} → ${key==='status'?tr(value(afterEntry[key])):value(afterEntry[key])}`);
+function changeLines(change: Change): string[] {
+  const lines: string[] = [];
+  const beforeEntry = change.before?.entry ?? {};
+  const afterEntry = change.after?.entry ?? {};
+  for (const [key, label] of Object.entries(entryLabels)) {
+    if (value(beforeEntry[key]) !== value(afterEntry[key]))
+      lines.push(
+        `${tr(label)}: ${key === 'status' ? tr(value(beforeEntry[key])) : value(beforeEntry[key])} → ${key === 'status' ? tr(value(afterEntry[key])) : value(afterEntry[key])}`,
+      );
   }
-  const beforeAthletes=new Map((change.before?.athletes??[]).map(item=>[Number(item.id),item]));
-  for(const after of change.after?.athletes??[]) {
-    const id=Number(after.id);
-    const before=beforeAthletes.get(id)??{};
-    const athleteName=`${value(after.first_name)} ${value(after.last_name)}`.replace(/—/g,'').trim()||tr('Athlete');
-    for(const [key,label] of Object.entries(athleteLabels)) {
-      if(value(before[key])!==value(after[key])) lines.push(`${athleteName} · ${tr(label)}: ${value(before[key])} → ${value(after[key])}`);
+  const beforeAthletes = new Map((change.before?.athletes ?? []).map(item => [Number(item.id), item]));
+  for (const after of change.after?.athletes ?? []) {
+    const id = Number(after.id);
+    const before = beforeAthletes.get(id) ?? {};
+    const athleteName = `${value(after.first_name)} ${value(after.last_name)}`.replace(/—/g, '').trim() || tr('Athlete');
+    for (const [key, label] of Object.entries(athleteLabels)) {
+      if (value(before[key]) !== value(after[key]))
+        lines.push(`${athleteName} · ${tr(label)}: ${value(before[key])} → ${value(after[key])}`);
     }
   }
-  return lines.length?lines:[tr('No visible field changes recorded.')];
+  return lines.length ? lines : [tr('No visible field changes recorded.')];
 }
 </script>
 
 <template>
-  <Head :title="$t('Edit participant')"/>
+  <Head :title="$t('Edit participant')" />
   <AppLayout :title="`${race.name} · ${$t('Edit participant')}`">
     <form class="panel-pad max-w-3xl" @submit.prevent="save">
-      <div v-if="race.started_at" class="mb-4 rounded-xl border border-outline bg-canvas p-4">
-        <strong>{{ $t("The race has started.") }}</strong>
-        <p class="mt-1 text-sm muted">{{ $t("You can still add or change a bib number or correct the result status. The reason is optional. Athlete details stay locked. Selecting DNS removes all recorded times for this race.") }}</p>
+      <div v-if="race.started_at" class="mb-4 rounded-md border border-outline bg-canvas p-4">
+        <strong>{{ $t('The race has started.') }}</strong>
+        <p class="mt-1 text-sm muted">
+          {{
+            $t(
+              'You can still add or change a bib number or correct the result status. The reason is optional. Athlete details stay locked. Selecting DNS removes all recorded times for this race.',
+            )
+          }}
+        </p>
       </div>
 
-      <h2 class="mb-4 text-lg font-bold">{{ entry.type==='relay' ? entry.team_name : [entry.members[0]?.athlete.first_name, entry.members[0]?.athlete.last_name].filter(Boolean).join(' ') }}</h2>
+      <h2 class="mb-4 text-lg font-bold">
+        {{
+          entry.type === 'relay'
+            ? entry.team_name
+            : [entry.members[0]?.athlete.first_name, entry.members[0]?.athlete.last_name].filter(Boolean).join(' ')
+        }}
+      </h2>
       <div class="grid gap-4 sm:grid-cols-2">
-        <label class="label">{{ $t("Bib number") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="form.bib_number" class="field" maxlength="32"></label>
+        <label class="label">
+          {{ $t('Bib number') }}
+          <span class="font-normal muted">{{ $t('(optional)') }}</span>
+          <input v-model="form.bib_number" class="field" maxlength="32" />
+        </label>
         <template v-if="!race.started_at">
-          <label class="label">{{ $t("Category") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="form.category" class="field"></label>
-          <label v-if="entry.type==='relay'" class="label">{{ $t("Team name") }}<input v-model="form.team_name" class="field" required></label>
+          <label class="label">
+            {{ $t('Category') }}
+            <span class="font-normal muted">{{ $t('(optional)') }}</span>
+            <input v-model="form.category" class="field" />
+          </label>
+          <label v-if="entry.type === 'relay'" class="label">
+            {{ $t('Team name') }}
+            <input v-model="form.team_name" class="field" required />
+          </label>
         </template>
-        <label class="label">{{ $t("Result status") }}<select v-model="form.status" class="field"><option value="registered">{{ $t("Competing / normal result") }}</option><option value="dns">{{ $t("DNS — did not start") }}</option><option value="dnf">{{ $t("DNF — did not finish") }}</option><option value="dsq">{{ $t("DSQ — disqualified") }}</option></select></label>
+        <label class="label">
+          {{ $t('Result status') }}
+          <select v-model="form.status" class="field">
+            <option value="registered">{{ $t('Competing / normal result') }}</option>
+            <option value="dns">{{ $t('DNS — did not start') }}</option>
+            <option value="dnf">{{ $t('DNF — did not finish') }}</option>
+            <option value="dsq">{{ $t('DSQ — disqualified') }}</option>
+          </select>
+        </label>
       </div>
-      <p class="mt-3 text-sm muted">{{ $t("DNS, DNF and DSQ are excluded from places. DNS removes all recorded times for this race; DNF and DSQ keep their times.") }}</p>
+      <p class="mt-3 text-sm muted">
+        {{ $t('DNS, DNF and DSQ are excluded from places. DNS removes all recorded times for this race; DNF and DSQ keep their times.') }}
+      </p>
 
-      <p v-if="form.status==='dns'" role="status" class="mt-3 rounded-xl bg-amber-500/10 p-3 text-sm text-warning">{{ $t('Saving DNS deletes all time registrations for this participant in this race. Changing the status back will not restore them.') }}</p>
+      <p v-if="form.status === 'dns'" role="status" class="mt-3 rounded-md bg-warning/10 p-3 text-sm text-warning">
+        {{
+          $t('Saving DNS deletes all time registrations for this participant in this race. Changing the status back will not restore them.')
+        }}
+      </p>
 
       <template v-if="!race.started_at">
-        <p class="mt-4 text-sm muted">{{ $t("Athlete profile corrections apply everywhere this athlete is reused.") }}</p>
-        <fieldset v-for="athlete in form.athletes" :key="athlete.id" class="mt-4 grid gap-3 rounded-xl border border-outline-strong p-4 sm:grid-cols-2">
-          <legend class="px-1 font-semibold">{{ $t("Athlete details") }}</legend>
-          <label class="label">{{ $t("First name") }}<input v-model="athlete.first_name" class="field" required></label>
-          <label class="label">{{ $t("Last name") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="athlete.last_name" class="field"></label>
-          <label class="label">{{ $t("Email") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="athlete.email" class="field" type="email"></label>
-          <label class="label">{{ $t("Club") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><input v-model="athlete.club" class="field"></label>
-          <div class="sm:col-span-2 rounded-xl bg-canvas p-3">
+        <p class="mt-4 text-sm muted">{{ $t('Athlete profile corrections apply everywhere this athlete is reused.') }}</p>
+        <fieldset
+          v-for="athlete in form.athletes"
+          :key="athlete.id"
+          class="mt-4 grid gap-3 rounded-md border border-outline-strong p-4 sm:grid-cols-2"
+        >
+          <legend class="px-1 font-semibold">{{ $t('Athlete details') }}</legend>
+          <label class="label">
+            {{ $t('First name') }}
+            <input v-model="athlete.first_name" class="field" required />
+          </label>
+          <label class="label">
+            {{ $t('Last name') }}
+            <span class="font-normal muted">{{ $t('(optional)') }}</span>
+            <input v-model="athlete.last_name" class="field" />
+          </label>
+          <label class="label">
+            {{ $t('Email') }}
+            <span class="font-normal muted">{{ $t('(optional)') }}</span>
+            <input v-model="athlete.email" class="field" type="email" />
+          </label>
+          <label class="label">
+            {{ $t('Club') }}
+            <span class="font-normal muted">{{ $t('(optional)') }}</span>
+            <input v-model="athlete.club" class="field" />
+          </label>
+          <div class="sm:col-span-2 rounded-md bg-canvas p-3">
             <template v-if="athlete.user">
-              <strong class="text-sm">{{ $t("Results account linked") }}</strong>
-              <p class="mt-1 text-xs muted">{{ athlete.user.email }} · {{ athlete.user.is_active ? (athlete.user.force_password_change ? $t('Invitation/password setup pending') : $t('Active')) : $t('Disabled') }}</p>
-              <button v-if="athlete.user.force_password_change && athlete.user.is_active && mailConfigured" type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><i class="fa-solid fa-envelope" aria-hidden="true"></i>{{ $t("Resend invitation") }}</button>
+              <strong class="text-sm">{{ $t('Results account linked') }}</strong>
+              <p class="mt-1 text-xs muted">
+                {{ athlete.user.email }} ·
+                {{
+                  athlete.user.is_active
+                    ? athlete.user.force_password_change
+                      ? $t('Invitation/password setup pending')
+                      : $t('Active')
+                    : $t('Disabled')
+                }}
+              </p>
+              <button
+                v-if="athlete.user.force_password_change && athlete.user.is_active && mailConfigured"
+                type="button"
+                class="btn-secondary mt-3"
+                @click="router.post(`/athletes/${athlete.id}/account-invitation`, {}, { preserveScroll: true })"
+              >
+                <Icon name="envelope" />
+                {{ $t('Resend invitation') }}
+              </button>
             </template>
             <template v-else-if="athlete.email && mailConfigured">
-              <strong class="text-sm">{{ $t("Athlete access") }}</strong>
-              <p class="mt-1 text-xs muted">{{ $t("Invite this athlete to sign in and see all races linked to this profile.") }}</p>
-              <button type="button" class="btn-secondary mt-3" @click="router.post(`/athletes/${athlete.id}/account-invitation`,{}, {preserveScroll:true})"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>{{ $t("Invite to view results") }}</button>
+              <strong class="text-sm">{{ $t('Athlete access') }}</strong>
+              <p class="mt-1 text-xs muted">{{ $t('Invite this athlete to sign in and see all races linked to this profile.') }}</p>
+              <button
+                type="button"
+                class="btn-secondary mt-3"
+                @click="router.post(`/athletes/${athlete.id}/account-invitation`, {}, { preserveScroll: true })"
+              >
+                <Icon name="paper-plane" />
+                {{ $t('Invite to view results') }}
+              </button>
             </template>
-            <p v-else-if="!athlete.email" class="text-xs muted">{{ $t("Add and save an email address before inviting this athlete to view results.") }}</p>
-            <p v-else class="text-xs muted">{{ $t("Email invitations are not configured. Manage the account from People instead.") }}</p>
+            <p v-else-if="!athlete.email" class="text-xs muted">
+              {{ $t('Add and save an email address before inviting this athlete to view results.') }}
+            </p>
+            <p v-else class="text-xs muted">{{ $t('Email invitations are not configured. Manage the account from People instead.') }}</p>
           </div>
         </fieldset>
       </template>
 
-      <label class="label mt-4">{{ $t("Reason for change") }} <span class="font-normal muted">{{ $t("(optional)") }}</span><textarea v-model="form.reason" class="field" maxlength="1000" :placeholder="race.started_at?$t('For example: bib assigned at check-in'):$t('Optional note about this edit')"></textarea></label>
-      <div v-if="Object.keys(form.errors).length" role="alert" class="mt-3 text-error"><p v-for="(error,key) in form.errors" :key="key">{{ error }}</p></div>
+      <label class="label mt-4">
+        {{ $t('Reason for change') }}
+        <span class="font-normal muted">{{ $t('(optional)') }}</span>
+        <textarea
+          v-model="form.reason"
+          class="field"
+          maxlength="1000"
+          :placeholder="race.started_at ? $t('For example: bib assigned at check-in') : $t('Optional note about this edit')"
+        ></textarea>
+      </label>
+      <div v-if="Object.keys(form.errors).length" role="alert" class="mt-3 text-error">
+        <p v-for="(error, key) in form.errors" :key="key">{{ error }}</p>
+      </div>
       <div class="mt-4 flex flex-wrap gap-3">
-        <button class="btn-primary" :disabled="form.processing"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ $t('Save participant') }}</button>
-        <Link class="btn-secondary" :href="`/races/${race.id}/participants`"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>{{ $t("Back to participants") }}</Link>
+        <button class="btn-primary" :disabled="form.processing">
+          <Icon name="floppy-disk" />
+          {{ $t('Save participant') }}
+        </button>
+        <Link class="btn-secondary" :href="`/races/${race.id}/participants`">
+          <Icon name="arrow-left" />
+          {{ $t('Back to participants') }}
+        </Link>
       </div>
     </form>
 
     <details class="panel-pad mt-5 max-w-3xl">
-      <summary class="font-bold">{{ $t("Change history ·") }} {{ changes.length }}</summary>
-      <p v-if="!changes.length" class="mt-3 muted">{{ $t("No edits yet.") }}</p>
+      <summary class="font-bold">{{ $t('Change history ·') }} {{ changes.length }}</summary>
+      <p v-if="!changes.length" class="mt-3 muted">{{ $t('No edits yet.') }}</p>
       <article v-for="change in changes" :key="change.id" class="border-b border-outline-strong py-4 last:border-0">
         <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <strong>{{ change.reason }}</strong>

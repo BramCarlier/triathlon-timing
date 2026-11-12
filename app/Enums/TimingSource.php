@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Enums;
+
 enum TimingSource: string
 {
     case Online = 'online';

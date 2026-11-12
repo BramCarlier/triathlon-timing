@@ -29,7 +29,7 @@ class RaceOfficialController extends Controller
         $reusableExisting = $existingByEmail
             && in_array($existingByEmail->role, [UserRole::Admin, UserRole::Official], true)
             && $existingByEmail->is_active;
-        $creating = !$request->filled('user_id') && !$reusableExisting;
+        $creating = ! $request->filled('user_id') && ! $reusableExisting;
 
         $data = $request->validate([
             'checkpoint_id' => ['required', Rule::exists('checkpoints', 'id')->where(fn ($query) => $query->where('race_id', $race->id)->where('kind', '!=', 'start')->where('is_active', true))],
@@ -40,20 +40,20 @@ class RaceOfficialController extends Controller
                     ->whereIn('role', [UserRole::Admin->value, UserRole::Official->value])
                     ->where('is_active', true)),
             ],
-            'name' => ['nullable', Rule::requiredIf(!$request->filled('user_id')), 'string', 'max:255'],
-            'email' => ['nullable', Rule::requiredIf(!$request->filled('user_id')), 'email', 'max:255'],
+            'name' => ['nullable', Rule::requiredIf(! $request->filled('user_id')), 'string', 'max:255'],
+            'email' => ['nullable', Rule::requiredIf(! $request->filled('user_id')), 'email', 'max:255'],
             'delivery' => ['nullable', Rule::requiredIf($creating), Rule::in(['email', 'manual'])],
             'password' => ['nullable', Rule::requiredIf($creating && $request->input('delivery') === 'manual'), 'string', 'min:12'],
         ]);
 
-        if ($existingByEmail && !$reusableExisting && !$request->filled('user_id')) {
+        if ($existingByEmail && ! $reusableExisting && ! $request->filled('user_id')) {
             throw ValidationException::withMessages([
                 'email' => __('That email already belongs to an account that cannot be assigned as an Official.'),
             ]);
         }
 
         $emailInvite = $creating && ($data['delivery'] ?? 'email') === 'email';
-        if ($emailInvite && !$invitations->configured()) {
+        if ($emailInvite && ! $invitations->configured()) {
             throw ValidationException::withMessages([
                 'delivery' => __('Email sending is not configured. Choose a temporary password instead.'),
             ]);
@@ -61,7 +61,7 @@ class RaceOfficialController extends Controller
 
         $created = false;
         $official = DB::transaction(function () use ($data, $race, $emailInvite, $existingByEmail, $reusableExisting, &$created) {
-            if (!empty($data['user_id'])) {
+            if (! empty($data['user_id'])) {
                 $official = User::whereIn('role', [UserRole::Admin->value, UserRole::Official->value])
                     ->where('is_active', true)
                     ->findOrFail($data['user_id']);
@@ -87,7 +87,7 @@ class RaceOfficialController extends Controller
             return $official;
         });
 
-        if ($emailInvite && !$invitations->send($official)) {
+        if ($emailInvite && ! $invitations->send($official)) {
             return back()->with('error', __('Official created and assigned, but the invitation email could not be sent. You can resend it from People.'));
         }
 
@@ -106,7 +106,7 @@ class RaceOfficialController extends Controller
             ->where('user_id', $official->id)
             ->delete();
 
-        if (!$official->isAdmin()) {
+        if (! $official->isAdmin()) {
             $official->races()->detach($race->id);
         }
 

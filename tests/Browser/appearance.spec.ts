@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 async function openAccount(page: Page) {
   const account = page.locator('summary').filter({ hasText: 'Account' }).first();
-  if (!(await account.evaluate((el) => (el.parentElement as HTMLDetailsElement)?.open))) {
+  if (!(await account.evaluate(el => (el.parentElement as HTMLDetailsElement)?.open))) {
     await account.click();
   }
 }

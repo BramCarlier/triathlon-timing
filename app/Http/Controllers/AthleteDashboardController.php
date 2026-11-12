@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Enums\TimingStatus;
@@ -16,6 +17,7 @@ class AthleteDashboardController extends Controller
         $entries = $memberships->pluck('entry')->filter(fn ($entry) => $entry?->race !== null)->unique('id')->values()->map(function ($entry) {
             return ['id' => $entry->id, 'bib_number' => $entry->bib_number, 'type' => $entry->type->value, 'team_name' => $entry->team_name, 'race' => $entry->race, 'members' => $entry->members, 'timings' => $entry->timings->sortBy(fn ($t) => $t->checkpoint->sequence)->values()];
         })->sortByDesc(fn ($entry) => $entry['race']->event_date)->values();
+
         return Inertia::render('Athlete/Dashboard', ['athlete' => $athlete, 'entries' => $entries, 'serverNow' => now('UTC')->toISOString()]);
     }
 }

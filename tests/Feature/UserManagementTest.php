@@ -38,7 +38,7 @@ class UserManagementTest extends TestCase
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         User::factory()->create(['role' => UserRole::Admin, 'is_active' => false]);
-        $this->actingAs($admin)->put("/users/{$admin->id}", $this->data($admin, ['role' => 'organizer']))->assertSessionHasErrors('role');
+        $this->actingAs($admin)->put("/users/{$admin->id}", $this->data($admin, ['role' => 'official']))->assertSessionHasErrors('role');
         $this->put("/users/{$admin->id}", $this->data($admin, ['is_active' => false]))->assertSessionHasErrors('role');
         $this->assertTrue($admin->fresh()->isAdmin());
         $this->assertTrue($admin->fresh()->is_active);
@@ -55,7 +55,7 @@ class UserManagementTest extends TestCase
         $this->put("/users/{$operator->id}", $this->data($operator, ['role' => 'athlete', 'athlete_id' => $athlete->id]))->assertSessionHasNoErrors();
         $this->assertSame(UserRole::Athlete, $operator->fresh()->role);
         $this->assertSame(0, $operator->races()->count());
-        $this->put("/users/{$operator->id}", $this->data($operator->fresh(), ['role' => 'organizer']))->assertSessionHasNoErrors();
+        $this->put("/users/{$operator->id}", $this->data($operator->fresh(), ['role' => 'official']))->assertSessionHasNoErrors();
         $this->assertNull($operator->fresh()->athlete_id);
     }
 

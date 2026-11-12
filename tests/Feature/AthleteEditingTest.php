@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Athlete;
-use App\Models\Entry;
 use App\Models\EntryChange;
 use App\Models\Race;
 use App\Models\User;
@@ -112,7 +111,7 @@ class AthleteEditingTest extends TestCase
             'status' => 'dnf', 'reason' => 'Withdrew during bike',
         ])->assertSessionHasNoErrors();
         $this->assertSame('007', $entry->fresh()->bib_number);
-        $this->assertSame('dnf', $entry->fresh()->status);
+        $this->assertSame('dnf', $entry->fresh()->status->value);
     }
 
     public function test_an_entry_cannot_be_edited_through_another_race(): void

@@ -22,8 +22,8 @@ class ReliabilityAuditTest extends TestCase
     {
         $user = User::factory()->create(['role' => UserRole::Admin]);
         $race = Race::create(['name' => 'Outage', 'slug' => 'outage', 'event_date' => '2026-09-22', 'created_by' => $user->id]);
-        $race->entries()->create(['type'=>'solo']);
-        $race->checkpoints()->create(['name'=>'Finish','code'=>'FINISH','sequence'=>50,'kind'=>'finish','is_active'=>true,'is_required'=>true]);
+        $race->entries()->create(['type' => 'solo']);
+        $race->checkpoints()->create(['name' => 'Finish', 'code' => 'FINISH', 'sequence' => 50, 'kind' => 'finish', 'is_active' => true, 'is_required' => true]);
         Broadcast::shouldReceive('queue')->once()->andThrow(new BroadcastException('Simulated connection failure'));
         $started = app(RaceClockService::class)->start($race);
         $this->assertNotNull($started->started_at);
@@ -37,7 +37,9 @@ class ReliabilityAuditTest extends TestCase
             file_put_contents($path, '["not a participant object"]');
             $this->expectException(ValidationException::class);
             app(ParticipantImportService::class)->parse($path, 'bad.json');
-        } finally { unlink($path); }
+        } finally {
+            unlink($path);
+        }
     }
 
     public function test_csv_text_cannot_be_interpreted_as_a_spreadsheet_formula(): void

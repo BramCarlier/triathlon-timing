@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
@@ -9,11 +10,16 @@ use Inertia\Response;
 
 class PasswordController extends Controller
 {
-    public function edit(): Response { return Inertia::render('Auth/Password'); }
+    public function edit(): Response
+    {
+        return Inertia::render('Auth/Password');
+    }
+
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate(['current_password' => ['required','current_password'], 'password' => ['required','string','min:12','confirmed','different:current_password']]);
+        $data = $request->validate(['current_password' => ['required', 'current_password'], 'password' => ['required', 'string', 'min:12', 'confirmed', 'different:current_password']]);
         $request->user()->forceFill(['password' => Hash::make($data['password']), 'force_password_change' => false])->save();
+
         return redirect()->route('dashboard')->with('success', __('Password updated. Your account is ready.'));
     }
 }

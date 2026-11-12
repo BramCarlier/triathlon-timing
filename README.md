@@ -4,11 +4,11 @@ A race-day web application for organizers and athletes. It supports a shared rac
 
 ## Stack
 
-- Laravel 13 / PHP 8.3+
-- Vue 3 + TypeScript + Inertia
-- Vite 8 + Tailwind CSS 4
-- MySQL or PostgreSQL
-- Laravel Reverb for live race events
+- Laravel 13 on PHP 8.5
+- Vue 3.5 + TypeScript + Inertia 3
+- Vite 8 + Tailwind CSS 4, Barlow / Barlow Condensed (self-hosted), Lucide icons
+- MySQL 8 in production; SQLite for local tests and browser tests (PostgreSQL is not tested)
+- Laravel Reverb for live race events (loaded only on signed-in pages)
 - Laravel Excel / PhpSpreadsheet for spreadsheet import/export
 - IndexedDB + service worker support for race-day resilience
 
@@ -16,7 +16,19 @@ A race-day web application for organizers and athletes. It supports a shared rac
 
 The race has one authoritative `started_at` timestamp stored by the server. Browsers derive the displayed chronometer from that timestamp and a server-time anchor; they do not increment an independent stopwatch. Timestamps are serialized in UTC with an explicit timezone marker, so the clock starts at zero in every browser timezone. A browser reload does not reset the clock. After finishing, the clock displays the fixed difference between `finished_at` and `started_at`.
 
-The normal race-day flow uses an unguessable share link. Anyone with that link can open the race without an account, choose an active checkpoint or finish, and tap the correct athlete to record the current race time. The backend validates race/checkpoint/entry relationships and warns when required earlier checkpoints are missing. Authenticated timing stations remain available as an optional advanced mode for named Officials and offline recovery.
+The normal race-day flow uses an unguessable share link. Anyone with that link can open the race without an account, choose an active checkpoint or finish, and tap the correct athlete to record the current race time. The backend validates race/checkpoint/entry relationships and warns when required earlier checkpoints are missing. Authenticated timing stations remain available as an optional advanced mode for named Officials.
+
+### How a tap is timed
+
+Every timing screen (the race-day link, the Organizer workspace and the timing station) uses the same tap pad and recorder:
+
+- **Server clock, not the phone clock.** Browsers sample `GET /time` a few times on load and every two minutes, and use the round trip with the shortest delay to map their clock onto the server's (the NTP midpoint method). A tap is stamped with that estimate, so a phone whose clock is several seconds off still records the right time.
+- **No signal, no lost tap.** If a tap cannot reach the server it is saved on the device (IndexedDB) with its original time and uploaded automatically when the connection returns. The race-day link accepts such saved taps for up to 30 minutes; older ones need an Organizer correction. Each tap carries a UUID, so a retry never creates a duplicate.
+- **Undo.** The phone that made a tap on the race-day link can undo it for 60 seconds. Officials and the Organizer can undo their own taps from the station or workspace.
+- **The checkpoint is remembered.** The race-day link asks where you are timing on first open and remembers it per device (also in the address as `?checkpoint=FINISH`), so a reload never silently switches to another checkpoint.
+- **Athletes still to come first.** Athletes who already have a time at the selected checkpoint fold away; search accepts bib numbers (with a number keypad) or names.
+
+The Organizer can switch the race-day link off or replace it with a new link from the workspace; the old link stops working immediately.
 
 ### Default checkpoint order
 
@@ -147,9 +159,9 @@ The service prevents duplicate active timings at the same checkpoint. Voiding a 
 
 ## Offline behavior
 
-The shared race-day link is the simplest online timing flow. For unreliable connections, use the optional authenticated full-screen timing station: failed timing submissions are saved to IndexedDB with their UUID and observed timestamp, then retried after reconnection. The UUID makes retries idempotent.
+Both the race-day link and the authenticated timing station save taps that cannot reach the server in IndexedDB with their UUID and observed time, and retry them after reconnection. The UUID makes retries idempotent. The service worker keeps the last good copy of each timing page, so a page that was opened online can be reopened without signal.
 
-When using those offline-capable stations, open each station on its intended device while connectivity is good before race day. Do not clear browser site data during the event.
+Open the timing page on each device while connectivity is good before the race starts. Do not clear browser site data while taps are waiting to upload.
 
 ## Results
 
@@ -158,15 +170,17 @@ Results are derived from active timing records. The app shows cumulative checkpo
 ## Tests and quality
 
 ```bash
-php artisan test
-yarn typecheck
-yarn build
+php artisan test            # PHP feature tests (SQLite)
+composer lint               # Pint formatting check + Larastan (level 5, with baseline)
+yarn quality                # ESLint, Prettier check, frontend unit tests, vue-tsc, build
+yarn test:browser           # Playwright smoke tests (Chromium)
+yarn test:responsive        # layout checks at phone, tablet and desktop sizes
 
-# Optional source formatting
-./vendor/bin/pint
+# Formatting
+composer format && yarn format
 ```
 
-Pull requests run the test suite, TypeScript checks, and production frontend build in `.github/workflows/quality.yml`. Run Laravel Pint locally when changing PHP files. The `main` branch workflow is intentionally deployment-only; Laravel Forge should be configured to deploy after `main` changes.
+Pull requests run all of the above in `.github/workflows/quality.yml`, plus WebKit layout checks and the Feature and concurrency suites on MySQL 8.4. Laravel Forge deploys `main`; there is no separate deploy workflow.
 
 ## Laravel Forge
 
@@ -184,8 +198,8 @@ See [`deploy/FORGE.md`](deploy/FORGE.md). It covers:
 
 1. Add or import the athletes. A name is enough for a normal solo entry; bibs and other details are optional.
 2. Check the default transition/finish checkpoints and adjust only if needed.
-3. Open or copy the race-day link and share it with the people timing the race.
-4. On each device, open that link and select the correct transition/checkpoint or finish.
+3. Open, copy or share the race-day link with the people timing the race. A link per checkpoint is possible: add `?checkpoint=FINISH` (the checkpoint code).
+4. On each device, open that link while online and choose the transition/checkpoint or finish.
 5. Start the shared race clock when the race begins.
 6. Tap/search the correct athlete as they cross the selected timing point.
 7. The race finishes automatically when the last active athlete receives a finish time, or the Organizer can end it manually.
@@ -200,3 +214,7 @@ The primary Organizer workflow lives in one Race workspace: course, athletes, ra
 Use People only when you need optional named Official or Athlete accounts. Official permissions and checkpoint assignments apply to those account-based stations; athlete access is scoped to the linked athlete profile. At least one Organizer (admin) account must remain active. Disabling an account also blocks its existing sessions on their next request.
 
 Deleting a race is reversible from the Deleted races section on the race list. No participant, checkpoint or timing history is purged. Deleted races are hidden from organizers and athletes until an administrator restores them.
+
+## Design
+
+The interface uses a small design system built for timers standing outside: high-contrast light and dark themes, condensed numerals for clocks and bibs, and one colour per discipline (swim blue, bike yellow, run red, finish chequered). See [`docs/DESIGN.md`](docs/DESIGN.md).

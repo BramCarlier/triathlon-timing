@@ -1,10 +1,18 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Events\RaceFinished;
+use App\Events\TimingRecorded;
+use App\Events\TimingVoided;
 use App\Exceptions\TimingConflictException;
-use App\Models\{EntryChange, Race, User};
-use App\Services\{RaceClockService, ResultsService, TimingService};
+use App\Models\EntryChange;
+use App\Models\Race;
+use App\Models\User;
+use App\Services\RaceClockService;
+use App\Services\ResultsService;
+use App\Services\TimingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -16,12 +24,13 @@ class AutomaticDnfTest extends TestCase
 
     private function fixture(): array
     {
-        Event::fake([\App\Events\RaceFinished::class, \App\Events\TimingRecorded::class, \App\Events\TimingVoided::class]);
+        Event::fake([RaceFinished::class, TimingRecorded::class, TimingVoided::class]);
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $race = Race::create(['name' => 'Automatic DNF', 'slug' => 'automatic-dnf', 'event_date' => '2026-09-27', 'status' => 'running', 'started_at' => now()->subHour(), 'created_by' => $admin->id]);
         $swim = $race->checkpoints()->create(['name' => 'Swim', 'code' => 'SWIM', 'kind' => 'transition', 'sequence' => 10]);
         $finish = $race->checkpoints()->create(['name' => 'Finish', 'code' => 'FINISH', 'kind' => 'finish', 'sequence' => 20]);
         $entry = $race->entries()->create(['type' => 'solo', 'metadata' => ['custom' => 'preserved']]);
+
         return compact('admin', 'race', 'swim', 'finish', 'entry');
     }
 
@@ -37,7 +46,9 @@ class AutomaticDnfTest extends TestCase
         $oldFinish = $service->correct($race, $voided, $finish, $admin, 21000);
         $service->void($oldFinish, $admin);
         $excluded = [];
-        foreach (['dns', 'dnf', 'dsq'] as $status) $excluded[$status] = $race->entries()->create(['type' => 'solo', 'status' => $status]);
+        foreach (['dns', 'dnf', 'dsq'] as $status) {
+            $excluded[$status] = $race->entries()->create(['type' => 'solo', 'status' => $status]);
+        }
         $otherRace = Race::create(['name' => 'Other', 'slug' => 'other', 'event_date' => '2026-09-28', 'created_by' => $admin->id]);
         $otherEntry = $otherRace->entries()->create(['type' => 'solo']);
 
@@ -47,12 +58,12 @@ class AutomaticDnfTest extends TestCase
             $this->assertDatabaseHas('entry_changes', ['entry_id' => $unfinished->id, 'user_id' => $admin->id, 'reason' => 'Marked DNF automatically: race finished without a finish time.']);
         }
         $this->assertSame('preserved', $entry->fresh()->metadata['custom']);
-        $this->assertSame('registered', $finisher->fresh()->status);
+        $this->assertSame('registered', $finisher->fresh()->status->value);
         foreach ($excluded as $status => $unchanged) {
-            $this->assertSame($status, $unchanged->fresh()->status);
+            $this->assertSame($status, $unchanged->fresh()->status->value);
             $this->assertFalse($unchanged->fresh()->isAutomaticDnf());
         }
-        $this->assertSame('registered', $otherEntry->fresh()->status);
+        $this->assertSame('registered', $otherEntry->fresh()->status->value);
         $this->assertSame('recorded', $swimTime->fresh()->status->value);
         $row = collect(app(ResultsService::class)->filtered($race->fresh()))->firstWhere('id', $entry->id);
         $this->assertSame('DNF', $row['result_status']);
@@ -75,7 +86,7 @@ class AutomaticDnfTest extends TestCase
             'client_uuid' => (string) Str::uuid(), 'source' => 'offline', 'observed_at' => $capturedAt->toISOString(),
         ]);
         $this->assertSame('recorded', $timing->status->value);
-        $this->assertSame('registered', $entry->fresh()->status);
+        $this->assertSame('registered', $entry->fresh()->status->value);
         $this->assertArrayNotHasKey('automatic_dnf', $entry->fresh()->metadata);
         $this->assertSame('FINISHED', app(ResultsService::class)->filtered($race->fresh())[0]['result_status']);
         $this->assertEquals($finishedAt, $race->fresh()->finished_at);
@@ -101,8 +112,8 @@ class AutomaticDnfTest extends TestCase
         app(RaceClockService::class)->finish($race, $admin);
         app(TimingService::class)->correct($race, $entry, $finish, $admin, 20000);
         app(TimingService::class)->correct($race, $manualDnf, $finish, $admin, 21000);
-        $this->assertSame('registered', $entry->fresh()->status);
-        $this->assertSame('dnf', $manualDnf->fresh()->status);
+        $this->assertSame('registered', $entry->fresh()->status->value);
+        $this->assertSame('dnf', $manualDnf->fresh()->status->value);
     }
 
     public function test_explicit_status_changes_cancel_automatic_recovery(): void

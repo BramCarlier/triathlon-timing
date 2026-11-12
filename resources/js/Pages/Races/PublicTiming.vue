@@ -1,211 +1,250 @@
 <script setup lang="ts">
-import { tr } from '../../i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
-import { useRaceRefresh } from '../../Composables/useRaceRefresh';
-import RaceClock from '../../Components/RaceClock.vue';
+import Icon from '../../Components/Icon.vue';
+import TimingPad from '../../Components/TimingPad.vue';
 import LiveStandings from '../../Components/LiveStandings.vue';
-import { bibLabel, formatDuration, jsonRequest, uuid } from '../../lib';
-import type { LiveStanding, Checkpoint, StationParticipant } from '../../types';
+import { useRaceRefresh } from '../../Composables/useRaceRefresh';
+import { useTimingRecorder, type RecordedTap } from '../../Composables/useTimingRecorder';
+import { useWakeLock } from '../../Composables/useWakeLock';
+import { bibLabel, formatDuration, jsonRequest } from '../../lib';
+import { tr } from '../../i18n';
+import type { Checkpoint, LiveStanding, StationParticipant } from '../../types';
 
 interface PublicRace {
-  id:number;
-  name:string;
-  event_date:string;
-  status:string;
-  started_at?:string|null;
-  finished_at?:string|null;
-  settings?:Record<string,unknown>;
-  checkpoints:Checkpoint[];
-  results_url?:string|null;
+  id: number;
+  name: string;
+  event_date: string;
+  status: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  timing_enabled: boolean;
+  checkpoints: Checkpoint[];
+  results_url?: string | null;
 }
 
-interface Timing {
-  id?:number;
-  client_uuid?:string;
-  elapsed_ms:number;
-  recorded_at:string;
-  entry?:{id:number;bib_number:string|null;display_name?:string};
-  checkpoint?:{id:number;name:string};
-}
-
-const props=defineProps<{
-  race:PublicRace;
-  token:string;
-  participants:StationParticipant[];
-  recentTimings:Timing[];
-  completedCount:number;
+const props = defineProps<{
+  race: PublicRace;
+  token: string;
+  participants: StationParticipant[];
+  recentTimings: RecordedTap[];
+  completedCount: number;
   standings: LiveStanding[];
-  serverNow:string;
+  serverNow: string;
+  undoWindowSeconds: number;
 }>();
 
-const participants=ref(props.participants.map(item=>({...item,completed_checkpoint_ids:[...item.completed_checkpoint_ids]})));
-const recent=ref(props.recentTimings.map(item=>({...item})));
-const completedCount=ref(props.completedCount);
-watch(() => props.participants, value => { participants.value=value.map(item=>({...item,completed_checkpoint_ids:[...item.completed_checkpoint_ids]})); });
-watch(() => props.recentTimings, value => { recent.value=value.map(item=>({...item})); });
-watch(() => props.completedCount, value => { completedCount.value=value; });
-useRaceRefresh(() => ['race','participants','recentTimings', 'standings','completedCount','serverNow']);
-const checkpointId=ref<number|null>(props.race.checkpoints[0]?.id??null);
-const selectedCheckpoint=computed(()=>props.race.checkpoints.find(cp=>cp.id===Number(checkpointId.value))??null);
-const search=ref('');
-const saving=ref(new Set<number>());
-const feedback=ref<{type:'ok'|'error';message:string}|null>(null);
+const roster = ref<StationParticipant[]>([]);
+const copyParticipants = (rows: StationParticipant[]) =>
+  rows.map(item => ({ ...item, completed_checkpoint_ids: [...item.completed_checkpoint_ids] }));
+roster.value = copyParticipants(props.participants);
+watch(
+  () => props.participants,
+  rows => {
+    roster.value = copyParticipants(rows);
+  },
+);
 
-const filtered=computed(()=>{
-  const term=search.value.trim().toLowerCase();
-  const visible=participants.value.filter(participant=>participant.status!=='dns');
-  if(!term)return visible;
-  return visible.filter(participant=>
-    (participant.bib_number??'').toLowerCase().includes(term)
-    || participant.name.toLowerCase().includes(term)
-    || participant.members.some(member=>member.name.toLowerCase().includes(term))
-  );
+// The selected checkpoint survives reloads and is never silently defaulted.
+const storageKey = `tt.checkpoint.${props.token}`;
+const readStored = (): number | null => {
+  const fromUrl = new URLSearchParams(window.location.search).get('checkpoint');
+  const byCode = fromUrl ? props.race.checkpoints.find(cp => cp.code.toLowerCase() === fromUrl.toLowerCase()) : null;
+  if (byCode) return byCode.id;
+  try {
+    const stored = Number(localStorage.getItem(storageKey));
+    return props.race.checkpoints.some(cp => cp.id === stored) ? stored : null;
+  } catch {
+    return null;
+  }
+};
+const checkpointId = ref<number | null>(readStored() ?? (props.race.checkpoints.length === 1 ? props.race.checkpoints[0].id : null));
+const selectedCheckpoint = computed(() => props.race.checkpoints.find(cp => cp.id === checkpointId.value) ?? null);
+watch(checkpointId, id => {
+  if (!id) return;
+  try {
+    localStorage.setItem(storageKey, String(id));
+  } catch {
+    /* private mode */
+  }
+  const code = selectedCheckpoint.value?.code;
+  if (code) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('checkpoint', code);
+    window.history.replaceState(window.history.state, '', url);
+  }
+});
+watch(
+  () => props.race.checkpoints,
+  list => {
+    if (checkpointId.value && !list.some(cp => cp.id === checkpointId.value)) checkpointId.value = null;
+  },
+);
+
+const recorder = useTimingRecorder({
+  url: `/race/${props.token}/timings`,
+  owner: `link:${props.token}`,
+  race: () => props.race,
+  checkpoint: () => selectedCheckpoint.value,
+  participants: roster,
+  undoRemote: async tap => {
+    const { response, data } = await jsonRequest<{ message?: string }>(`/race/${props.token}/timings/${tap.client_uuid}/undo`, {
+      method: 'POST',
+    });
+    return response.ok ? null : (data.message ?? tr('This tap can no longer be undone here. Ask the Organizer to correct it.'));
+  },
+  onRecorded: (_tap, info) => {
+    if (!info.queued)
+      router.reload({ only: ['standings', 'recentTimings', 'completedCount', ...(info.autoFinished ? ['race', 'serverNow'] : [])] });
+  },
+  onSynced: () => router.reload({ only: ['participants', 'recentTimings', 'standings', 'completedCount'] }),
 });
 
-const recorded=(participant:StationParticipant)=>!!selectedCheckpoint.value
-  && participant.completed_checkpoint_ids.includes(selectedCheckpoint.value.id);
+// While taps are being saved or waiting to upload, polling keeps local state.
+useRaceRefresh(() => [
+  'race',
+  'standings',
+  'recentTimings',
+  'completedCount',
+  'serverNow',
+  ...(recorder.saving.value.size === 0 && recorder.pending.value === 0 ? ['participants'] : []),
+]);
 
-const disciplineLabel=(value:string)=>tr(value.charAt(0).toUpperCase()+value.slice(1));
-
-function showFeedback(type:'ok'|'error',message:string){
-  feedback.value={type,message};
-  window.setTimeout(()=>{if(feedback.value?.message===message)feedback.value=null;},4000);
-}
-
-async function record(participant:StationParticipant,clientUuid=uuid()){
-  if(!selectedCheckpoint.value||saving.value.has(participant.id))return;
-  if(!props.race.started_at){showFeedback('error',tr('The race has not started yet.'));return;}
-  if(props.race.finished_at){showFeedback('error',tr('The race is finished.'));return;}
-  if(participant.status&&participant.status!=='registered'){showFeedback('error',tr(':name is marked :status.', {name:participant.name,status:participant.status.toUpperCase()}));return;}
-  if(recorded(participant)){showFeedback('error',tr(':name already has a time at this checkpoint.', {name:participant.name}));return;}
-
-  const selected=selectedCheckpoint.value;
-  saving.value.add(participant.id);
-  try{
-    const {response,data}=await jsonRequest<{
-      timing?:Timing;
-      message?:string;
-      auto_finished?:boolean;
-    }>(`/race/${props.token}/timings`,{
-      method:'POST',
-      body:JSON.stringify({
-        entry_id:participant.id,
-        checkpoint_id:selected.id,
-        client_uuid:clientUuid,
-        observed_at:new Date().toISOString(),
-      }),
-    });
-
-    if(response.ok&&data.timing){
-      participant.completed_checkpoint_ids.push(selected.id);
-      recent.value.unshift(data.timing);
-      recent.value=recent.value.slice(0,12);
-      if(selected.kind==='finish')completedCount.value+=1;
-      search.value='';
-      showFeedback('ok',data.message??tr('Time recorded.'));
-      router.reload({only:['standings', ...(data.auto_finished ? ['race','completedCount','serverNow'] : [])]});
-      return;
-    }
-
-    showFeedback('error',data.message??tr('The time was not recorded. Try again.'));
-  }catch{
-    showFeedback('error',tr('The time was not recorded. Check the connection and try again.'));
-  }finally{
-    saving.value.delete(participant.id);
-  }
-}
-
+const view = ref<'timing' | 'standings' | 'latest'>('timing');
+const pad = ref<InstanceType<typeof TimingPad>>();
+const wake = useWakeLock();
+const keepAwake = () => {
+  if (wake.supported && !wake.enabled.value) void wake.toggle();
+};
+onMounted(() => {
+  window.addEventListener('pointerdown', keepAwake, { once: true });
+  if (!checkpointId.value && props.race.timing_enabled && !props.race.finished_at) pad.value?.openChooser();
+});
+onBeforeUnmount(() => window.removeEventListener('pointerdown', keepAwake));
 </script>
 
 <template>
-  <Head :title="`${race.name} · ${$t('Race timing')}`"/>
-  <AppLayout :title="race.name" public-view>
-    <section class="panel-pad mb-5">
-      <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <div class="text-xs font-bold uppercase tracking-[.18em] text-accent">{{ $t("Race-day timing") }}</div>
-          <h2 class="mt-1 text-xl font-bold">{{ $t("Choose the checkpoint, then tap the athlete") }}</h2>
-          <p class="mt-2 muted">{{ $t("No account is needed. Every tap records the current race time at the selected checkpoint.") }}</p>
-        </div>
-        <div class="rounded-2xl bg-canvas p-4">
-          <div class="mb-1 text-xs font-bold uppercase tracking-[.18em] text-accent">{{ $t("Race clock") }}</div>
-          <RaceClock :started-at="race.started_at" :finished-at="race.finished_at" :server-now="serverNow"/>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel overflow-hidden">
-      <div class="border-b border-outline p-4">
-        <div class="grid gap-4 md:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
-          <div>
-            <label for="public-timing-checkpoint" class="label">{{ $t("1. Checkpoint") }}</label>
-            <select id="public-timing-checkpoint" v-model="checkpointId" class="field min-h-14 text-lg">
-              <option v-for="checkpoint in race.checkpoints" :key="checkpoint.id" :value="checkpoint.id">{{ $t(checkpoint.name) }}</option>
-            </select>
-          </div>
-          <div>
-            <label for="public-timing-search" class="label">{{ $t("2. Find athlete") }}</label>
-            <input id="public-timing-search" v-model="search" class="field min-h-14 text-lg" :placeholder="$t('Name or bib number')" autocomplete="off">
-          </div>
-        </div>
-
-        <p v-if="selectedCheckpoint" class="mt-3 rounded-xl bg-canvas p-3 text-sm">
-          {{ $t("Recording at") }} <strong>{{ $t(selectedCheckpoint.name) }}</strong>{{ $t(". Tap the correct athlete once.") }}
-        </p>
-        <p v-if="feedback" class="mt-3 rounded-xl p-3 text-sm font-semibold" :class="feedback.type==='ok'?'bg-emerald-500/10 text-success':'bg-red-500/10 text-error'" role="status">{{ feedback.message }}</p>
+  <Head :title="`${race.name} · ${$t('Race timing')}`" />
+  <AppLayout public-view>
+    <div class="mx-auto max-w-3xl">
+      <div class="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+        <h1 class="text-3xl sm:text-4xl">{{ race.name }}</h1>
+        <p class="text-sm muted">{{ $t('Race-day timing. No account needed.') }}</p>
       </div>
 
-      <div v-if="race.started_at && !race.finished_at && selectedCheckpoint" class="max-h-[62dvh] overflow-y-auto p-2 sm:p-3">
+      <nav class="mb-3 grid grid-cols-3 gap-1 rounded-lg border border-outline bg-surface p-1" :aria-label="$t('Race-day views')">
         <button
-          v-for="participant in filtered"
-          :key="participant.id"
+          v-for="tab in ['timing', 'standings', 'latest'] as const"
+          :key="tab"
           type="button"
-          class="mb-2 grid min-h-20 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-3 text-left transition sm:p-4"
-          :class="recorded(participant)?'border-emerald-500/30 bg-emerald-500/10 opacity-70':'border-outline bg-surface hover:border-cyan-400 hover:bg-raised active:scale-[.995]'"
-          :disabled="recorded(participant)||saving.has(participant.id)||(!!participant.status&&participant.status!=='registered')"
-          @click="record(participant)"
+          class="min-h-11 rounded-md px-2 font-semibold"
+          :class="view === tab ? 'bg-ink text-on-ink' : 'text-secondary hover:bg-raised'"
+          :aria-pressed="view === tab"
+          @click="view = tab"
         >
-          <span class="max-w-24 rounded-xl bg-canvas px-3 py-2 font-mono text-lg font-black sm:text-xl">{{ bibLabel(participant.bib_number) }}</span>
-          <span class="min-w-0">
-            <strong class="block truncate text-base sm:text-lg">{{ participant.name }}</strong>
-            <span class="block truncate text-xs muted sm:text-sm">{{ participant.type==='relay'?participant.members.map(member=>`${disciplineLabel(member.discipline)}: ${member.name}`).join(' · '):$t('Solo athlete') }}</span>
-          </span>
-          <span class="text-xs font-bold sm:text-sm" :class="recorded(participant)?'text-success':'text-accent'">{{ participant.status&&participant.status!=='registered'?participant.status.toUpperCase():saving.has(participant.id)?$t('SAVING'):recorded(participant)?$t('RECORDED'):$t('TAP') }}</span>
+          {{ tab === 'timing' ? $t('Timing') : tab === 'standings' ? $t('Standings') : $t('Latest times') }}
         </button>
-        <p v-if="!filtered.length" class="p-8 text-center muted">{{ $t("No matching athlete.") }}</p>
-      </div>
+      </nav>
 
-      <div v-else class="p-8 text-center">
-        <strong>{{ race.finished_at?$t('This race is finished.'):$t('Timing opens when the organizer starts the race.') }}</strong>
-        <p class="mt-2 muted">{{ race.finished_at?$t('Recorded results remain available from the organizer.'):$t('You can leave this page open and start tapping athletes once the race begins.') }}</p>
-      </div>
-    </section>
+      <section v-if="!race.timing_enabled" class="panel-pad text-center">
+        <Icon name="power" class="mx-auto size-10 text-muted" />
+        <h2 class="mt-3 text-2xl">{{ $t('This race-day link is switched off') }}</h2>
+        <p class="mt-1 muted">{{ $t('Ask the Organizer for the current link.') }}</p>
+      </section>
 
-    <LiveStandings :standings="standings" :checkpoints="race.checkpoints" :started="!!race.started_at" :finished="!!race.finished_at" class="mt-5"/>
-
-    <section class="panel mt-5 overflow-hidden">
-      <div class="border-b border-outline p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="font-bold">{{ $t("Latest times") }}</h3>
-          <span class="badge">{{ completedCount }} {{ $t("finished") }}</span>
-        </div>
-      </div>
-      <div v-if="recent.length" class="divide-y divide-outline">
-        <div v-for="timing in recent" :key="timing.id??timing.client_uuid" class="flex items-center justify-between gap-3 p-4">
-          <div class="min-w-0">
-            <strong class="block truncate">{{ timing.entry?.display_name??bibLabel(timing.entry?.bib_number) }}</strong>
-            <span class="text-sm muted">{{ $t(timing.checkpoint?.name ?? '') }}</span>
+      <template v-else>
+        <div v-show="view === 'timing'">
+          <div
+            v-if="recorder.pending.value || !recorder.online.value"
+            class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 p-3 text-warning"
+          >
+            <span class="inline-flex items-center gap-2 font-semibold">
+              <Icon :name="recorder.online.value ? 'cloud-arrow-up' : 'wifi-off'" />
+              {{
+                recorder.online.value
+                  ? $t(':count taps waiting to upload', { count: recorder.pending.value })
+                  : $t('Offline. Taps are saved on this phone.')
+              }}
+            </span>
+            <button
+              v-if="recorder.pending.value && recorder.online.value"
+              type="button"
+              class="btn-secondary !min-h-10"
+              :disabled="recorder.queue.flushing.value"
+              @click="recorder.sync()"
+            >
+              {{ $t('Upload now') }}
+            </button>
           </div>
-          <span class="shrink-0 font-mono font-bold">{{ formatDuration(timing.elapsed_ms,2) }}</span>
-        </div>
-      </div>
-      <div v-else class="p-6 text-center muted">{{ $t("No times yet.") }}</div>
-      <div v-if="race.results_url" class="border-t border-outline p-4">
-        <a :href="race.results_url" class="font-semibold text-accent underline">{{ $t("Open live results") }}</a>
-      </div>
-    </section>
+          <p v-if="recorder.queue.error.value" role="alert" class="mb-3 rounded-lg bg-error/10 p-3 font-semibold text-error">
+            {{ recorder.queue.error.value }}
+          </p>
 
+          <TimingPad
+            ref="pad"
+            v-model:checkpoint-id="checkpointId"
+            :race="race"
+            :server-now="serverNow"
+            :checkpoints="race.checkpoints"
+            :participants="roster"
+            :recorder="recorder"
+            :storage-key="`tt.keypad.${token}`"
+          />
+
+          <ul v-if="recorder.queue.items.value.length" class="mt-3 grid gap-2">
+            <li
+              v-for="item in recorder.queue.items.value"
+              :key="item.client_uuid"
+              class="rounded-lg border border-warning/50 bg-surface p-3"
+            >
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <strong>
+                  {{ item.label }}
+                  <span class="tabular font-normal muted">{{ formatDuration(item.elapsed_ms, 2) }}</span>
+                </strong>
+                <button type="button" class="btn-quiet !min-h-10 text-error" @click="recorder.queue.discard(item.client_uuid)">
+                  <Icon name="trash" />
+                  {{ $t('Discard') }}
+                </button>
+              </div>
+              <p v-if="item.error" class="mt-1 text-sm text-warning">{{ item.error }}</p>
+            </li>
+          </ul>
+        </div>
+
+        <LiveStandings
+          v-if="view === 'standings'"
+          :standings="standings"
+          :checkpoints="race.checkpoints"
+          :started="!!race.started_at"
+          :finished="!!race.finished_at"
+        />
+
+        <section v-if="view === 'latest'" class="panel overflow-hidden">
+          <div class="flex items-center justify-between gap-3 border-b border-outline p-4">
+            <h2 class="text-2xl">{{ $t('Latest times') }}</h2>
+            <span class="badge tabular">{{ $t(':count finished', { count: completedCount }) }}</span>
+          </div>
+          <ol v-if="recentTimings.length" class="divide-y divide-outline">
+            <li
+              v-for="timing in recentTimings"
+              :key="timing.id ?? timing.recorded_at"
+              class="flex items-center justify-between gap-3 px-4 py-3"
+            >
+              <div class="min-w-0">
+                <strong class="block truncate">{{ timing.entry?.display_name ?? bibLabel(timing.entry?.bib_number) }}</strong>
+                <span class="text-sm muted">{{ $t(timing.checkpoint?.name ?? '') }}</span>
+              </div>
+              <span class="tabular display text-xl font-bold">{{ formatDuration(timing.elapsed_ms, 2) }}</span>
+            </li>
+          </ol>
+          <p v-else class="p-6 text-center muted">{{ $t('No times yet.') }}</p>
+          <div v-if="race.results_url" class="border-t border-outline p-4">
+            <a :href="race.results_url" class="font-semibold text-accent underline">{{ $t('Open live results') }}</a>
+          </div>
+        </section>
+      </template>
+    </div>
   </AppLayout>
 </template>

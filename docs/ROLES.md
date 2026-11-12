@@ -4,7 +4,7 @@ Accounts are an optional layer around the core race-day workflow. The simplest s
 
 Anyone who has that unguessable race-day link can view the timing screen, choose an active transition/checkpoint or finish, and record an athlete's time without signing in. The link does **not** grant race setup, athlete editing, race controls, corrections, exports, user management or role management.
 
-The account types remain Organizer (admin), Official and Athlete. Internal keys remain `admin`, `organizer` and `athlete` for compatibility.
+The account types are Organizer (admin), Official and Athlete. Internal keys are `admin`, `official` and `athlete` (Officials were stored as `organizer` before November 2026; a migration converts them).
 
 ## Organizer (admin)
 
@@ -34,3 +34,7 @@ A linked Athlete account can view that athlete's races and results. It does not 
 ## Custom Official roles
 
 Admins can use **Roles & permissions** when they need named account-based access beyond the public race-day link. The default Official role can be edited but cannot be renamed or deleted. Custom roles cannot be deleted while assigned to users.
+
+## Race-day link controls
+
+The Organizer can switch the race-day link off (devices using it can no longer record times) or create a new link (the old one stops working immediately) from **Race workspace → Timing → Race-day link**. A device that made a tap with the link can undo it for 60 seconds; after that, corrections go through the Organizer.

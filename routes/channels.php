@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('race.{raceId}', function ($user, int $raceId) {
