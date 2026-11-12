@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Notifications\AccountInvitation;
+use Illuminate\Auth\Passwords\PasswordBroker as PasswordBrokerImplementation;
 use Illuminate\Support\Facades\Password;
 
 class AccountInvitationService
@@ -31,7 +32,12 @@ class AccountInvitationService
             return false;
         }
         try {
-            $token = Password::broker()->createToken($user);
+            // createToken() exists on Laravel's broker, not on the PasswordBroker contract.
+            $broker = Password::broker();
+            if (! $broker instanceof PasswordBrokerImplementation) {
+                throw new \LogicException('The password broker cannot create invitation tokens.');
+            }
+            $token = $broker->createToken($user);
             $user->notify(new AccountInvitation($token));
             $user->forceFill(['invitation_sent_at' => now()])->save();
 
