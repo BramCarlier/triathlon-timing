@@ -134,8 +134,9 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Required by the main branch ruleset, so it must run on every pull request:
+  # GitHub treats a skipped required check as passed.
   webkit-responsive:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
