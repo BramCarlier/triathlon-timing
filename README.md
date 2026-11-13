@@ -161,7 +161,7 @@ yarn test:responsive:webkit     # the same in WebKit
 composer format && yarn format  # apply formatting
 ```
 
-Every pull request runs `.github/workflows/quality.yml`: dependency audits, Pint, Larastan, the PHP suite, frontend lint, unit tests, type check and build, the Playwright and responsive suites, and the Feature and concurrency suites on MySQL 8.4. WebKit layout checks run when the workflow is started manually. Deployment script tests live in `tests/Deployment`.
+Every pull request runs `.github/workflows/quality.yml`: dependency audits, Pint, Larastan, the PHP suite, frontend lint, unit tests, type check and build, the Playwright suite, responsive layout checks in Chromium and WebKit, and the Feature and concurrency suites on MySQL 8.4. All five jobs are required checks for `main`. Deployment script tests live in `tests/Deployment`.
 
 ## Deployment
 
