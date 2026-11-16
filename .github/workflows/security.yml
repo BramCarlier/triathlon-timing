@@ -23,5 +23,5 @@ jobs:
           node-version: '24'
       - run: corepack enable
       - run: composer audit --locked --no-interaction
-      - run: yarn install --immutable --mode=skip-builds
+      - run: yarn install --immutable --mode=skip-build
       - run: yarn npm audit --all --recursive
