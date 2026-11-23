@@ -361,12 +361,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lucide/vue@npm:^1.72.0":
-  version: 1.72.0
-  resolution: "@lucide/vue@npm:1.72.0"
+"@lucide/vue@npm:^1.76.0":
+  version: 1.76.0
+  resolution: "@lucide/vue@npm:1.76.0"
   peerDependencies:
     vue: ">=3.0.1"
-  checksum: 10c0/1b2c4ffdb09c13709a7ffec60099bc25fc83a96a5dbd3a294bb4dca982523f3d12dbcc489a344b1971895d404066cc9a1df6665f987e51a0fef82507c5b008e0
+  checksum: 10c0/1e721067c1c6ba74ec81fb5420cbe07916a800dd2a2479fbc869cc8a14f0880fff4c52d1bde5e61b5355c938b4586b2c22adc57a3f3de1512abb2f5e208c0aa8
   languageName: node
   linkType: hard
 
@@ -2192,7 +2192,7 @@ __metadata:
     "@fontsource/barlow": "npm:^5.3.0"
     "@fontsource/barlow-condensed": "npm:^5.3.0"
     "@inertiajs/vue3": "npm:^3.11.0"
-    "@lucide/vue": "npm:^1.72.0"
+    "@lucide/vue": "npm:^1.76.0"
     "@playwright/test": "npm:^1.65.0"
     "@tailwindcss/vite": "npm:^4.3.5"
     "@types/node": "npm:^24.19.2"
